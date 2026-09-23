@@ -319,7 +319,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs-merge"]
     fn shaper_and_lut_3d_apply() {
         let mut data = [
             [0.1f32, 0.2, 0.3, 0.0],
@@ -340,7 +339,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs-merge"]
     fn shaper_apply() {
         let mut data = [
             [0.1f32, 0.2, 0.3, 0.0],
@@ -361,7 +359,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs-merge"]
     fn lut_3d_apply() {
         let content =
             format!("# Truelight Cube v2.0\n# iDims 3\n# oDims 3\n# width 3 3 3\n\n\n\n{CUBE}");

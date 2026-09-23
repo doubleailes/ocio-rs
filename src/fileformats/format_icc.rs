@@ -1104,7 +1104,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs-merge"]
     fn test_apply() {
         use crate::processor::Processor;
         let apply = |name: &str, dir: TransformDirection, pixels: &mut [[f32; 4]]| {

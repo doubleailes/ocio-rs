@@ -291,15 +291,25 @@ impl Baker {
 
 /// Look for the display (active or not) and, in it, for the view (display
 /// defined or shared, active or not). Returns `(found_display, found_view)`.
-///
-/// OCIO iterates `Config::getDisplayAll` and `Config::getView(type, display,
-/// index)` for the display-defined and shared view types. The display / view
-/// query API of the config belongs to the config module; until it is
-/// available through the public [`Config`] signatures this module relies on,
-/// the lookup reports both as found and lets the processor creation report
-/// unknown displays or views.
-fn find_display_view(_config: &Config, _display: &str, _view: &str) -> (bool, bool) {
-    (true, true)
+fn find_display_view(config: &Config, display: &str, view: &str) -> (bool, bool) {
+    use crate::types::ViewType;
+    let has_view_by_type = |ty: ViewType, disp: &str| {
+        (0..config.num_views_by_type(ty, disp)).any(|i| config.view_by_type(ty, disp, i) == view)
+    };
+    let mut found_display = false;
+    let mut found_view = false;
+    for i in 0..config.num_displays_all() {
+        let curr = config.display_all(i);
+        if curr == display {
+            found_display = true;
+            found_view |= has_view_by_type(ViewType::DisplayDefined, curr);
+            found_view |= has_view_by_type(ViewType::Shared, curr);
+        }
+        if found_display && found_view {
+            break;
+        }
+    }
+    (found_display, found_view)
 }
 
 /// The group transform from the input space to the target space, or to the

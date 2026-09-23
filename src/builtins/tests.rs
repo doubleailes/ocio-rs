@@ -101,7 +101,6 @@ fn registry_aces() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn registry_aces_ops() {
     use crate::config::Config;
     let config = Config::create_raw();
@@ -173,7 +172,6 @@ colorspaces:
       children:"#;
 
 #[test]
-#[ignore = "needs-merge"]
 fn registry_read_write() {
     // Validates the read/write and the processor creation for all the
     // existing builtin transforms.
@@ -198,7 +196,6 @@ fn registry_read_write() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn registry_version_1_validation() {
     // The config reader throws for version 1 configs containing a builtin transform.
     const CONFIG: &str = r#"ocio_profile_version: 1
@@ -264,7 +261,6 @@ colorspaces:
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn registry_version_2_validation() {
     let cfg = version_config("2", "ACES-LMT - ACES 1.3 Reference Gamut Compression");
     assert_eq!(
@@ -277,7 +273,6 @@ fn registry_version_2_validation() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn registry_version_2_1_validation() {
     let cfg = version_config("2.1", "ARRI_LOGC4_to_ACES2065-1");
     assert_eq!(
@@ -337,7 +332,6 @@ fn registry_styles_2_4_exist() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn registry_version_2_3_validation() {
     // The config reader throws for version 2.3 configs containing a builtin
     // transform with the new 2.4 styles.
@@ -453,7 +447,6 @@ fn group_transform() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn forward_inverse() {
     // A forward and inverse built-in transform must be optimized out.
     use crate::config::Config;
@@ -655,7 +648,6 @@ fn validate_builtin_transform(style: &str, input: &[f32], output: &[f32], error_
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn validate() {
     let reg = BuiltinTransformRegistry::get();
     for style in reg.styles() {
@@ -825,7 +817,6 @@ fn aces2_displayview_roundtrip() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn aces2_aab_to_rgb_nan() {
     use crate::config::Config;
 

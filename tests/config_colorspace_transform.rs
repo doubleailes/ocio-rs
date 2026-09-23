@@ -169,7 +169,6 @@ fn colorspace_transform_build_colorspace_ops_errors() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn colorspace_transform_build_colorspace_ops() {
     use TransformDirection::{Forward, Inverse};
     let BuildSetup {
@@ -406,7 +405,6 @@ fn colorspace_transform_build_reference_conversion_ops_no_view_transform() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn colorspace_transform_build_reference_conversion_ops() {
     use ReferenceSpaceType::{Display, Scene};
     let mut config = reference_setup();
@@ -425,7 +423,6 @@ fn colorspace_transform_build_reference_conversion_ops() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn colorspace_transform_build_colorspace_ops_with_reference_conversion() {
     use TransformDirection::{Forward, Inverse};
     let mut config = reference_setup();
@@ -470,8 +467,13 @@ fn colorspace_transform_build_colorspace_ops_with_reference_conversion() {
         assert_eq!(ops.len(), 5);
         assert!(ops[0].is_no_op());
         check_log_op(&ops[1], 2.0, Inverse);
-        // ExponentTransform is implemented using a gamma op.
-        assert!(ops[2].is_identity());
+        // ExponentTransform is implemented using a gamma op (identity
+        // parameters, but it still clamps negative values).
+        assert!(ops[2]
+            .downcast_ref::<ocio::ops::gamma::GammaOp>()
+            .unwrap()
+            .data()
+            .is_identity());
         check_ff_op(&ops[3], FixedFunctionStyle::AcesGlow03, Forward);
         assert!(ops[4].is_no_op());
     }

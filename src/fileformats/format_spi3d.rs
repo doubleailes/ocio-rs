@@ -257,7 +257,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs-merge"]
     fn lut_interpolation_option_processor() {
         use crate::transforms::FileTransform;
         let config = crate::Config::create_raw();

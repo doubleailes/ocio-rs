@@ -40,7 +40,6 @@ fn config_context_variable_with_sanity_check() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_context_variable_with_sanity_check_processor() {
     sanity_check(true);
 }
@@ -245,7 +244,6 @@ fn config_context_variable_with_colorspacename() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_context_variable_with_colorspacename_named_transform() {
     let _lock = env_lock();
     let _g = EnvGuard::set("VAR3", None);
@@ -402,7 +400,6 @@ fn config_context_variable_with_search_path_v1_validation() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_context_variable_with_search_path_v1() {
     let _lock = env_lock();
     let _g = EnvGuard::set("ENV1", None);
@@ -485,7 +482,6 @@ fn config_context_variable_with_search_path_v2_validation() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_context_variable_with_search_path_v2() {
     let _lock = env_lock();
     let _g = EnvGuard::set("ENV1", None);

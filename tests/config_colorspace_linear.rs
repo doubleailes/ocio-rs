@@ -29,7 +29,6 @@ fn config_is_colorspace_linear_validation() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_is_colorspace_linear() {
     let _lock = env_lock();
     let config = linear_config();
@@ -117,7 +116,6 @@ fn config_utils_processor_to_known_colorspace_errors() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_utils_processor_to_known_colorspace() {
     let _lock = env_lock();
     let mut cfg = known_config();
@@ -245,7 +243,6 @@ fn config_utils_processor_to_known_colorspace() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_utils_processor_to_known_colorspace_alt_config() {
     let _lock = env_lock();
     let mut cfg = Config::create_from_str(ALT_CONFIG)

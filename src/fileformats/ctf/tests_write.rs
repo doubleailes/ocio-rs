@@ -413,7 +413,6 @@ fn load_save_matrix() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn save_matrix_444() {
     let config = crate::Config::create_raw();
     let mut mat = MatrixTransform::default();
@@ -2364,6 +2363,7 @@ fn bake(config_yaml: &str, set: impl FnOnce(&mut crate::Baker), format: &str) ->
 const BAKE_1D_CONFIG: &str = r#"ocio_profile_version: 2
 
 roles:
+  default: input
   reference: input
 
 colorspaces:
@@ -2377,7 +2377,6 @@ colorspaces:
 "#;
 
 #[test]
-#[ignore = "needs-merge"]
 fn bake_1d() {
     let set = |b: &mut crate::Baker| {
         b.input_space = "input".to_string();
@@ -2432,7 +2431,6 @@ const BAKE_SHAPER_CONFIG: &str = r#"
     "#;
 
 #[test]
-#[ignore = "needs-merge"]
 fn bake_1d_shaper() {
     {
         // Lin to Log.
@@ -2501,6 +2499,7 @@ fn bake_1d_shaper() {
 const BAKE_3D_CONFIG: &str = r#"ocio_profile_version: 2
 
 roles:
+  default: input
   reference: input
 
 colorspaces:
@@ -2515,7 +2514,6 @@ colorspaces:
 "#;
 
 #[test]
-#[ignore = "needs-merge"]
 fn bake_3d() {
     let out = bake(
         BAKE_3D_CONFIG,
@@ -2572,6 +2570,7 @@ fn bake_3d() {
 const BAKE_1D_3D_CONFIG: &str = r#"ocio_profile_version: 2
 
 roles:
+  default: input
   reference: input
 
 colorspaces:
@@ -2591,7 +2590,6 @@ colorspaces:
 "#;
 
 #[test]
-#[ignore = "needs-merge"]
 fn bake_1d_3d() {
     let set = |b: &mut crate::Baker| {
         b.metadata.add_attribute(METADATA_ID, "UID42");
@@ -2729,7 +2727,6 @@ fn lut_interpolation_option() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn lut_interpolation_option_processor() {
     let config = crate::Config::create_raw();
     let get = |src: &str, interp: Interpolation| -> Interpolation {

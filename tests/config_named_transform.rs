@@ -199,7 +199,6 @@ fn check_matrix(t: &Transform, name: &str, offset: &[f64]) {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn named_transform_static_get_transform() {
     let _lock = env_lock();
     let config = Config::create_raw();
@@ -310,7 +309,6 @@ fn config_named_transform_processor_access() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_named_transform_processor() {
     let _lock = env_lock();
     let config = Config::create_from_str(NT_PROCESSOR_CONFIG).unwrap();
@@ -529,7 +527,6 @@ fn config_named_transform_validation() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_named_transform_validation_processors() {
     let _lock = env_lock();
     let config = validation_config();
@@ -888,7 +885,6 @@ fn config_inactive_named_transforms() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_inactive_named_transforms_processors() {
     let _lock = env_lock();
     let mut config = inactive_config();

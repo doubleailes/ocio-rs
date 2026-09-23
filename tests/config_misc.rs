@@ -342,7 +342,6 @@ fn config_builtin_transforms_serialization() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_builtin_transforms() {
     let config = Config::create_from_str(BUILTIN_TRANSFORMS_CONFIG).unwrap();
     config.validate().unwrap();
@@ -389,7 +388,6 @@ fn config_config_context_cacheids() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_config_context_cacheids_processors() {
     cacheids(true);
 }
@@ -471,7 +469,6 @@ fn cacheids(with_ops: bool) {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_processor_cache_with_context_variables() {
     // Deviation: processors are values in Rust so the C++ pointer comparisons
     // are replaced by processor cache id comparisons.

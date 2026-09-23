@@ -336,7 +336,6 @@ fn test_from_file(uri: &str, num_active_color_spaces: usize, expected_name: &str
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn create_builtin_config() {
     let prefix = OCIO_BUILTIN_URI_PREFIX;
 

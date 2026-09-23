@@ -480,16 +480,25 @@ impl MatrixRenderer {
 /// forward.
 #[derive(Debug, Clone)]
 pub struct MatrixOp {
+    /// Forward parameters (used for evaluation and optimization).
     data: MatrixOpData,
+    /// Parameters as given (possibly inverse), returned by `to_transform`.
+    original: MatrixOpData,
     renderer: MatrixRenderer,
 }
 
 impl MatrixOp {
     /// Create the op; an inverse matrix is inverted (fails if singular).
     pub fn new(data: MatrixOpData) -> Result<Self> {
+        let original = data.clone();
         let data = data.get_as_forward()?;
         let renderer = MatrixRenderer::new(&data)?;
-        Ok(Self { data, renderer })
+        Ok(Self { data, original, renderer })
+    }
+
+    /// The parameters as given at creation (possibly in inverse direction).
+    pub fn original_data(&self) -> &MatrixOpData {
+        &self.original
     }
 
     /// The (forward) parameters.
@@ -542,14 +551,24 @@ impl Op for MatrixOp {
     }
 
     fn to_transform(&self) -> Option<Transform> {
+        let d = &self.original;
         Some(Transform::Matrix(MatrixTransform {
-            direction: TransformDirection::Forward,
-            matrix: self.data.matrix,
-            offset: self.data.offsets,
-            file_input_bit_depth: self.data.file_input_bit_depth,
-            file_output_bit_depth: self.data.file_output_bit_depth,
-            metadata: self.data.metadata.clone(),
+            direction: d.direction,
+            matrix: d.matrix,
+            offset: d.offsets,
+            file_input_bit_depth: d.file_input_bit_depth,
+            file_output_bit_depth: d.file_output_bit_depth,
+            metadata: d.metadata.clone(),
         }))
+    }
+
+    fn finalize(&self) -> Option<OpRc> {
+        if self.original.direction == TransformDirection::Forward {
+            return None;
+        }
+        let mut op = self.clone();
+        op.original = op.data.clone();
+        Some(Arc::new(op))
     }
 
     fn clone_box(&self) -> Box<dyn Op> {

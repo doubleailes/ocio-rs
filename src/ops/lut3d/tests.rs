@@ -598,7 +598,6 @@ fn op_optimize_compose() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn op_inverse_pair_optimized_to_range() {
     let lut = synthetic_lut(5);
     let mut ops = OpVec::new();

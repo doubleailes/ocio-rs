@@ -1075,7 +1075,6 @@ fn op_inverse() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn op_inverse_pairs_optimized_to_range() {
     let mut luta = Lut1DOpData::new(3).unwrap();
     luta.array_mut()[0] = 0.1;
@@ -1133,7 +1132,6 @@ fn op_half_domain_identity_is_no_op() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn op_replace_identity_luts() {
     let lut = Lut1DOpData::new(10).unwrap();
     let mut ops = OpVec::new();

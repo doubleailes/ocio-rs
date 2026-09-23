@@ -378,7 +378,6 @@ fn validation_errors_are_reported() {
 // Tests needing the other packages.
 
 #[test]
-#[ignore = "needs-merge"]
 fn v1_config_uses_legacy_exponent_and_cdl() {
     // In a v1 config, an exponent does not honor the negative style and an
     // identity exponent is a no-op (the clamp is lost).
@@ -425,7 +424,6 @@ colorspaces:
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn color_space_conversion_with_basic_ops() {
     let yaml = r#"ocio_profile_version: 2
 

@@ -49,7 +49,6 @@ fn load(s: &str) -> Config {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_context_variables_typical_use_cases() {
     let _lock = env_lock();
     let dir = data_file("");

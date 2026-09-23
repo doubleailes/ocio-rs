@@ -267,7 +267,6 @@ named_transforms:\n\
 \n";
 
 #[test]
-#[ignore = "needs-merge"]
 fn bake_3dlut_processors() {
     // The processors and ranges the formats bake from (the format outputs of
     // the `bake_3dlut` test are checked by the format tests).
@@ -413,7 +412,7 @@ fn validation_baker(config: &Config, format: &str) -> Baker {
 }
 
 #[test]
-#[ignore = "needs-merge"]
+#[ignore = "needs format bake implementations"]
 fn baking_validation() {
     let config = Config::create_from_str(BAKING_VALIDATION_PROFILE).unwrap();
     config.validate().unwrap();

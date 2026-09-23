@@ -750,7 +750,6 @@ fn config_context_variable_faulty_cases() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_context_variable_faulty_cases_processor() {
     let cfg = Config::create_from_str(FAULTY_CONTEXT_CONFIG).unwrap();
     cfg.validate().unwrap();

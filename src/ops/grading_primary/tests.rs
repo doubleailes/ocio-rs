@@ -495,7 +495,6 @@ fn pair_identity_optimization() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn pair_identity_optimization_with_clamp() {
     // The pair is replaced by a range emulating the clamps.
     let mut v = GradingPrimary::new(GradingStyle::Log);

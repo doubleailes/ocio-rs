@@ -296,7 +296,6 @@ fn config_inactive_color_space() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_inactive_color_space_processors() {
     let _lock = env_lock();
     let _g = EnvGuard::set(OCIO_INACTIVE_COLORSPACES_ENVVAR, None);
@@ -316,7 +315,6 @@ fn config_inactive_color_space_processors() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_is_inactive() {
     let _lock = env_lock();
     let config =

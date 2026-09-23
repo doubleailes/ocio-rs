@@ -89,7 +89,6 @@ fn config_range_serialization() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_range_serialization_validation() {
     let config = Config::create_from_str(&v2(
         "    from_scene_reference: !<RangeTransform> {min_in_value: 0, min_out_value: 0, style: noClamp}\n",
@@ -193,7 +192,6 @@ fn config_exponent_with_linear_serialization() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_exponent_vs_config_version() {
     let apply = |s: &str| {
         let config = Config::create_from_str(s).unwrap();

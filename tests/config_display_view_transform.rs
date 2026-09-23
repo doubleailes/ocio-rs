@@ -65,10 +65,10 @@ fn build(config: &Config, dt: &DisplayViewTransform, dir: TransformDirection) ->
 /// Short description of the kind of an op (the C++ tests check the op data
 /// type).
 fn kind(op: &OpRc) -> &'static str {
-    if op.is_no_op() {
-        return "noop";
-    }
+    // Classify by op type (as OCIO checks `OpData::getType`): identity ops
+    // such as a default ExposureContrast are still reported by their type.
     match op.to_transform() {
+        None => "noop",
         Some(Transform::Matrix(_)) => "matrix",
         Some(Transform::FixedFunction(_)) => "ff",
         Some(Transform::Log(_)) => "log",
@@ -101,7 +101,6 @@ fn log_base(op: &OpRc) -> f64 {
 const OFFSET: [f64; 4] = [0.0, 0.1, 0.2, 0.0];
 
 #[test]
-#[ignore = "needs-merge"]
 fn display_view_transform_build_ops() {
     use TransformDirection::Forward;
     let mut config = Config::create_raw().create_editable_copy();
@@ -328,7 +327,6 @@ fn display_view_transform_build_ops_with_looks_errors() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn display_view_transform_build_ops_with_looks() {
     use TransformDirection::{Forward as F, Inverse as I};
     let config = Config::create_from_str(LOOKS_CONFIG).unwrap();
@@ -599,7 +597,6 @@ fn proc_of(
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn display_view_transform_apply_fwd_inv() {
     use TransformDirection::{Forward, Inverse};
     let config = Config::create_from_str(APPLY_CONFIG).unwrap();

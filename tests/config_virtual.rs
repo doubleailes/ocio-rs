@@ -511,7 +511,6 @@ fn kinds(p: &Processor) -> Vec<&'static str> {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_get_processor_alias() {
     let _lock = env_lock();
     let mut config = Config::create_raw().create_editable_copy();
@@ -584,7 +583,6 @@ fn config_get_processor_alias() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_look_is_noop() {
     let _lock = env_lock();
     use TransformDirection::{Forward, Inverse};
@@ -639,7 +637,6 @@ fn look_fallback_config() -> String {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_look_fallback() {
     let _lock = env_lock();
     let _g = EnvGuard::set("LOOK_CDL", Some("cdl_test1"));
@@ -682,7 +679,6 @@ fn config_create_from_archive() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_create_from_archive_processors() {
     let _lock = env_lock();
     for name in ["context_test1_windows.ocioz", "context_test1_linux.ocioz"] {

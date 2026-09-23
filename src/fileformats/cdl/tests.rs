@@ -273,7 +273,6 @@ fn ccc_read() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn ccc_read_build_ops() {
     // The CDL selected by the cccid of a FileTransform keeps its metadata.
     let config = Config::create_raw();

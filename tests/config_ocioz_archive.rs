@@ -156,7 +156,6 @@ fn ocioz_load_archives() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn ocioz_context_test_for_search_paths_and_filetransform_source_path() {
     for name in ["context_test1_windows.ocioz", "context_test1_linux.ocioz"] {
         let cfg = Config::create_from_file(&archive_path(name))
@@ -245,7 +244,6 @@ fn ocioz_archive_config_and_compare_to_original_no_processor() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn ocioz_archive_config_and_compare_to_original() {
     let config_path = archive_path("config.ocio");
     let _lock = env_lock();
@@ -290,7 +288,6 @@ fn ocioz_extract_config_and_compare_to_original_no_processor() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn ocioz_extract_config_and_compare_to_original() {
     let archive = archive_path("context_test1_windows.ocioz");
     let from_archive = Config::create_from_file(&archive).unwrap();

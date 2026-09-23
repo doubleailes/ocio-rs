@@ -835,7 +835,6 @@ fn smpte_id_element() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn smpte_id_element_processor() {
     let config = crate::Config::create_raw();
     let ft = FileTransform {

@@ -162,7 +162,6 @@ fn config_fixed_function_serialization() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_fixed_function_validation() {
     let _log = LogGuard::new();
     let cases = [

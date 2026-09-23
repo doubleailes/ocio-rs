@@ -687,7 +687,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs-merge"]
     fn load_file_fail_clf() {
         // Supported file extension with a wrong content. It's in fact a
         // binary png file i.e. all readers must fail.
@@ -727,7 +726,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs-merge"]
     fn load_file_ok() {
         for name in [
             "logtolin_8to8.lut",
@@ -858,7 +856,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs-merge"]
     fn interpolation_validity() {
         let mut ctx = Context::new();
         ctx.set_search_path(&test_files_dir());
@@ -1171,7 +1168,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs-merge"]
     fn cdl_from_file() {
         let cdl = CdlTransform::create_from_file(&test_file("cdl_test1.ccc"), "cc0003").unwrap();
         assert_eq!(cdl.id(), "cc0003");
@@ -1180,7 +1176,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs-merge"]
     fn cc_file_with_different_file_extension() {
         for name in [
             "cdl_test_cc_file_with_extension.cdl",
@@ -1191,7 +1186,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs-merge"]
     fn load_ops() {
         use crate::ops::noop::MarkerNoOp;
         // iridas_1d.cube: file marker, range matrix and 1D LUT.

@@ -128,6 +128,13 @@ pub trait Op: Debug + Send + Sync + Any {
         None
     }
 
+    /// Finalized version of the op, if it differs (port of `Op::finalize`:
+    /// e.g. an inverse matrix becomes the equivalent forward matrix). Called
+    /// when a processor is created. Default: `None` (already final).
+    fn finalize(&self) -> Option<OpRc> {
+        None
+    }
+
     /// Clone into a new boxed op (so it can be mutated before sharing).
     fn clone_box(&self) -> Box<dyn Op>;
 }

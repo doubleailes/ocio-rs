@@ -82,6 +82,7 @@ impl Processor {
                 }
             }
         }
+        let ops = ops.into_iter().map(|o| o.finalize().unwrap_or(o)).collect();
         self.ops = unify_dynamic_properties(ops);
     }
 

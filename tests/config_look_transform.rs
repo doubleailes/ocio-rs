@@ -121,7 +121,6 @@ fn look_transform_build_look_ops_config() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn look_transform_build_look_ops() {
     use TransformDirection::{Forward, Inverse};
     let config = Config::create_from_str(BUILD_LOOK_OPS_CONFIG).unwrap();
@@ -231,7 +230,6 @@ colorspaces:
 "#;
 
 #[test]
-#[ignore = "needs-merge"]
 fn look_transform_build_look_options_ops() {
     use TransformDirection::{Forward, Inverse};
     let config = Config::create_from_str(LOOK_OPTIONS_CONFIG).unwrap();
@@ -441,7 +439,6 @@ fn transform_dir(op: &OpRc) -> (&'static str, TransformDirection) {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn look_transform_inverse_look_transform() {
     use TransformDirection::{Forward, Inverse};
     let config = Config::create_from_str(INVERSE_LOOK_CONFIG).unwrap();

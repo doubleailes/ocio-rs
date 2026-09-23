@@ -192,12 +192,8 @@ pub fn create_exponent_op(ops: &mut OpVec, exp4: &[f64; 4], dir: TransformDirect
 
 /// Major version of the config used to build the ops (v1 configs build
 /// `ExponentTransform` and `CdlTransform` with the legacy ops).
-///
-/// The shared `Config` does not expose its version in this crate yet, so v2
-/// behavior is used. Callers knowing the version can use
-/// [`build_exponent_ops`] / `crate::ops::cdl::build_cdl_ops` directly.
-pub(crate) fn config_major_version(_config: &Config) -> u32 {
-    2
+pub(crate) fn config_major_version(config: &Config) -> u32 {
+    config.major_version()
 }
 
 /// Build the ops of an `ExponentTransform` for a config of the given major

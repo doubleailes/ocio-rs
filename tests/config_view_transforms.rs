@@ -149,7 +149,6 @@ fn kinds(p: &Processor) -> Vec<&'static str> {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_get_processor_from_two_configs() {
     use TransformDirection::{Forward, Inverse};
     let config1 = Config::create_from_str(TWO_CONFIGS_1).unwrap();
@@ -651,7 +650,6 @@ fn config_transform_with_roles() {
 }
 
 #[test]
-#[ignore = "needs-merge"]
 fn config_transform_with_roles_processors() {
     let config = Config::create_from_str(TRANSFORM_WITH_ROLES).unwrap();
     config.get_processor("raw", "cs1").unwrap();
