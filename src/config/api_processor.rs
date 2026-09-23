@@ -6,6 +6,13 @@ use super::*;
 use crate::ops::OpVec;
 use crate::transforms::{ColorSpaceTransform, DisplayViewTransform};
 
+/// Validate `transform` then build its processor (port of
+/// `Processor::Impl::setTransform`, which validates the transform first).
+fn create_processor(config: &Config, context: &Context, transform: &Transform, dir: TransformDirection) -> Result<Processor> {
+    transform.validate()?;
+    Processor::from_transform(config, context, transform, dir)
+}
+
 impl Config {
     /// Processor converting between two color spaces (or roles).
     pub fn get_processor(&self, src: &str, dst: &str) -> Result<Processor> {
@@ -108,7 +115,7 @@ impl Config {
 
     /// Processor built without using the processor cache.
     pub(crate) fn get_processor_without_caching(&self, transform: &Transform, dir: TransformDirection) -> Result<Processor> {
-        Processor::from_transform(self, &self.context, transform, dir)
+        create_processor(self, &self.context, transform, dir)
     }
 
     /// Processor for a transform, using the given context (uses the
@@ -125,7 +132,7 @@ impl Config {
         let need_context_vars = collect_context_variables(self, context, transform, &mut used)?;
 
         if !self.processor_cache_enabled() {
-            return Processor::from_transform(self, context, transform, dir);
+            return create_processor(self, context, transform, dir);
         }
 
         let key = format!(
@@ -139,7 +146,7 @@ impl Config {
                 return Ok(p.clone());
             }
         }
-        let proc = Processor::from_transform(self, context, transform, dir)?;
+        let proc = create_processor(self, context, transform, dir)?;
         let mut result = proc;
         if let Ok(mut cache) = self.processor_cache.lock() {
             if !env_present(OCIO_DISABLE_CACHE_FALLBACK) {
