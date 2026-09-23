@@ -33,6 +33,7 @@
 )]
 #![cfg_attr(test, allow(clippy::approx_constant))]
 
+pub mod apphelpers;
 pub mod baker;
 pub mod builtins;
 pub mod config;
