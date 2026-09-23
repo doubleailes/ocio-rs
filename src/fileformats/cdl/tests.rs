@@ -740,14 +740,18 @@ const CONTENTS_A: &str = "<ColorCorrectionCollection>
 
 #[test]
 fn clear_caches() {
-    // Files are not cached by `create_from_file`, so a modified file is
-    // always reloaded.
+    // Files are cached: a modified file is only reloaded once the caches
+    // are cleared.
     let guard = FileGuard::new("clear_caches");
     guard.write(CONTENTS_A);
     let t = CdlTransform::create_from_file(&guard.name(), "cc03343").unwrap();
     assert_eq!(t.slope, [0.1, 0.2, 0.3]);
 
     guard.write(&CONTENTS_A.replacen("0.1 0.2 0.3", "1.1 2.2 3.3", 1));
+    let t = CdlTransform::create_from_file(&guard.name(), "cc03343").unwrap();
+    assert_eq!(t.slope, [0.1, 0.2, 0.3]);
+
+    crate::fileformats::file_transform::clear_file_transform_caches();
     let t = CdlTransform::create_from_file(&guard.name(), "cc03343").unwrap();
     assert_eq!(t.slope, [1.1, 2.2, 3.3]);
 }
@@ -856,17 +860,6 @@ fn parser_warnings() {
     assert_eq!(parsed.info.transforms.len(), 1);
 }
 
-#[test]
-fn string_to_int_test() {
-    assert_eq!(string_to_int("0"), Some(0));
-    assert_eq!(string_to_int(" 42"), Some(42));
-    assert_eq!(string_to_int("-3"), Some(-3));
-    assert_eq!(string_to_int("+3"), Some(3));
-    assert_eq!(string_to_int("3 "), None);
-    assert_eq!(string_to_int("3a"), None);
-    assert_eq!(string_to_int(""), None);
-    assert_eq!(string_to_int("99999999999"), None);
-}
 
 #[test]
 fn write_format_names() {

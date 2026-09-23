@@ -117,22 +117,6 @@ pub trait FileFormat: Send + Sync {
     }
 }
 
-/// Placeholder used by not-yet-ported formats.
-pub(crate) struct StubFormat(pub Vec<FormatInfo>);
-
-impl FileFormat for StubFormat {
-    fn format_info(&self) -> Vec<FormatInfo> {
-        self.0.clone()
-    }
-    fn read(&self, _data: &[u8], original_file_name: &str, _interp: Interpolation) -> Result<CachedFile> {
-        Err(Error::msg(format!(
-            "Reading '{}' with format '{}' is not implemented.",
-            original_file_name,
-            self.name()
-        )))
-    }
-}
-
 /// The registry of all formats (port of `FormatRegistry`).
 pub struct FormatRegistry {
     formats: Vec<Box<dyn FileFormat>>,

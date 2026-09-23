@@ -55,3 +55,37 @@ pub fn create_file_no_op(ops: &mut OpVec, fname: &str) {
 pub fn create_look_no_op(ops: &mut OpVec, look: &str) {
     ops.push(Arc::new(MarkerNoOp { kind: MarkerKind::Look, value: look.to_string() }));
 }
+
+/// A no-op carrying format metadata for the processor (OCIO stores it on
+/// the op list, e.g. the CLF/CTF `ProcessList` information).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MetadataNoOp {
+    pub metadata: crate::format_metadata::FormatMetadata,
+}
+
+impl Op for MetadataNoOp {
+    fn name(&self) -> &'static str {
+        "MetadataNoOp"
+    }
+    fn apply(&self, _pixels: &mut [Pixel]) {}
+    fn is_no_op(&self) -> bool {
+        true
+    }
+    fn has_channel_crosstalk(&self) -> bool {
+        false
+    }
+    fn cache_id(&self) -> String {
+        String::new()
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn clone_box(&self) -> Box<dyn Op> {
+        Box::new(self.clone())
+    }
+}
+
+/// Append a metadata marker.
+pub fn create_metadata_no_op(ops: &mut OpVec, metadata: &crate::format_metadata::FormatMetadata) {
+    ops.push(Arc::new(MetadataNoOp { metadata: metadata.clone() }));
+}

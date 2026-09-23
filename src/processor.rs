@@ -72,6 +72,9 @@ impl Processor {
 
     fn set_ops(&mut self, ops: OpVec) {
         for op in &ops {
+            if let Some(m) = op.downcast_ref::<ops::noop::MetadataNoOp>() {
+                self.format_metadata.combine(&m.metadata);
+            }
             if let Some(m) = op.downcast_ref::<MarkerNoOp>() {
                 match m.kind {
                     MarkerKind::File => self.metadata.add_file(&m.value),
@@ -94,7 +97,7 @@ impl Processor {
         build_ops(&mut ops, config, context, transform, dir)?;
         let mut p = Self::from_ops(ops);
         if let Transform::Group(g) = transform {
-            p.format_metadata = g.metadata.clone();
+            p.format_metadata.combine(&g.metadata);
             p.transform_metadata = g
                 .transforms
                 .iter()
@@ -202,7 +205,38 @@ impl Processor {
         output: BitDepth,
         flags: OptimizationFlags,
     ) -> CpuProcessor {
-        CpuProcessor { ops: optimize_ops(&self.ops, flags), input_bit_depth: input, output_bit_depth: output }
+        let mut ops = optimize_ops(&self.ops, flags);
+        optimize_for_bit_depth(&mut ops, input, output, flags);
+        CpuProcessor { ops, input_bit_depth: input, output_bit_depth: output }
+    }
+}
+
+fn is_identity_range(op: &OpRc) -> bool {
+    op.downcast_ref::<ops::range::RangeOp>().is_some_and(|r| r.data().is_identity())
+}
+
+/// Bit-depth specific optimizations (port of `OpRcPtrVec::optimizeForBitdepth`):
+/// integer inputs / outputs are already in [0, 1], so leading / trailing
+/// identity clamps are useless.
+pub fn optimize_for_bit_depth(ops: &mut OpVec, input: BitDepth, output: BitDepth, flags: OptimizationFlags) {
+    if ops.is_empty() {
+        return;
+    }
+    if !input.is_float() {
+        let n = ops.iter().take_while(|o| is_identity_range(o)).count();
+        ops.drain(..n);
+    }
+    if !output.is_float() {
+        while ops.last().is_some_and(is_identity_range) {
+            ops.pop();
+        }
+    }
+    if flags.contains(OptimizationFlags::COMP_SEPARABLE_PREFIX) {
+        // On error, keep the unoptimized ops (still correct).
+        let mut candidate = ops.clone();
+        if ops::lut1d::optimize_separable_prefix(&mut candidate, input).is_ok() {
+            *ops = candidate;
+        }
     }
 }
 

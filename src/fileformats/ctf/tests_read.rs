@@ -850,7 +850,7 @@ fn smpte_id_element_processor() {
         BitDepth::UInt12,
         crate::types::OptimizationFlags::DEFAULT,
     );
-    assert!(opt.is_identity());
+    assert!(opt.is_identity(), "{:?}", opt.ops());
     let meta = processor.format_metadata();
     assert_eq!(meta.children.len(), 3);
     assert_eq!(meta.children[0].element_name, "Id");

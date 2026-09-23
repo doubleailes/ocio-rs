@@ -410,6 +410,12 @@ impl BuildOps for FileTransform {
         let res = (|| {
             // Add the file marker.
             create_file_no_op(ops, &filepath);
+            // CLF/CTF put their ProcessList information into the processor
+            // metadata.
+            let name = format.name();
+            if name == crate::fileformats::FILEFORMAT_CLF || name == crate::fileformats::FILEFORMAT_CTF {
+                crate::ops::noop::create_metadata_no_op(ops, &cached.group.metadata);
+            }
             build_file_ops(ops, config, context, format, &cached, self, dir)
         })();
 
