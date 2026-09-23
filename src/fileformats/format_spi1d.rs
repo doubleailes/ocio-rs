@@ -1,9 +1,451 @@
-//! `spi1d` file format (TODO: port from OCIO).
+//! Sony Pictures Imageworks `spi1d` 1D LUT format (port of
+//! `FileFormatSpi1D.cpp`).
+//!
+//! ```text
+//! Version 1
+//! From -7.5 3.7555555555555555
+//! Components 1
+//! Length 4096
+//! {
+//!         0.031525943963232252
+//!         0.045645604561056156
+//!         ...
+//! }
+//! ```
+//!
+//! The file content becomes a range remapping matrix (`From` values, omitted
+//! when `[0, 1]`) followed by a 1D LUT.
 
-use super::{bake_capability, capability, FileFormat, FormatInfo, StubFormat};
+use super::utils::{
+    from_chars_f32, min_max_matrix_f32, new_lut1d, scanf, trim, IStream, MAX_1D_LUT_LENGTH,
+};
+use super::{bake_capability, capability, CachedFile, FileFormat, FormatInfo};
+use crate::error::{Error, Result};
+use crate::transforms::GroupTransform;
+use crate::types::{BitDepth, Interpolation};
+
+const MAX_LINE_SIZE: usize = 4096;
+
+struct LocalFileFormat;
 
 pub(crate) fn create() -> Box<dyn FileFormat> {
-    Box::new(StubFormat(vec![
-        FormatInfo { name: "spi1d", extension: "spi1d", capabilities: capability::READ | capability::BAKE, bake_capabilities: bake_capability::LUT1D },
-    ]))
+    Box::new(LocalFileFormat)
+}
+
+/// Build the error message used by the reader.
+fn error_message(error: &str, line: i32, line_content: &str) -> Error {
+    let mut os = String::new();
+    if line != -1 {
+        os.push_str(&format!("At line {line}: "));
+    }
+    os.push_str(error);
+    if line != -1 && !line_content.is_empty() {
+        os.push_str(&format!(" ({line_content})"));
+    }
+    Error::msg(os)
+}
+
+impl FileFormat for LocalFileFormat {
+    fn format_info(&self) -> Vec<FormatInfo> {
+        vec![FormatInfo {
+            name: "spi1d",
+            extension: "spi1d",
+            capabilities: capability::READ | capability::BAKE,
+            bake_capabilities: bake_capability::LUT1D,
+        }]
+    }
+
+    fn read(
+        &self,
+        data: &[u8],
+        _original_file_name: &str,
+        interp: Interpolation,
+    ) -> Result<CachedFile> {
+        let mut istream = IStream::new(data);
+
+        // Parse header info.
+        let mut lut_size: i32 = -1;
+        let mut from_min: f32 = 0.0;
+        let mut from_max: f32 = 1.0;
+        let mut version: i32 = -1;
+        let mut components: i32 = -1;
+        let mut current_line: i32 = 0;
+
+        loop {
+            let header_line = istream.getline_limited(MAX_LINE_SIZE);
+            current_line += 1;
+
+            if header_line.starts_with("Version") {
+                // " " in the format means any number of white spaces
+                // (including 0 of them): "Version1" is valid.
+                let (n, v) = scanf(&header_line, "Version %d");
+                if n != 1 {
+                    return Err(error_message(
+                        "Invalid 'Version' Tag",
+                        current_line,
+                        &header_line,
+                    ));
+                }
+                version = v[0].as_int();
+                if version != 1 {
+                    return Err(error_message(
+                        "Only format version 1 supported",
+                        current_line,
+                        &header_line,
+                    ));
+                }
+            } else if header_line.starts_with("From") {
+                let (n, v) = scanf(&header_line, "From %63s %63s");
+                if n != 2 {
+                    return Err(error_message(
+                        "Invalid 'From' Tag",
+                        current_line,
+                        &header_line,
+                    ));
+                }
+                match (from_chars_f32(v[0].as_str()), from_chars_f32(v[1].as_str())) {
+                    (Some(mn), Some(mx)) => {
+                        from_min = mn;
+                        from_max = mx;
+                    }
+                    _ => {
+                        return Err(error_message(
+                            "Invalid 'From' Tag",
+                            current_line,
+                            &header_line,
+                        ))
+                    }
+                }
+            } else if header_line.starts_with("Components") {
+                let (n, v) = scanf(&header_line, "Components %d");
+                if n != 1 {
+                    return Err(error_message(
+                        "Invalid 'Components' Tag",
+                        current_line,
+                        &header_line,
+                    ));
+                }
+                components = v[0].as_int();
+            } else if header_line.starts_with("Length") {
+                let (n, v) = scanf(&header_line, "Length %d");
+                if n != 1 {
+                    return Err(error_message(
+                        "Invalid 'Length' Tag",
+                        current_line,
+                        &header_line,
+                    ));
+                }
+                lut_size = v[0].as_int();
+            }
+
+            if !(istream.good() && !header_line.starts_with('{')) {
+                break;
+            }
+        }
+
+        if version == -1 {
+            return Err(error_message("Could not find 'Version' Tag", -1, ""));
+        }
+        if lut_size == -1 {
+            return Err(error_message("Could not find 'Length' Tag", -1, ""));
+        }
+        if lut_size < 2 || lut_size as i64 > MAX_1D_LUT_LENGTH as i64 {
+            return Err(error_message(
+                &format!("'Length' must be between 2 and {MAX_1D_LUT_LENGTH}"),
+                -1,
+                "",
+            ));
+        }
+        if components == -1 {
+            return Err(error_message("Could not find 'Components' Tag", -1, ""));
+        }
+        if !(0..=3).contains(&components) {
+            return Err(error_message("Components must be [1,2,3]", -1, ""));
+        }
+
+        let lut_len = lut_size as usize;
+        let mut lut = new_lut1d(lut_len, false, interp, BitDepth::F32);
+        let ncomp = components as usize;
+
+        let mut i = 0usize;
+        let mut line_buffer = istream.getline_limited(MAX_LINE_SIZE);
+        current_line += 1;
+        let mut line_count = 0usize;
+
+        while istream.good() {
+            let line = trim(&line_buffer).to_string();
+            if line.eq_ignore_ascii_case("}") {
+                break;
+            }
+
+            if !line.is_empty() {
+                let (n, parts) = scanf(&line_buffer, "%63s %63s %63s %63s");
+                if n != components {
+                    return Err(error_message("Malformed LUT line", current_line, &line));
+                }
+
+                if line_count >= lut_len {
+                    return Err(error_message("Too many entries found", current_line, ""));
+                }
+
+                let mut values = [0.0f32; 3];
+                for (c, value) in values.iter_mut().enumerate().take(ncomp) {
+                    match from_chars_f32(parts[c].as_str()) {
+                        Some(v) => *value = v,
+                        None => {
+                            return Err(error_message("Malformed LUT line", current_line, &line))
+                        }
+                    }
+                }
+
+                match ncomp {
+                    // If 1 component is specified, use x1 x1 x1.
+                    1 => {
+                        lut.values[i] = values[0];
+                        lut.values[i + 1] = values[0];
+                        lut.values[i + 2] = values[0];
+                    }
+                    // If 2 components are specified, use x1 x2 0.0.
+                    2 => {
+                        lut.values[i] = values[0];
+                        lut.values[i + 1] = values[1];
+                        lut.values[i + 2] = 0.0;
+                    }
+                    // If 3 components are specified, use x1 x2 x3.
+                    _ => {
+                        lut.values[i] = values[0];
+                        lut.values[i + 1] = values[1];
+                        lut.values[i + 2] = values[2];
+                    }
+                }
+                i += 3;
+                line_count += 1;
+            }
+
+            line_buffer = istream.getline_limited(MAX_LINE_SIZE);
+            current_line += 1;
+        }
+
+        if line_count != lut_len {
+            return Err(error_message("Not enough entries found", current_line, ""));
+        }
+
+        let mut group = GroupTransform::new();
+        if let Some(m) = min_max_matrix_f32(from_min, from_max)? {
+            group.append(m);
+        }
+        group.append(lut);
+        Ok(CachedFile::new(group))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::transforms::Transform;
+
+    fn test_file(name: &str) -> Vec<u8> {
+        let path = format!("{}/tests/data/files/{}", env!("CARGO_MANIFEST_DIR"), name);
+        std::fs::read(path).expect("test file")
+    }
+
+    fn read_spi1d(content: &str) -> Result<CachedFile> {
+        LocalFileFormat.read(content.as_bytes(), "Memory File", Interpolation::Default)
+    }
+
+    fn check_error(content: &str, what: &str) {
+        match read_spi1d(content) {
+            Ok(_) => panic!("expected an error containing '{what}'"),
+            Err(e) => assert!(
+                e.message().contains(what),
+                "'{}' does not contain '{}'",
+                e.message(),
+                what
+            ),
+        }
+    }
+
+    #[test]
+    fn format_info() {
+        let info = LocalFileFormat.format_info();
+        assert_eq!(info.len(), 1);
+        assert_eq!(info[0].name, "spi1d");
+        assert_eq!(info[0].extension, "spi1d");
+        assert_eq!(info[0].capabilities, capability::READ | capability::BAKE);
+    }
+
+    #[test]
+    fn test() {
+        let file = LocalFileFormat
+            .read(&test_file("cpf.spi1d"), "cpf.spi1d", Interpolation::Default)
+            .unwrap();
+        // from_min = 0 & from_max = 1: no range matrix.
+        assert_eq!(file.group.num_transforms(), 1);
+        let Transform::Lut1D(lut) = &file.group.transforms[0] else {
+            panic!("expected a Lut1D")
+        };
+        assert_eq!(lut.file_output_bit_depth, BitDepth::F32);
+        assert_eq!(lut.length(), 2048);
+        assert_eq!(lut.values[0], 0.0);
+        assert_eq!(lut.values[1], 0.0);
+        assert_eq!(lut.values[2], 0.0);
+        assert_eq!(lut.values[1970 * 3], 4.511920005404118f32);
+        assert_eq!(lut.values[1970 * 3 + 1], 4.511920005404118f32);
+        assert_eq!(lut.values[1970 * 3 + 2], 4.511920005404118f32);
+    }
+
+    #[test]
+    fn from_range() {
+        let file = read_spi1d(
+            "Version 1\nFrom -1.0 3.0\nLength 2\nComponents 2\n{\n0.0 0.5\n1.0 2.0\n}\n",
+        )
+        .unwrap();
+        assert_eq!(file.group.num_transforms(), 2);
+        let Transform::Matrix(m) = &file.group.transforms[0] else {
+            panic!("expected a matrix")
+        };
+        assert_eq!(m.matrix[0], 0.25);
+        assert_eq!(m.offset[0], 0.25);
+        let Transform::Lut1D(lut) = &file.group.transforms[1] else {
+            panic!("expected a Lut1D")
+        };
+        assert_eq!(lut.values, vec![0.0, 0.5, 0.0, 1.0, 2.0, 0.0]);
+    }
+
+    #[test]
+    fn interpolation() {
+        let sample = "Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.0\n}\n";
+        let file = LocalFileFormat
+            .read(sample.as_bytes(), "", Interpolation::Nearest)
+            .unwrap();
+        let Transform::Lut1D(lut) = &file.group.transforms[0] else {
+            panic!()
+        };
+        assert_eq!(lut.interpolation, Interpolation::Nearest);
+        let file = LocalFileFormat
+            .read(sample.as_bytes(), "", Interpolation::Tetrahedral)
+            .unwrap();
+        let Transform::Lut1D(lut) = &file.group.transforms[0] else {
+            panic!()
+        };
+        assert_eq!(lut.interpolation, Interpolation::Default);
+    }
+
+    #[test]
+    fn read_failure() {
+        // Validate stream can be read with no error.
+        assert!(
+            read_spi1d("Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n\n1.0\n}\n")
+                .is_ok()
+        );
+        // Version missing.
+        check_error(
+            "From 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.0\n}\n",
+            "Could not find 'Version' Tag",
+        );
+        // Version is not 1.
+        check_error(
+            "Version 2\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.0\n}\n",
+            "Only format version 1 supported",
+        );
+        // Version can't be scanned.
+        check_error(
+            "Version A\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.0\n}\n",
+            "Invalid 'Version' Tag",
+        );
+        // Version case is wrong.
+        check_error(
+            "VERSION 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.0\n}\n",
+            "Could not find 'Version' Tag",
+        );
+        // From does not specify 2 floats.
+        check_error(
+            "Version 1\nFrom 0.0\nLength 2\nComponents 1\n{\n0.0\n1.0\n}\n",
+            "Invalid 'From' Tag",
+        );
+        // Length is missing.
+        check_error(
+            "Version 1\nFrom 0.0 1.0\nComponents 1\n{\n0.0\n1.0\n}\n",
+            "Could not find 'Length' Tag",
+        );
+        // Length can't be read.
+        check_error(
+            "Version 1\nFrom 0.0 1.0\nLength A\nComponents 1\n{\n0.0\n1.0\n}\n",
+            "Invalid 'Length' Tag",
+        );
+        // Component is missing.
+        check_error(
+            "Version 1\nFrom 0.0 1.0\nLength 2\n{\n0.0\n1.0\n}\n",
+            "Could not find 'Components' Tag",
+        );
+        // Component can't be read.
+        check_error(
+            "Version 1\nFrom 0.0 1.0\nLength 2\nComponents A\n{\n0.0\n1.0\n}\n",
+            "Invalid 'Components' Tag",
+        );
+        // Component not 1 or 2 or 3.
+        check_error(
+            "Version 1\nFrom 0.0 1.0\nLength 2\nComponents 4\n{\n0.0\n1.0\n}\n",
+            "Components must be [1,2,3]",
+        );
+        // LUT too short.
+        check_error(
+            "Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n}\n",
+            "Not enough entries found",
+        );
+        // LUT too long.
+        check_error(
+            "Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n0.0\n0.0\n}\n",
+            "Too many entries found",
+        );
+        // Components==1 but two components specified in LUT.
+        check_error(
+            "Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.0 1.0\n}\n",
+            "Malformed LUT line",
+        );
+        // Length out of bounds.
+        check_error(
+            "Version 1\nFrom 0.0 1.0\nLength 1\nComponents 1\n{\n0.0\n}\n",
+            "'Length' must be between 2 and 300000",
+        );
+        // Error messages include the line.
+        match read_spi1d("Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.0 1.0\n}\n") {
+            Err(e) => assert_eq!(e.message(), "At line 7: Malformed LUT line (1.0 1.0)"),
+            Ok(_) => panic!(),
+        }
+    }
+
+    #[test]
+    fn identity_values() {
+        let file =
+            read_spi1d("Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.000007\n}\n")
+                .unwrap();
+        let Transform::Lut1D(lut) = &file.group.transforms[0] else {
+            panic!()
+        };
+        assert_eq!(lut.values[3], 1.000007f32);
+    }
+
+    #[test]
+    #[ignore = "needs-merge"]
+    fn identity() {
+        use crate::processor::Processor;
+        let config = crate::Config::create_raw();
+        let ctx = crate::Context::new();
+        let file =
+            read_spi1d("Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.000007\n}\n")
+                .unwrap();
+        let t = Transform::Group(file.group);
+        let p = Processor::from_transform(&config, &ctx, &t, crate::TransformDirection::Forward)
+            .unwrap();
+        assert!(p.optimized(crate::OptimizationFlags::DEFAULT).is_no_op());
+
+        let file =
+            read_spi1d("Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.00001\n}\n")
+                .unwrap();
+        let t = Transform::Group(file.group);
+        let p = Processor::from_transform(&config, &ctx, &t, crate::TransformDirection::Forward)
+            .unwrap();
+        assert!(!p.optimized(crate::OptimizationFlags::DEFAULT).is_no_op());
+    }
 }
