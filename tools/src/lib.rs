@@ -2,17 +2,15 @@
 //!
 //! Shared code of the command line tools of the `ocio` crate, ports of the
 //! OpenColorIO applications (`ociocheck`, `ociochecklut`, `ociobakelut`,
-//! `ociowrite`, `ociomakeclf`, `ocioarchive`, `ocioconvert`, `ociolutimage`
-//! and `ocioperf`):
+//! `ociowrite`, `ociomakeclf`, `ocioarchive`, `ocioconvert`, `ociolutimage`,
+//! `ocioperf` and `ociomergeconfigs`):
 //!
 //! * [`argparse`]: the command line parser of the OCIO apps,
 //! * [`imageio`]: image reading / writing (OpenEXR, PNG, TIFF, JPEG),
-//! * [`viewing`]: the legacy viewing pipeline and display / view helpers,
 //! * a few utilities shared by the binaries (below).
 
 pub mod argparse;
 pub mod imageio;
-pub mod viewing;
 
 use ocio::config::utils::format_g;
 use std::time::{Duration, Instant};

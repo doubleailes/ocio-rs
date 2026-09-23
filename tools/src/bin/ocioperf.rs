@@ -4,12 +4,12 @@
 //! This port has no GPU support, so the GPU processor and shader creation
 //! measures of the C++ app are not performed.
 
+use ocio::apphelpers::display_view_helpers::get_processor as get_display_view_processor;
 use ocio::{
     BitDepth, Config, Error, FileTransform, ImageData, OptimizationFlags, PackedImageDesc,
     Processor, ProcessorCacheFlags, Result, Transform, TransformDirection,
 };
 use ocio_tools::argparse::ArgParse;
-use ocio_tools::viewing::get_display_view_processor;
 use ocio_tools::CustomMeasure;
 use std::process::ExitCode;
 

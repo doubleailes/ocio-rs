@@ -6,6 +6,142 @@ use common::*;
 const EXE: &str = env!("CARGO_BIN_EXE_ociobakelut");
 const CLF: &str = "Academy/ASC Common LUT Format";
 
+/// Apply a LUT file to a pixel.
+fn apply_lut(path: &str, rgb: [f32; 3]) -> [f32; 3] {
+    let t = ocio::Transform::File(ocio::FileTransform::new(path));
+    let p = ocio::Config::create_raw()
+        .get_processor_for_transform(&t, ocio::TransformDirection::Forward)
+        .unwrap_or_else(|e| panic!("{path}: {e}"));
+    let mut px = rgb;
+    p.default_cpu_processor().apply_rgb(&mut px);
+    px
+}
+
+#[test]
+fn bake_all_formats() {
+    let dir = temp_dir("bakelut_formats");
+    let formats = [
+        (
+            "flame",
+            "3dl",
+            "0 64 128 192 256 320 384 448 512 575 639 703 767 831 895 959 1023\n",
+        ),
+        ("lustre", "3dl", "3DMESH\nMesh 4 12\n0 64 128 192 "),
+        ("cinespace", "csp", "CSPLUTV100\n3D\n"),
+        ("houdini", "lut", "Version\t\t1\nFormat\t\tany\n"),
+        ("iridas_itx", "itx", "LUT_3D_SIZE 17\n"),
+        ("iridas_cube", "cube", "LUT_3D_SIZE 17\n"),
+        ("resolve_cube", "cube", "LUT_1D_SIZE 17\n"),
+        (
+            "spi1d",
+            "spi1d",
+            "Version 1\nFrom 0.000000 1.000000\nLength 17\n",
+        ),
+        ("spi3d", "spi3d", "SPILUT 1.0\n3 3\n17 17 17\n"),
+        ("truelight", "cub", "# Truelight Cube v2.0\n"),
+        (
+            "Color Transform Format",
+            "ctf",
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n",
+        ),
+    ];
+
+    // All the baking formats are listed in the usage.
+    let usage = run(EXE, &[]).stdout;
+    for (name, ext, _) in &formats {
+        assert!(usage.contains(&format!("{name} (.{ext})")), "{name}");
+    }
+
+    for (name, ext, header) in formats {
+        let out = dir
+            .join(format!("{}.{ext}", name.replace(' ', "_")))
+            .to_string_lossy()
+            .into_owned();
+        let r = run(
+            EXE,
+            &[
+                "--lut",
+                &data_file("lut1d_green.ctf"),
+                "--format",
+                name,
+                "--cubesize",
+                "17",
+                &out,
+            ],
+        );
+        assert_eq!(r.code, 0, "{name}: {}", r.stderr);
+        let text = std::fs::read_to_string(&out).unwrap();
+        assert!(text.starts_with(header), "{name}:\n{text}");
+
+        // As in OCIO, the 1D Houdini LUTs are baked with the 'RGB' type
+        // which the Houdini reader does not support.
+        if name == "houdini" {
+            assert!(text.contains("Type\t\tRGB\n"));
+            continue;
+        }
+
+        // The baked LUT only keeps the green channel.
+        let px = apply_lut(&out, [0.5, 0.5, 0.5]);
+        assert!(
+            px[0].abs() < 2e-3 && (px[1] - 0.5).abs() < 2e-3 && px[2].abs() < 2e-3,
+            "{name}: {px:?}"
+        );
+    }
+}
+
+#[test]
+fn bake_with_shaper() {
+    let dir = temp_dir("bakelut_shaper");
+    let config = write_test_config(&dir, false);
+    for (format, ext) in [
+        ("cinespace", "csp"),
+        ("resolve_cube", "cube"),
+        ("iridas_itx", "itx"),
+    ] {
+        let out = dir
+            .join(format!("shaper.{ext}"))
+            .to_string_lossy()
+            .into_owned();
+        let r = run(
+            EXE,
+            &[
+                "--iconfig",
+                &config,
+                "--inputspace",
+                "lin",
+                "--shaperspace",
+                "log",
+                "--outputspace",
+                "log",
+                "--format",
+                format,
+                "--shapersize",
+                "64",
+                "--cubesize",
+                "9",
+                &out,
+            ],
+        );
+        if format == "iridas_itx" {
+            assert_eq!(r.code, 1);
+            assert_eq!(
+                r.stderr,
+                "OCIO Error: The format 'iridas_itx' does not support shaper space.\n\
+                 See --help for more info.\n"
+            );
+            continue;
+        }
+        assert_eq!(r.code, 0, "{format}: {}", r.stderr);
+        // The shaper covers the [1, 2] linear range (the [0, 1] log range).
+        let px = apply_lut(&out, [1.5, 1.5, 1.5]);
+        let expected = 1.5f32.log2();
+        assert!(
+            px.iter().all(|v| (v - expected).abs() < 5e-3),
+            "{format}: {px:?}"
+        );
+    }
+}
+
 #[test]
 fn usage() {
     let r = run(EXE, &[]);
