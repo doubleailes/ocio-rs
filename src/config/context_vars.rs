@@ -35,7 +35,7 @@ impl Drop for DepthGuard {
 
 /// Collect in `used` the context variables needed by `transform`. Returns
 /// true if some are used.
-pub(crate) fn collect_context_variables(
+pub fn collect_context_variables(
     config: &Config,
     context: &Context,
     transform: &Transform,

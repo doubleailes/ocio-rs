@@ -35,7 +35,8 @@ pub use file_rules::{FileRules, DEFAULT_RULE_NAME, FILE_PATH_SEARCH_RULE_NAME};
 pub use look::Look;
 pub use look_parse::{LookParseResult, LookToken};
 pub use named_transform::NamedTransform;
-pub use transforms::{get_looks_result_color_space, BuildColorSpaceOps};
+pub use transforms::{get_looks_result_color_space, AllocationNoOp, BuildColorSpaceOps};
+pub use context_vars::collect_context_variables;
 pub use view_transform::ViewTransform;
 pub use viewing_rules::ViewingRules;
 

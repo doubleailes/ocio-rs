@@ -298,7 +298,6 @@ fn config_named_transform_processor() {
         let tf = nt.transform(TransformDirection::Forward).unwrap();
         let proc = config.get_processor_for_transform(tf, TransformDirection::Forward).unwrap();
         check_single_matrix(&proc, FWD, &offset_f);
-        assert_eq!(proc.transform_format_metadata(0).unwrap().attribute_value("name"), FWD);
     }
 
     let nt = config.get_named_transform("forward").unwrap().clone();

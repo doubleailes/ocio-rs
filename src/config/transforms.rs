@@ -9,10 +9,63 @@ use super::{ColorSpace, Config, NamedTransform, View, ViewTransform};
 use crate::context::Context;
 use crate::error::{Error, Result};
 use crate::ops::noop::create_look_no_op;
-use crate::ops::OpVec;
+use crate::ops::{Op, OpVec, Pixel};
 use crate::transforms::build::build_ops;
 use crate::transforms::{BuildOps, ColorSpaceTransform, DisplayViewTransform, LookTransform, Validate};
-use crate::types::{ColorSpaceDirection, ReferenceSpaceType, TransformDirection, ViewTransformDirection};
+use crate::types::{
+    Allocation, ColorSpaceDirection, ReferenceSpaceType, TransformDirection, ViewTransformDirection,
+};
+use std::any::Any;
+use std::sync::Arc;
+
+// ---------------------------------------------------------------------------
+// AllocationNoOp
+
+/// No-op recording the GPU allocation of a color space (port of the
+/// `AllocationNoOp` of `NoOps.cpp`). It is removed by the optimizer.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AllocationNoOp {
+    /// The allocation.
+    pub allocation: Allocation,
+    /// The allocation variables.
+    pub vars: Vec<f32>,
+}
+
+impl Op for AllocationNoOp {
+    fn name(&self) -> &'static str {
+        "AllocationNoOp"
+    }
+    fn apply(&self, _pixels: &mut [Pixel]) {}
+    fn is_no_op(&self) -> bool {
+        true
+    }
+    fn has_channel_crosstalk(&self) -> bool {
+        false
+    }
+    fn cache_id(&self) -> String {
+        // Port of AllocationData::getCacheID().
+        let mut s = format!("{} ", self.allocation.as_str());
+        for v in &self.vars {
+            s.push_str(&super::utils::format_g(f64::from(*v), 7));
+            s.push(' ');
+        }
+        s
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn clone_box(&self) -> Box<dyn Op> {
+        Box::new(self.clone())
+    }
+}
+
+/// Append an allocation no-op (port of `CreateGpuAllocationNoOp`).
+fn create_gpu_allocation_no_op(ops: &mut OpVec, cs: &ColorSpace) {
+    ops.push(Arc::new(AllocationNoOp {
+        allocation: cs.allocation(),
+        vars: cs.allocation_vars().to_vec(),
+    }));
+}
 
 // ---------------------------------------------------------------------------
 // ColorSpaceTransform
@@ -89,6 +142,42 @@ impl BuildColorSpaceOps {
     ) -> Result<()> {
         build_color_space_ops(ops, config, context, src, dst, data_bypass)
     }
+
+    /// Build the ops converting `src` to its reference space
+    /// (`BuildColorSpaceToReferenceOps`).
+    pub fn to_reference(
+        ops: &mut OpVec,
+        config: &Config,
+        context: &Context,
+        src: &ColorSpace,
+        data_bypass: bool,
+    ) -> Result<()> {
+        build_color_space_to_reference_ops(ops, config, context, src, data_bypass)
+    }
+
+    /// Build the ops converting the reference space to `dst`
+    /// (`BuildColorSpaceFromReferenceOps`).
+    pub fn from_reference(
+        ops: &mut OpVec,
+        config: &Config,
+        context: &Context,
+        dst: &ColorSpace,
+        data_bypass: bool,
+    ) -> Result<()> {
+        build_color_space_from_reference_ops(ops, config, context, dst, data_bypass)
+    }
+
+    /// Build the ops converting between the two reference spaces
+    /// (`BuildReferenceConversionOps`).
+    pub fn reference_conversion(
+        ops: &mut OpVec,
+        config: &Config,
+        context: &Context,
+        src_ref: ReferenceSpaceType,
+        dst_ref: ReferenceSpaceType,
+    ) -> Result<()> {
+        build_reference_conversion_ops(ops, config, context, src_ref, dst_ref)
+    }
 }
 
 pub(crate) fn build_color_space_ops(
@@ -120,6 +209,7 @@ pub(crate) fn build_color_space_to_reference_ops(
     if data_bypass && src.is_data() {
         return Ok(());
     }
+    create_gpu_allocation_no_op(ops, src);
     if let Some(t) = src.transform(ColorSpaceDirection::ToReference) {
         build_ops(ops, config, context, t, TransformDirection::Forward)?;
     } else if let Some(t) = src.transform(ColorSpaceDirection::FromReference) {
@@ -143,6 +233,7 @@ pub(crate) fn build_color_space_from_reference_ops(
     } else if let Some(t) = dst.transform(ColorSpaceDirection::ToReference) {
         build_ops(ops, config, context, t, TransformDirection::Inverse)?;
     }
+    create_gpu_allocation_no_op(ops, dst);
     Ok(())
 }
 
