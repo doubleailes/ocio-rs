@@ -17,6 +17,7 @@ path = "src/lib.rs"
 half = "2"
 md5 = "0.8"
 regex = "1"
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
 yaml-rust2 = "0.10"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
