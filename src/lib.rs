@@ -42,6 +42,7 @@ pub mod dynamic_property;
 pub mod error;
 pub mod fileformats;
 pub mod format_metadata;
+pub mod hash_utils;
 pub mod image_desc;
 pub mod math_utils;
 pub mod ops;
@@ -61,6 +62,12 @@ pub use processor::{CpuProcessor, Processor, ProcessorMetadata};
 pub use transforms::grading::*;
 pub use transforms::*;
 pub use types::*;
+
+/// Clear all the caches of the library (port of `ClearAllCaches`): the file
+/// transform cache (files are read again on the next use).
+pub fn clear_all_caches() {
+    fileformats::file_transform::clear_file_transform_caches();
+}
 
 /// Library version (matches the OCIO version this port tracks).
 pub const OCIO_VERSION: &str = "2.5.0";

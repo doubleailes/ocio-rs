@@ -386,6 +386,7 @@ dependencies = [
  "half",
  "md5",
  "regex",
+ "xxhash-rust",
  "yaml-rust2",
  "zip",
 ]
@@ -397,7 +398,6 @@ dependencies = [
  "exr",
  "half",
  "image",
- "md5",
  "ocio",
  "zip",
 ]
@@ -631,6 +631,12 @@ name = "weezl"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
+
+[[package]]
+name = "xxhash-rust"
+version = "0.8.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aee1b19627c7c60102ab80d3a9cbe18de90bfe03bfa6c3715447681f0e8c8af6"
 
 [[package]]
 name = "yaml-rust2"

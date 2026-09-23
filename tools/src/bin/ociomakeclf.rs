@@ -17,26 +17,6 @@ use std::process::ExitCode;
 /// transforms that produce that (based on the naming conventions).
 const BUILTIN_SUFFIX: &str = "_to_ACES2065-1";
 
-/// Format the processor cache identifier as a UUID (8-4-4-4-12 form), as
-/// the OCIO processor cache identifiers are. The identifiers of this port
-/// are MD5 hashes (not always hexadecimal, e.g. for no-op processors) so they
-/// are hashed again when needed.
-fn cache_id_uuid(cache_id: &str) -> String {
-    let hex = if cache_id.len() == 32 && cache_id.chars().all(|c| c.is_ascii_hexdigit()) {
-        cache_id.to_ascii_lowercase()
-    } else {
-        format!("{:x}", md5::compute(cache_id.as_bytes()))
-    };
-    format!(
-        "{}-{}-{}-{}-{}",
-        &hex[0..8],
-        &hex[8..12],
-        &hex[12..16],
-        &hex[16..20],
-        &hex[20..32]
-    )
-}
-
 fn create_output_lut_file(
     out_path: &str,
     transform: &GroupTransform,
@@ -65,7 +45,7 @@ fn create_output_lut_file(
     let write = || -> Result<String> {
         let mut group = opt_processor.create_group_transform();
         if generate_id {
-            let id = format!("urn:uuid:{}", cache_id_uuid(&opt_processor.cache_id()));
+            let id = format!("urn:uuid:{}", opt_processor.cache_id());
             group.metadata.add_child_element(METADATA_ID_ELEMENT, &id);
         }
         group.write(&config, FILEFORMAT_CLF)

@@ -128,13 +128,8 @@ impl Processor {
 
     /// Cache identifier.
     pub fn cache_id(&self) -> String {
-        if self.is_no_op() {
-            return "<NOOP>".to_string();
-        }
-        format!(
-            "{:x}",
-            md5::compute(ops::ops_cache_id(&self.ops).as_bytes())
-        )
+        // Note: an empty op list also gets a UUID, as in OCIO.
+        crate::hash_utils::cache_id_hash_uuid(ops::ops_cache_id(&self.ops).as_bytes())
     }
 
     pub fn processor_metadata(&self) -> &ProcessorMetadata {
@@ -396,13 +391,8 @@ impl CpuProcessor {
         self.ops.iter().any(|o| o.has_channel_crosstalk())
     }
     pub fn cache_id(&self) -> String {
-        if self.is_no_op() {
-            return "<NOOP>".to_string();
-        }
-        format!(
-            "{:x}",
-            md5::compute(ops::ops_cache_id(&self.ops).as_bytes())
-        )
+        // Note: an empty op list also gets a UUID, as in OCIO.
+        crate::hash_utils::cache_id_hash_uuid(ops::ops_cache_id(&self.ops).as_bytes())
     }
     pub fn input_bit_depth(&self) -> BitDepth {
         self.input_bit_depth

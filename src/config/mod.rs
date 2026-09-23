@@ -629,7 +629,7 @@ impl Config {
                 .unwrap_or_default();
             if cached.is_empty() {
                 let s = yaml::write(self).unwrap_or_default();
-                format!("{:x}", md5::compute(s.as_bytes()))
+                crate::hash_utils::cache_id_hash(s.as_bytes())
             } else {
                 cached
             }
@@ -650,7 +650,7 @@ impl Config {
                 match ctx.resolve_file_location(f) {
                     Ok(p) => {
                         let h = std::fs::read(&p)
-                            .map(|d| format!("{:x}", md5::compute(&d)))
+                            .map(|d| crate::hash_utils::cache_id_hash(&d))
                             .unwrap_or_default();
                         s.push_str(&h);
                         s.push(' ');
@@ -658,7 +658,7 @@ impl Config {
                     Err(_) => s.push_str("? "),
                 }
             }
-            file_hash = format!("{:x}", md5::compute(s.as_bytes()));
+            file_hash = crate::hash_utils::cache_id_hash(s.as_bytes());
         }
         let id = format!("{no_context}:{file_hash}");
         if let Ok(mut c) = self.cache_ids.lock() {

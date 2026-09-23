@@ -58,7 +58,7 @@ pub fn fmt_default(v: f64) -> String {
 
 /// Clear the global caches of the library (`OCIO::ClearAllCaches`).
 pub fn clear_all_caches() {
-    ocio::fileformats::file_transform::clear_file_transform_caches();
+    ocio::clear_all_caches();
 }
 
 /// Duration in milliseconds, as a float (`std::chrono::duration<float,

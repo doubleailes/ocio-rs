@@ -13,7 +13,6 @@ path = "src/lib.rs"
 [dependencies]
 ocio = { path = ".." }
 half = "2"
-md5 = "0.8"
 exr = "1.7"
 image = { version = "0.25", default-features = false, features = ["png", "tiff", "jpeg"] }
 zip = { version = "2", default-features = false, features = ["deflate"] }
