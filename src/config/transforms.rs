@@ -38,6 +38,9 @@ impl Op for AllocationNoOp {
         "AllocationNoOp"
     }
     fn apply(&self, _pixels: &mut [Pixel]) {}
+    fn is_no_op_type(&self) -> bool {
+        true
+    }
     fn is_no_op(&self) -> bool {
         true
     }

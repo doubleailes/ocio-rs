@@ -105,8 +105,9 @@ impl Processor {
                 .map(|t| t.format_metadata().cloned().unwrap_or_default())
                 .collect();
         }
-        // Remove the markers and exact no-ops, keeping the processor lean.
-        p.ops.retain(|o| !o.is_no_op());
+        // Remove the markers (OCIO's `NoOpType` ops); identity ops are kept
+        // until the processor is optimized.
+        p.ops.retain(|o| !o.is_no_op_type());
         Ok(p)
     }
 
@@ -290,7 +291,7 @@ fn unify_dynamic_properties(ops: OpVec) -> OpVec {
 
 /// Optimize an op list (port of the main loop of `OpRcPtrVec::optimize`).
 pub fn optimize_ops(ops: &[OpRc], flags: OptimizationFlags) -> OpVec {
-    let mut v: OpVec = ops.iter().filter(|o| !o.is_no_op()).cloned().collect();
+    let mut v: OpVec = ops.iter().filter(|o| !o.is_no_op_type()).cloned().collect();
 
     if flags.contains(OptimizationFlags::NO_DYNAMIC_PROPERTIES) {
         v = v
@@ -302,6 +303,7 @@ pub fn optimize_ops(ops: &[OpRc], flags: OptimizationFlags) -> OpVec {
     if flags == OptimizationFlags::NONE {
         return v;
     }
+    v.retain(|o| !o.is_no_op());
 
     let mut inverse_luts_replaced = false;
     // Limit the number of passes, as in OCIO.

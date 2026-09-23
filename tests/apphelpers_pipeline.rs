@@ -703,9 +703,8 @@ fn mixing_color_space_manager_basic() {
             .get_processor("lin_1", "DISP_1", "VIEW_1", TransformDirection::Forward)
             .unwrap();
         let g = group(&p);
-        // Mixing in the rendering space uses an identity matrix. The C++ processor keeps it (one
-        // matrix transform) but the Rust processor removes identity ops when it is created.
-        assert_eq!(g.num_transforms(), 0);
+        // Mixing in the rendering space uses an identity matrix.
+        assert_eq!(g.num_transforms(), 1);
     }
 
     assert_eq!(mixing.selected_mixing_encoding_idx(), 0);
@@ -725,9 +724,8 @@ fn mixing_color_space_manager_basic() {
             .get_processor("lin_1", "DISP_1", "VIEW_1", TransformDirection::Forward)
             .unwrap();
         let g = group(&p);
-        // The identity matrix is removed (see above), only the HSV conversion remains.
-        assert_eq!(g.num_transforms(), 1);
-        check_ff_style(&g.transforms[0], FixedFunctionStyle::RgbToHsv);
+        assert_eq!(g.num_transforms(), 2);
+        check_ff_style(&g.transforms[1], FixedFunctionStyle::RgbToHsv);
     }
 
     assert_eq!(mixing.selected_mixing_space_idx(), 0);

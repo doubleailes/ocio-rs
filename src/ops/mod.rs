@@ -59,6 +59,13 @@ pub trait Op: Debug + Send + Sync + Any {
         false
     }
 
+    /// True for pure marker ops (file / look / metadata markers, allocation
+    /// no-ops), OCIO's `NoOpType` ops. They are removed when a processor is
+    /// created, whatever the optimization flags.
+    fn is_no_op_type(&self) -> bool {
+        false
+    }
+
     /// True if the op is an identity (may still clamp is **not** an
     /// identity). Removed by the optimizer under `OptimizationFlags::IDENTITY`.
     fn is_identity(&self) -> bool {
