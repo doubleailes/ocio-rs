@@ -442,7 +442,10 @@ mod tests {
                 crate::TransformDirection::Forward,
             )
             .unwrap();
-            let lut = ops.iter().find_map(|o| o.downcast_ref::<Lut1DOp>()).unwrap();
+            let lut = ops
+                .iter()
+                .find_map(|o| o.downcast_ref::<Lut1DOp>())
+                .unwrap();
             lut.data().is_identity()
         };
         assert!(lut_is_identity(
@@ -452,5 +455,4 @@ mod tests {
             "Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.00001\n}\n"
         ));
     }
-
 }

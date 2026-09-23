@@ -33,19 +33,14 @@ pub fn bool_from_string(s: &str) -> bool {
 // ---------------------------------------------------------------------------
 
 /// Logging verbosity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub enum LoggingLevel {
     None = 0,
     Warning = 1,
+    #[default]
     Info = 2,
     Debug = 3,
     Unknown = 255,
-}
-
-impl Default for LoggingLevel {
-    fn default() -> Self {
-        LoggingLevel::Info
-    }
 }
 
 impl LoggingLevel {
@@ -149,7 +144,9 @@ impl TransformDirection {
         match s.to_ascii_lowercase().as_str() {
             "forward" => Ok(TransformDirection::Forward),
             "inverse" => Ok(TransformDirection::Inverse),
-            _ => Err(Error::msg(format!("Unrecognized transform direction: '{s}'."))),
+            _ => Err(Error::msg(format!(
+                "Unrecognized transform direction: '{s}'."
+            ))),
         }
     }
     /// The opposite direction.
@@ -171,7 +168,10 @@ impl TransformDirection {
 impl_display_as_str!(TransformDirection);
 
 /// Free function equivalent of [`TransformDirection::combine`].
-pub fn combine_transform_directions(d1: TransformDirection, d2: TransformDirection) -> TransformDirection {
+pub fn combine_transform_directions(
+    d1: TransformDirection,
+    d2: TransformDirection,
+) -> TransformDirection {
     d1.combine(d2)
 }
 
@@ -421,7 +421,11 @@ impl GpuLanguage {
             "hlsl_sm_5.0" => GpuLanguage::HlslSm5_0,
             "osl_1" => GpuLanguage::Osl1,
             "msl_2" => GpuLanguage::Msl2_0,
-            _ => return Err(Error::msg(format!("Unsupported GPU shader language: '{s}'."))),
+            _ => {
+                return Err(Error::msg(format!(
+                    "Unsupported GPU shader language: '{s}'."
+                )))
+            }
         })
     }
 }
@@ -564,7 +568,11 @@ impl FixedFunctionStyle {
             "rgb_to_hsy_lin" => RgbToHsyLin,
             "rgb_to_hsy_log" => RgbToHsyLog,
             "rgb_to_hsy_vid" => RgbToHsyVid,
-            _ => return Err(Error::msg(format!("Unknown Fixed FunctionOp style: '{s}'."))),
+            _ => {
+                return Err(Error::msg(format!(
+                    "Unknown Fixed FunctionOp style: '{s}'."
+                )))
+            }
         })
     }
 }
@@ -592,7 +600,9 @@ impl ExposureContrastStyle {
             "linear" => Ok(ExposureContrastStyle::Linear),
             "video" => Ok(ExposureContrastStyle::Video),
             "log" => Ok(ExposureContrastStyle::Logarithmic),
-            _ => Err(Error::msg(format!("Unknown exposure contrast style: '{s}'."))),
+            _ => Err(Error::msg(format!(
+                "Unknown exposure contrast style: '{s}'."
+            ))),
         }
     }
 }
@@ -705,8 +715,12 @@ pub enum RgbCurveType {
 }
 
 impl RgbCurveType {
-    pub const ALL: [RgbCurveType; 4] =
-        [RgbCurveType::Red, RgbCurveType::Green, RgbCurveType::Blue, RgbCurveType::Master];
+    pub const ALL: [RgbCurveType; 4] = [
+        RgbCurveType::Red,
+        RgbCurveType::Green,
+        RgbCurveType::Blue,
+        RgbCurveType::Master,
+    ];
 }
 
 /// Hue curve selector.

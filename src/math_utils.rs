@@ -33,7 +33,11 @@ pub fn equal_with_abs_error(a: f64, b: f64, tol: f64) -> bool {
 
 /// Relative error comparison: `|a-b| / max(|b|, min_expected) <= tol`.
 pub fn equal_with_safe_rel_error(a: f64, b: f64, tol: f64, min_expected: f64) -> bool {
-    let div = if b.abs() > min_expected { b.abs() } else { min_expected };
+    let div = if b.abs() > min_expected {
+        b.abs()
+    } else {
+        min_expected
+    };
     ((a - b).abs() / div) <= tol
 }
 
@@ -233,7 +237,9 @@ mod tests {
 
     #[test]
     fn inverse44() {
-        let m = [2.0, 0.0, 0.0, 1.0, 0.0, 4.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0];
+        let m = [
+            2.0, 0.0, 0.0, 1.0, 0.0, 4.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ];
         let inv = m44_inverse(&m).unwrap();
         let id = m44_mult(&m, &inv);
         for i in 0..16 {
@@ -244,7 +250,9 @@ mod tests {
 
     #[test]
     fn inverse33() {
-        let m = [0.4124, 0.3576, 0.1805, 0.2126, 0.7152, 0.0722, 0.0193, 0.1192, 0.9505];
+        let m = [
+            0.4124, 0.3576, 0.1805, 0.2126, 0.7152, 0.0722, 0.0193, 0.1192, 0.9505,
+        ];
         let inv = m33_inverse(&m).unwrap();
         let id = m33_mult(&m, &inv);
         for i in 0..9 {

@@ -601,7 +601,7 @@ impl<'a> LookParser<'a> {
 
     /// Decode the LUT (port of `getLut`).
     fn lut(&self) -> Result<(usize, Vec<f32>)> {
-        if self.lut_string.len() % 8 != 0 {
+        if !self.lut_string.len().is_multiple_of(8) {
             crate::bail!(
                 "Error parsing Iridas Look file ({}). Number of characters in 'data' must be multiple of 8. {} elements found.",
                 self.file_name,

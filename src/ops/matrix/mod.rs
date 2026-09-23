@@ -493,7 +493,11 @@ impl MatrixOp {
         let original = data.clone();
         let data = data.get_as_forward()?;
         let renderer = MatrixRenderer::new(&data)?;
-        Ok(Self { data, original, renderer })
+        Ok(Self {
+            data,
+            original,
+            renderer,
+        })
     }
 
     /// The parameters as given at creation (possibly in inverse direction).
@@ -1662,7 +1666,9 @@ mod tests {
             for op in &ops {
                 assert!(op.is_no_op());
                 assert!(op.is_identity());
-                assert!(optimize_ops(&[op.clone()], OptimizationFlags::DEFAULT).is_empty());
+                assert!(
+                    optimize_ops(std::slice::from_ref(op), OptimizationFlags::DEFAULT).is_empty()
+                );
             }
         }
         let mut ops = OpVec::new();

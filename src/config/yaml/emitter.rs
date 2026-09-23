@@ -430,7 +430,7 @@ impl Emitter {
     }
 
     fn flow_map_prepare_node(&mut self, child: NodeType) {
-        if self.cur_group_child_count() % 2 == 0 {
+        if self.cur_group_child_count().is_multiple_of(2) {
             if self.map_key_fmt == Fmt::LongKey {
                 self.set_long_key();
             }
@@ -501,7 +501,7 @@ impl Emitter {
     }
 
     fn block_map_prepare_node(&mut self, child: NodeType) {
-        if self.cur_group_child_count() % 2 == 0 {
+        if self.cur_group_child_count().is_multiple_of(2) {
             if self.map_key_fmt == Fmt::LongKey {
                 self.set_long_key();
             }

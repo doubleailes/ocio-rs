@@ -277,7 +277,11 @@ impl Context {
 
     /// Same as [`Context::resolve_file_location`] and collect the context
     /// variables used.
-    pub fn resolve_file_location_with_used(&self, filename: &str, used_vars: &mut Context) -> Result<String> {
+    pub fn resolve_file_location_with_used(
+        &self,
+        filename: &str,
+        used_vars: &mut Context,
+    ) -> Result<String> {
         let resolved = self.resolve_string_var_with_used(filename, used_vars);
         if path_utils::is_absolute(&resolved) {
             if path_utils::file_exists(&resolved) {

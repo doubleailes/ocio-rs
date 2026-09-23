@@ -13,6 +13,26 @@
 //! cpu.apply_rgb(&mut pixel);
 //! ```
 
+// Lints that conflict with a faithful port of the C++ numerics: float
+// literals are kept exactly as in OCIO, index loops mirror the original
+// code, and negated comparisons preserve the NaN semantics of the C++.
+#![allow(
+    clippy::excessive_precision,
+    clippy::needless_range_loop,
+    clippy::neg_cmp_op_on_partial_ord,
+    clippy::too_many_arguments,
+    clippy::field_reassign_with_default,
+    clippy::manual_clamp,
+    clippy::neg_multiply,
+    clippy::nonminimal_bool,
+    clippy::enum_variant_names,
+    clippy::blocks_in_conditions,
+    clippy::redundant_closure_call,
+    clippy::wrong_self_convention,
+    clippy::ptr_arg
+)]
+#![cfg_attr(test, allow(clippy::approx_constant))]
+
 pub mod baker;
 pub mod builtins;
 pub mod config;

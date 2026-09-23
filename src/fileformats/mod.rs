@@ -82,7 +82,10 @@ pub struct CachedFile {
 
 impl CachedFile {
     pub fn new(group: GroupTransform) -> Self {
-        Self { group, is_cdl_collection: false }
+        Self {
+            group,
+            is_cdl_collection: false,
+        }
     }
 }
 
@@ -94,16 +97,31 @@ pub trait FileFormat: Send + Sync {
     /// Parse `data`. `original_file_name` is used for error messages and
     /// relative references; `interp` is the interpolation requested by the
     /// `FileTransform` (formats validate it and set it on their LUTs).
-    fn read(&self, data: &[u8], original_file_name: &str, interp: Interpolation) -> Result<CachedFile>;
+    fn read(
+        &self,
+        data: &[u8],
+        original_file_name: &str,
+        interp: Interpolation,
+    ) -> Result<CachedFile>;
 
     /// Bake a LUT with `baker` into the format named `format_name`.
     fn bake(&self, _baker: &Baker, format_name: &str) -> Result<Vec<u8>> {
-        Err(Error::msg(format!("Format {format_name} does not support baking.")))
+        Err(Error::msg(format!(
+            "Format {format_name} does not support baking."
+        )))
     }
 
     /// Write a group transform into the format named `format_name`.
-    fn write(&self, _config: &Config, _context: &Context, _group: &GroupTransform, format_name: &str) -> Result<String> {
-        Err(Error::msg(format!("Format {format_name} does not support writing.")))
+    fn write(
+        &self,
+        _config: &Config,
+        _context: &Context,
+        _group: &GroupTransform,
+        format_name: &str,
+    ) -> Result<String> {
+        Err(Error::msg(format!(
+            "Format {format_name} does not support writing."
+        )))
     }
 
     /// True for binary formats.
@@ -164,7 +182,11 @@ impl FormatRegistry {
         let lname = name.to_ascii_lowercase();
         self.formats
             .iter()
-            .find(|f| f.format_info().iter().any(|i| i.name.to_ascii_lowercase() == lname))
+            .find(|f| {
+                f.format_info()
+                    .iter()
+                    .any(|i| i.name.to_ascii_lowercase() == lname)
+            })
             .map(|b| b.as_ref())
     }
 
@@ -197,6 +219,8 @@ impl FormatRegistry {
 
     pub fn is_format_extension_supported(&self, ext: &str) -> bool {
         let ext = ext.trim_start_matches('.').to_ascii_lowercase();
-        self.format_infos(capability::READ).iter().any(|i| i.extension == ext)
+        self.format_infos(capability::READ)
+            .iter()
+            .any(|i| i.extension == ext)
     }
 }

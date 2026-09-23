@@ -15,9 +15,8 @@ mod writer;
 mod tests;
 
 use super::{
-    bake_capability, capability, CachedFile, FileFormat, FormatInfo,
-    FILEFORMAT_COLOR_CORRECTION, FILEFORMAT_COLOR_CORRECTION_COLLECTION,
-    FILEFORMAT_COLOR_DECISION_LIST,
+    bake_capability, capability, CachedFile, FileFormat, FormatInfo, FILEFORMAT_COLOR_CORRECTION,
+    FILEFORMAT_COLOR_CORRECTION_COLLECTION, FILEFORMAT_COLOR_DECISION_LIST,
 };
 use crate::config::Config;
 use crate::context::Context;
@@ -207,5 +206,3 @@ impl FileFormat for CdlFormat {
         Ok(writer::write_cdl(&group.metadata, &cdls))
     }
 }
-
-

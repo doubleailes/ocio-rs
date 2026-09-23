@@ -75,14 +75,19 @@ fn check_bit_depth(data: &ImageData, bd: BitDepth) -> Result<()> {
     let ok = matches!(
         (data, bd),
         (ImageData::U8(_), BitDepth::UInt8)
-            | (ImageData::U16(_), BitDepth::UInt10 | BitDepth::UInt12 | BitDepth::UInt14 | BitDepth::UInt16)
+            | (
+                ImageData::U16(_),
+                BitDepth::UInt10 | BitDepth::UInt12 | BitDepth::UInt14 | BitDepth::UInt16
+            )
             | (ImageData::F16(_), BitDepth::F16)
             | (ImageData::F32(_), BitDepth::F32)
     );
     if ok {
         Ok(())
     } else {
-        Err(Error::msg(format!("Bit depth '{bd}' does not match the image buffer type.")))
+        Err(Error::msg(format!(
+            "Bit depth '{bd}' does not match the image buffer type."
+        )))
     }
 }
 
@@ -113,17 +118,31 @@ pub struct PackedImageDesc<'a> {
 
 impl<'a> PackedImageDesc<'a> {
     /// Tightly packed image with `num_channels` (3 = RGB, 4 = RGBA).
-    pub fn new(data: ImageData<'a>, width: usize, height: usize, num_channels: usize) -> Result<Self> {
+    pub fn new(
+        data: ImageData<'a>,
+        width: usize,
+        height: usize,
+        num_channels: usize,
+    ) -> Result<Self> {
         let ordering = match num_channels {
             3 => ChannelOrdering::Rgb,
             4 => ChannelOrdering::Rgba,
-            n => return Err(Error::msg(format!("PackedImageDesc: unsupported number of channels {n}."))),
+            n => {
+                return Err(Error::msg(format!(
+                    "PackedImageDesc: unsupported number of channels {n}."
+                )))
+            }
         };
         Self::with_ordering(data, width, height, ordering)
     }
 
     /// Tightly packed image with a given channel ordering.
-    pub fn with_ordering(data: ImageData<'a>, width: usize, height: usize, ordering: ChannelOrdering) -> Result<Self> {
+    pub fn with_ordering(
+        data: ImageData<'a>,
+        width: usize,
+        height: usize,
+        ordering: ChannelOrdering,
+    ) -> Result<Self> {
         let nc = ordering.num_channels();
         let bd = data.default_bit_depth();
         Self::with_strides(data, width, height, ordering, bd, nc, nc * width)
@@ -143,7 +162,9 @@ impl<'a> PackedImageDesc<'a> {
         check_bit_depth(&data, bit_depth)?;
         let nc = ordering.num_channels();
         if x_stride < nc {
-            return Err(Error::msg("PackedImageDesc: x stride is smaller than the number of channels."));
+            return Err(Error::msg(
+                "PackedImageDesc: x stride is smaller than the number of channels.",
+            ));
         }
         if height > 0 && width > 0 {
             let needed = (height - 1) * y_stride + (width - 1) * x_stride + nc;
@@ -155,7 +176,15 @@ impl<'a> PackedImageDesc<'a> {
                 )));
             }
         }
-        Ok(Self { data, width, height, ordering, bit_depth, x_stride, y_stride })
+        Ok(Self {
+            data,
+            width,
+            height,
+            ordering,
+            bit_depth,
+            x_stride,
+            y_stride,
+        })
     }
 
     pub fn channel_ordering(&self) -> ChannelOrdering {
@@ -239,7 +268,9 @@ impl<'a> PlanarImageDesc<'a> {
         let bd = r.default_bit_depth();
         for c in [&g, &b].into_iter().chain(a.iter()) {
             if c.default_bit_depth() != bd {
-                return Err(Error::msg("PlanarImageDesc: all channels must share the same type."));
+                return Err(Error::msg(
+                    "PlanarImageDesc: all channels must share the same type.",
+                ));
             }
         }
         let n = width * height;
@@ -248,7 +279,15 @@ impl<'a> PlanarImageDesc<'a> {
                 return Err(Error::msg("PlanarImageDesc: channel buffer too small."));
             }
         }
-        Ok(Self { r, g, b, a, width, height, bit_depth: bd })
+        Ok(Self {
+            r,
+            g,
+            b,
+            a,
+            width,
+            height,
+            bit_depth: bd,
+        })
     }
 }
 

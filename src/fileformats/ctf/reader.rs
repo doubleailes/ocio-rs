@@ -885,7 +885,7 @@ impl Reader {
         let supported = |tag: &str, parent_name: &str, recognized: &mut bool| -> bool {
             if !name.is_empty() && eq_ic(name, tag) {
                 *recognized = true;
-                if parent_name.is_empty() || parent.map_or(false, |p| eq_ic(&p.name, parent_name)) {
+                if parent_name.is_empty() || parent.is_some_and(|p| eq_ic(&p.name, parent_name)) {
                     return true;
                 }
             }
@@ -926,7 +926,7 @@ impl Reader {
         }
 
         // Other elements (transform-level metadata or parts of ops).
-        let parent_is_container = parent.map_or(false, |p| p.is_container());
+        let parent_is_container = parent.is_some_and(|p| p.is_container());
         let back_info = parent.map(|p| (p.name.clone(), p.line));
 
         let new_kind: std::result::Result<Kind, Option<String>>;
@@ -1078,7 +1078,7 @@ impl Reader {
             let under_curve = |recognized: &mut bool| {
                 if eq_ic(name, TAG_CURVE_CTRL_PNTS) {
                     *recognized = true;
-                    parent.map_or(false, |p| {
+                    parent.is_some_and(|p| {
                         TAG_RGB_CURVE_NAMES
                             .iter()
                             .chain(TAG_HUE_CURVE_NAMES.iter())
@@ -1095,7 +1095,7 @@ impl Reader {
             let under_curve = |recognized: &mut bool| {
                 if eq_ic(name, TAG_CURVE_SLOPES) {
                     *recognized = true;
-                    parent.map_or(false, |p| {
+                    parent.is_some_and(|p| {
                         TAG_RGB_CURVE_NAMES
                             .iter()
                             .chain(TAG_HUE_CURVE_NAMES.iter())
@@ -3852,7 +3852,7 @@ pub(crate) fn parse_ctf(data: &[u8], file_path: &str) -> Result<CtfParseResult> 
     }
     let is_clf_ext = std::path::Path::new(file_path)
         .extension()
-        .map_or(false, |e| e.to_string_lossy().eq_ignore_ascii_case("clf"));
+        .is_some_and(|e| e.to_string_lossy().eq_ignore_ascii_case("clf"));
     let mut reader = Reader {
         file_name: file_path.to_string(),
         is_clf_ext,

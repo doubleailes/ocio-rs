@@ -260,7 +260,6 @@ fn shared_views_basic() {
         "The display 'sRGB' contains a shared view 'shared3' which does not define a color space and there is no color space that matches the display name"
     );
 
-    let mut cs = cs;
     cs.set_name("sRGB");
     config.add_color_space(&cs).unwrap();
     config.validate().unwrap();

@@ -742,7 +742,7 @@ mod tests {
         }
         let e = for_compare(expected.to_bits());
         let a = for_compare(actual.to_bits());
-        let diff = if e > a { e - a } else { a - e };
+        let diff = e.abs_diff(a);
         diff > tolerance
     }
 

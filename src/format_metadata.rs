@@ -73,7 +73,10 @@ impl FormatMetadata {
     }
 
     /// All children with the given element name.
-    pub fn children_named<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a FormatMetadata> + 'a {
+    pub fn children_named<'a>(
+        &'a self,
+        name: &'a str,
+    ) -> impl Iterator<Item = &'a FormatMetadata> + 'a {
         self.children.iter().filter(move |c| c.element_name == name)
     }
 

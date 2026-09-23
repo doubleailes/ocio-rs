@@ -859,7 +859,6 @@ fn parser_warnings() {
     assert_eq!(parsed.info.transforms.len(), 1);
 }
 
-
 #[test]
 fn write_format_names() {
     let names = GroupTransform::write_format_names();

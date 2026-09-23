@@ -17,7 +17,13 @@ pub trait BuildOps {
     /// Append the ops implementing `self` to `ops`. `dir` is the direction
     /// requested by the caller; implementations must combine it with the
     /// transform's own direction (`self.direction.combine(dir)`).
-    fn build_ops(&self, ops: &mut OpVec, config: &Config, context: &Context, dir: TransformDirection) -> Result<()>;
+    fn build_ops(
+        &self,
+        ops: &mut OpVec,
+        config: &Config,
+        context: &Context,
+        dir: TransformDirection,
+    ) -> Result<()>;
 }
 
 /// Parameter validation of a transform.
@@ -52,7 +58,9 @@ pub fn build_ops(
     }
     let _guard = Guard;
     if depth > 64 {
-        return Err(Error::msg("Cycle detected while building ops for transforms."));
+        return Err(Error::msg(
+            "Cycle detected while building ops for transforms.",
+        ));
     }
     crate::for_each_transform!(transform, t => t.build_ops(ops, config, context, dir))
 }
@@ -72,7 +80,13 @@ impl Validate for GroupTransform {
 }
 
 impl BuildOps for GroupTransform {
-    fn build_ops(&self, ops: &mut OpVec, config: &Config, context: &Context, dir: TransformDirection) -> Result<()> {
+    fn build_ops(
+        &self,
+        ops: &mut OpVec,
+        config: &Config,
+        context: &Context,
+        dir: TransformDirection,
+    ) -> Result<()> {
         match self.direction.combine(dir) {
             TransformDirection::Forward => {
                 for t in &self.transforms {

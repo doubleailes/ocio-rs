@@ -130,7 +130,10 @@ impl Processor {
         if self.is_no_op() {
             return "<NOOP>".to_string();
         }
-        format!("{:x}", md5::compute(ops::ops_cache_id(&self.ops).as_bytes()))
+        format!(
+            "{:x}",
+            md5::compute(ops::ops_cache_id(&self.ops).as_bytes())
+        )
     }
 
     pub fn processor_metadata(&self) -> &ProcessorMetadata {
@@ -208,18 +211,28 @@ impl Processor {
     ) -> CpuProcessor {
         let mut ops = optimize_ops(&self.ops, flags);
         optimize_for_bit_depth(&mut ops, input, output, flags);
-        CpuProcessor { ops, input_bit_depth: input, output_bit_depth: output }
+        CpuProcessor {
+            ops,
+            input_bit_depth: input,
+            output_bit_depth: output,
+        }
     }
 }
 
 fn is_identity_range(op: &OpRc) -> bool {
-    op.downcast_ref::<ops::range::RangeOp>().is_some_and(|r| r.data().is_identity())
+    op.downcast_ref::<ops::range::RangeOp>()
+        .is_some_and(|r| r.data().is_identity())
 }
 
 /// Bit-depth specific optimizations (port of `OpRcPtrVec::optimizeForBitdepth`):
 /// integer inputs / outputs are already in [0, 1], so leading / trailing
 /// identity clamps are useless.
-pub fn optimize_for_bit_depth(ops: &mut OpVec, input: BitDepth, output: BitDepth, flags: OptimizationFlags) {
+pub fn optimize_for_bit_depth(
+    ops: &mut OpVec,
+    input: BitDepth,
+    output: BitDepth,
+    flags: OptimizationFlags,
+) {
     if ops.is_empty() {
         return;
     }
@@ -244,7 +257,15 @@ pub fn optimize_for_bit_depth(ops: &mut OpVec, input: BitDepth, output: BitDepth
 /// Share one dynamic property instance per type across all ops.
 fn unify_dynamic_properties(ops: OpVec) -> OpVec {
     use DynamicPropertyType as T;
-    let types = [T::Exposure, T::Contrast, T::Gamma, T::GradingPrimary, T::GradingRgbCurve, T::GradingTone, T::GradingHueCurve];
+    let types = [
+        T::Exposure,
+        T::Contrast,
+        T::Gamma,
+        T::GradingPrimary,
+        T::GradingRgbCurve,
+        T::GradingTone,
+        T::GradingHueCurve,
+    ];
     if !ops.iter().any(|o| o.is_dynamic()) {
         return ops;
     }
@@ -272,7 +293,10 @@ pub fn optimize_ops(ops: &[OpRc], flags: OptimizationFlags) -> OpVec {
     let mut v: OpVec = ops.iter().filter(|o| !o.is_no_op()).cloned().collect();
 
     if flags.contains(OptimizationFlags::NO_DYNAMIC_PROPERTIES) {
-        v = v.into_iter().map(|o| o.make_non_dynamic().unwrap_or(o)).collect();
+        v = v
+            .into_iter()
+            .map(|o| o.make_non_dynamic().unwrap_or(o))
+            .collect();
     }
 
     if flags == OptimizationFlags::NONE {
@@ -350,7 +374,11 @@ const CHUNK: usize = 1024;
 impl CpuProcessor {
     /// Build directly from ops (no optimization).
     pub fn from_ops(ops: OpVec) -> Self {
-        Self { ops, input_bit_depth: BitDepth::F32, output_bit_depth: BitDepth::F32 }
+        Self {
+            ops,
+            input_bit_depth: BitDepth::F32,
+            output_bit_depth: BitDepth::F32,
+        }
     }
 
     pub fn ops(&self) -> &[OpRc] {
@@ -369,7 +397,10 @@ impl CpuProcessor {
         if self.is_no_op() {
             return "<NOOP>".to_string();
         }
-        format!("{:x}", md5::compute(ops::ops_cache_id(&self.ops).as_bytes()))
+        format!(
+            "{:x}",
+            md5::compute(ops::ops_cache_id(&self.ops).as_bytes())
+        )
     }
     pub fn input_bit_depth(&self) -> BitDepth {
         self.input_bit_depth

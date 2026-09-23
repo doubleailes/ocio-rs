@@ -244,7 +244,10 @@ pub struct BuiltinTransform {
 
 impl BuiltinTransform {
     pub fn new(style: &str) -> Self {
-        Self { direction: TransformDirection::Forward, style: style.to_string() }
+        Self {
+            direction: TransformDirection::Forward,
+            style: style.to_string(),
+        }
     }
 }
 
@@ -326,12 +329,16 @@ impl CdlTransform {
         if let Some(i) = self.metadata.first_child_index(METADATA_SOP_DESCRIPTION) {
             self.metadata.children[i].element_value = desc.to_string();
         } else {
-            self.metadata.add_child_element(METADATA_SOP_DESCRIPTION, desc);
+            self.metadata
+                .add_child_element(METADATA_SOP_DESCRIPTION, desc);
         }
     }
     /// True if slope/offset/power/sat are the identity values.
     pub fn is_identity_values(&self) -> bool {
-        self.slope == [1.0; 3] && self.offset == [0.0; 3] && self.power == [1.0; 3] && self.sat == 1.0
+        self.slope == [1.0; 3]
+            && self.offset == [0.0; 3]
+            && self.power == [1.0; 3]
+            && self.sat == 1.0
     }
 }
 
@@ -346,13 +353,22 @@ pub struct ColorSpaceTransform {
 
 impl Default for ColorSpaceTransform {
     fn default() -> Self {
-        Self { direction: TransformDirection::Forward, src: String::new(), dst: String::new(), data_bypass: true }
+        Self {
+            direction: TransformDirection::Forward,
+            src: String::new(),
+            dst: String::new(),
+            data_bypass: true,
+        }
     }
 }
 
 impl ColorSpaceTransform {
     pub fn new(src: &str, dst: &str) -> Self {
-        Self { src: src.to_string(), dst: dst.to_string(), ..Default::default() }
+        Self {
+            src: src.to_string(),
+            dst: dst.to_string(),
+            ..Default::default()
+        }
     }
 }
 
@@ -382,7 +398,12 @@ impl Default for DisplayViewTransform {
 
 impl DisplayViewTransform {
     pub fn new(src: &str, display: &str, view: &str) -> Self {
-        Self { src: src.to_string(), display: display.to_string(), view: view.to_string(), ..Default::default() }
+        Self {
+            src: src.to_string(),
+            display: display.to_string(),
+            view: view.to_string(),
+            ..Default::default()
+        }
     }
 }
 
@@ -408,7 +429,10 @@ impl Default for ExponentTransform {
 
 impl ExponentTransform {
     pub fn new(value: [f64; 4]) -> Self {
-        Self { value, ..Default::default() }
+        Self {
+            value,
+            ..Default::default()
+        }
     }
 }
 
@@ -496,7 +520,10 @@ impl Default for FileTransform {
 
 impl FileTransform {
     pub fn new(src: &str) -> Self {
-        Self { src: src.to_string(), ..Default::default() }
+        Self {
+            src: src.to_string(),
+            ..Default::default()
+        }
     }
 }
 
@@ -625,7 +652,10 @@ impl GroupTransform {
         Self::default()
     }
     pub fn from_transforms(transforms: Vec<Transform>) -> Self {
-        Self { transforms, ..Default::default() }
+        Self {
+            transforms,
+            ..Default::default()
+        }
     }
     pub fn num_transforms(&self) -> usize {
         self.transforms.len()
@@ -705,13 +735,20 @@ pub struct LogTransform {
 
 impl Default for LogTransform {
     fn default() -> Self {
-        Self { direction: TransformDirection::Forward, base: 2.0, metadata: FormatMetadata::default() }
+        Self {
+            direction: TransformDirection::Forward,
+            base: 2.0,
+            metadata: FormatMetadata::default(),
+        }
     }
 }
 
 impl LogTransform {
     pub fn new(base: f64) -> Self {
-        Self { base, ..Default::default() }
+        Self {
+            base,
+            ..Default::default()
+        }
     }
 }
 
@@ -727,7 +764,12 @@ pub struct LookTransform {
 
 impl LookTransform {
     pub fn new(src: &str, dst: &str, looks: &str) -> Self {
-        Self { src: src.to_string(), dst: dst.to_string(), looks: looks.to_string(), ..Default::default() }
+        Self {
+            src: src.to_string(),
+            dst: dst.to_string(),
+            looks: looks.to_string(),
+            ..Default::default()
+        }
     }
 }
 
@@ -790,7 +832,11 @@ impl Lut1DTransform {
     }
 
     pub fn value(&self, index: usize) -> [f32; 3] {
-        [self.values[3 * index], self.values[3 * index + 1], self.values[3 * index + 2]]
+        [
+            self.values[3 * index],
+            self.values[3 * index + 1],
+            self.values[3 * index + 2],
+        ]
     }
 
     pub fn set_value(&mut self, index: usize, r: f32, g: f32, b: f32) {
@@ -897,7 +943,11 @@ impl Default for MatrixTransform {
 
 impl MatrixTransform {
     pub fn new(matrix: [f64; 16], offset: [f64; 4]) -> Self {
-        Self { matrix, offset, ..Default::default() }
+        Self {
+            matrix,
+            offset,
+            ..Default::default()
+        }
     }
 
     /// Matrix from a 3x3 row-major matrix.
@@ -912,7 +962,12 @@ impl MatrixTransform {
     }
 
     /// Matrix/offset mapping `[oldmin, oldmax]` to `[newmin, newmax]` per channel.
-    pub fn fit(oldmin: &[f64; 4], oldmax: &[f64; 4], newmin: &[f64; 4], newmax: &[f64; 4]) -> Result<([f64; 16], [f64; 4])> {
+    pub fn fit(
+        oldmin: &[f64; 4],
+        oldmax: &[f64; 4],
+        newmin: &[f64; 4],
+        newmax: &[f64; 4],
+    ) -> Result<([f64; 16], [f64; 4])> {
         let mut m = [0.0; 16];
         let mut o = [0.0; 4];
         for i in 0..4 {
@@ -1020,7 +1075,18 @@ impl Default for RangeTransform {
 }
 
 impl RangeTransform {
-    pub fn new(min_in: Option<f64>, max_in: Option<f64>, min_out: Option<f64>, max_out: Option<f64>) -> Self {
-        Self { min_in, max_in, min_out, max_out, ..Default::default() }
+    pub fn new(
+        min_in: Option<f64>,
+        max_in: Option<f64>,
+        min_out: Option<f64>,
+        max_out: Option<f64>,
+    ) -> Self {
+        Self {
+            min_in,
+            max_in,
+            min_out,
+            max_out,
+            ..Default::default()
+        }
     }
 }

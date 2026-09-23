@@ -154,13 +154,11 @@ impl Parser {
     }
 
     fn has_transforms(&self) -> bool {
-        self.info
-            .as_ref()
-            .map_or(false, |i| !i.transforms.is_empty())
+        self.info.as_ref().is_some_and(|i| !i.transforms.is_empty())
     }
 
     fn back_is(&self, f: impl Fn(&Kind) -> bool) -> bool {
-        self.elms.last().map_or(false, |e| f(&e.kind))
+        self.elms.last().is_some_and(|e| f(&e.kind))
     }
 
     /// Port of `createDummyElement` (the warning of `XmlReaderDummyElt`).
@@ -410,7 +408,7 @@ impl Parser {
 
         if !elt.is_container() && !elt.is_dummy() {
             // Is it at the right location in the stack?
-            let parent_ok = self.elms.last().map_or(false, |p| p.is_container());
+            let parent_ok = self.elms.last().is_some_and(|p| p.is_container());
             if !parent_ok {
                 return Err(self.throw_message(&format!("Parsing error ({name})")));
             }

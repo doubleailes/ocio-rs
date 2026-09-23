@@ -48,12 +48,18 @@ impl Op for MarkerNoOp {
 
 /// Append a file marker.
 pub fn create_file_no_op(ops: &mut OpVec, fname: &str) {
-    ops.push(Arc::new(MarkerNoOp { kind: MarkerKind::File, value: fname.to_string() }));
+    ops.push(Arc::new(MarkerNoOp {
+        kind: MarkerKind::File,
+        value: fname.to_string(),
+    }));
 }
 
 /// Append a look marker.
 pub fn create_look_no_op(ops: &mut OpVec, look: &str) {
-    ops.push(Arc::new(MarkerNoOp { kind: MarkerKind::Look, value: look.to_string() }));
+    ops.push(Arc::new(MarkerNoOp {
+        kind: MarkerKind::Look,
+        value: look.to_string(),
+    }));
 }
 
 /// A no-op carrying format metadata for the processor (OCIO stores it on
@@ -87,5 +93,7 @@ impl Op for MetadataNoOp {
 
 /// Append a metadata marker.
 pub fn create_metadata_no_op(ops: &mut OpVec, metadata: &crate::format_metadata::FormatMetadata) {
-    ops.push(Arc::new(MetadataNoOp { metadata: metadata.clone() }));
+    ops.push(Arc::new(MetadataNoOp {
+        metadata: metadata.clone(),
+    }));
 }

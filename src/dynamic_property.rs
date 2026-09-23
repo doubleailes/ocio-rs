@@ -67,7 +67,9 @@ impl DynamicProperty {
     /// Double value for exposure / contrast / gamma properties.
     pub fn as_double(&self) -> Option<&SharedValue<f64>> {
         match self {
-            DynamicProperty::Exposure(v) | DynamicProperty::Contrast(v) | DynamicProperty::Gamma(v) => Some(v),
+            DynamicProperty::Exposure(v)
+            | DynamicProperty::Contrast(v)
+            | DynamicProperty::Gamma(v) => Some(v),
             _ => None,
         }
     }
