@@ -150,10 +150,10 @@ impl FormatRegistry {
             ctf::create(),
             format_csp::create(),
             format_discreet1dl::create(),
-            format_icc::create(),
             format_hdl::create(),
-            format_iridas_itx::create(),
+            format_icc::create(),
             format_iridas_cube::create(),
+            format_iridas_itx::create(),
             format_iridas_look::create(),
             format_pandora::create(),
             format_resolve_cube::create(),
@@ -190,18 +190,21 @@ impl FormatRegistry {
             .map(|b| b.as_ref())
     }
 
-    /// Formats that can read the given (lower-case, no dot) extension.
+    /// Formats registered for the given (no dot) extension, in registration
+    /// order (port of `getFileFormatForExtension`). As in OCIO, a format is
+    /// listed once per format info using the extension (e.g. the 3DL format
+    /// appears twice for "3dl", as "flame" and "lustre").
     pub fn formats_for_extension(&self, ext: &str) -> Vec<&dyn FileFormat> {
         let ext = ext.to_ascii_lowercase();
-        self.formats
-            .iter()
-            .filter(|f| {
-                f.format_info()
-                    .iter()
-                    .any(|i| i.extension == ext && i.capabilities & capability::READ != 0)
-            })
-            .map(|b| b.as_ref())
-            .collect()
+        let mut res = Vec::new();
+        for f in &self.formats {
+            for info in f.format_info() {
+                if info.extension == ext {
+                    res.push(f.as_ref());
+                }
+            }
+        }
+        res
     }
 
     /// All (name, extension) pairs having the capability.

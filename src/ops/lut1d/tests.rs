@@ -1120,6 +1120,8 @@ fn op_half_domain_identity_is_no_op() {
     create_lut1d_op_from_data(&mut ops, &lut, TransformDirection::Forward).unwrap();
     assert!(ops[0].is_no_op());
     assert!(ops[0].is_identity());
+    // As in OCIO, OPTIMIZATION_NONE only removes the no-op types.
+    assert_eq!(optimize_ops(&ops, OptimizationFlags::NONE).len(), 1);
     assert!(optimize_ops(&ops, OptimizationFlags::DEFAULT).is_empty());
 
     // A standard domain identity still clamps.

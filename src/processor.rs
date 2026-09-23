@@ -105,9 +105,10 @@ impl Processor {
                 .map(|t| t.format_metadata().cloned().unwrap_or_default())
                 .collect();
         }
-        // Remove the markers (OCIO's `NoOpType` ops); identity ops are kept
-        // until the processor is optimized.
-        p.ops.retain(|o| !o.is_no_op_type());
+        // Remove the markers (OCIO only removes the no-op types here: ops
+        // that are identities, e.g. an identity matrix, are kept until the
+        // processor is optimized).
+        p.ops.retain(|o| !is_no_op_type(o));
         Ok(p)
     }
 
@@ -126,7 +127,10 @@ impl Processor {
         self.ops.iter().any(|o| o.has_channel_crosstalk())
     }
 
-    /// Cache identifier.
+    /// Cache identifier: a hash of the op cache ids. As in OCIO, it is
+    /// computed even for a no-op processor, so that different lists of
+    /// identity ops do not share the same id (the config processor cache
+    /// reuses a processor having the same id).
     pub fn cache_id(&self) -> String {
         // Note: an empty op list also gets a UUID, as in OCIO.
         crate::hash_utils::cache_id_hash_uuid(ops::ops_cache_id(&self.ops).as_bytes())
@@ -215,6 +219,12 @@ impl Processor {
     }
 }
 
+/// True for the ops that only carry information (port of the
+/// `OpData::NoOpType` test): they are always removed.
+fn is_no_op_type(op: &OpRc) -> bool {
+    op.is_no_op_type()
+}
+
 fn is_identity_range(op: &OpRc) -> bool {
     op.downcast_ref::<ops::range::RangeOp>()
         .is_some_and(|r| r.data().is_identity())
@@ -286,7 +296,8 @@ fn unify_dynamic_properties(ops: OpVec) -> OpVec {
 
 /// Optimize an op list (port of the main loop of `OpRcPtrVec::optimize`).
 pub fn optimize_ops(ops: &[OpRc], flags: OptimizationFlags) -> OpVec {
-    let mut v: OpVec = ops.iter().filter(|o| !o.is_no_op_type()).cloned().collect();
+    // RemoveNoOpTypes.
+    let mut v: OpVec = ops.iter().filter(|o| !is_no_op_type(o)).cloned().collect();
 
     if flags.contains(OptimizationFlags::NO_DYNAMIC_PROPERTIES) {
         v = v
@@ -298,64 +309,95 @@ pub fn optimize_ops(ops: &[OpRc], flags: OptimizationFlags) -> OpVec {
     if flags == OptimizationFlags::NONE {
         return v;
     }
-    v.retain(|o| !o.is_no_op());
 
-    let mut inverse_luts_replaced = false;
-    // Limit the number of passes, as in OCIO.
-    for _pass in 0..8 {
-        let before = v.len();
-        let mut changed = false;
+    // `Op::combine_with` handles both the removal of inverse pairs (gated by
+    // the `PAIR_IDENTITY_*` flags) and the composition of ops (gated by the
+    // `COMP_*` flags). OCIO runs them as two separate steps of each pass
+    // (`RemoveInverseOps` over the whole list, then `CombineOps` on the first
+    // combinable pair only), so the flags are split to reproduce its order.
+    let pair_flags = OptimizationFlags(flags.0 & PAIR_IDENTITY_MASK);
+    let comp_flags = OptimizationFlags(flags.0 & !PAIR_IDENTITY_MASK);
 
+    // Same pass structure as `OpRcPtrVec::optimize`.
+    for _pass in 1..=MAX_OPTIMIZATION_PASSES {
+        // RemoveNoOps.
+        let mut count = 0;
         if flags.contains(OptimizationFlags::IDENTITY) {
             let n = v.len();
-            v.retain(|o| !o.is_identity());
-            changed |= v.len() != n;
+            v.retain(|o| !o.is_identity() && !o.is_no_op());
+            count += n - v.len();
         }
 
-        // Replace ops by simpler ones (SIMPLIFY_OPS, identity replacements).
+        // ReplaceOps & ReplaceIdentityOps: replace ops by simpler ones.
         let mut j = 0;
         while j < v.len() {
             if let Some(repl) = v[j].simplify(flags) {
                 let repl: OpVec = repl.into_iter().filter(|o| !o.is_no_op()).collect();
                 let n = repl.len();
                 v.splice(j..j + 1, repl);
-                changed = true;
+                count += 1;
                 j += n;
             } else {
                 j += 1;
             }
         }
+        count += ops::lut1d::replace_identity_luts(&mut v, flags);
 
-        let mut i = 0;
-        while i + 1 < v.len() {
-            if let Some(repl) = v[i].combine_with(v[i + 1].as_ref(), flags) {
-                let repl: OpVec = repl.into_iter().filter(|o| !o.is_no_op()).collect();
-                v.splice(i..i + 2, repl);
-                changed = true;
-                i = i.saturating_sub(1);
-            } else {
-                i += 1;
-            }
-        }
-
-        if flags.contains(OptimizationFlags::IDENTITY) {
-            changed |= ops::lut1d::replace_identity_luts(&mut v, flags) > 0;
-        }
-
-        if !changed && v.len() == before {
-            // Once nothing else can be optimized, replace the inverse LUTs by
-            // fast forward approximations (as OCIO does), then try again.
-            if !inverse_luts_replaced {
-                inverse_luts_replaced = true;
-                if matches!(ops::lut1d::replace_inverse_luts(&mut v, flags), Ok(n) if n > 0) {
-                    continue;
+        // RemoveInverseOps: the processed part of the list is used as a stack
+        // so that nested pairs (A, B, B', A') are all removed in one pass.
+        if pair_flags.0 != 0 {
+            let mut out = OpVec::with_capacity(v.len());
+            for op in v.drain(..) {
+                let repl = out
+                    .last()
+                    .and_then(|last: &OpRc| last.combine_with(op.as_ref(), pair_flags));
+                match repl {
+                    Some(repl) => {
+                        out.pop();
+                        out.extend(repl.into_iter().filter(|o| !o.is_no_op()));
+                        count += 1;
+                    }
+                    None => out.push(op),
                 }
             }
-            break;
+            v = out;
+        }
+
+        // CombineOps: combine the first combinable pair only.
+        let mut i = 0;
+        while i + 1 < v.len() {
+            if let Some(repl) = v[i].combine_with(v[i + 1].as_ref(), comp_flags) {
+                let repl: OpVec = repl.into_iter().filter(|o| !o.is_no_op()).collect();
+                v.splice(i..i + 2, repl);
+                count += 1;
+                break;
+            }
+            i += 1;
+        }
+
+        if count == 0 {
+            // No optimization progress was made: replace the inverse LUTs by
+            // fast forward approximations (if requested) and try again.
+            if !matches!(ops::lut1d::replace_inverse_luts(&mut v, flags), Ok(n) if n > 0) {
+                break;
+            }
         }
     }
     v
 }
+
+/// Maximum number of optimization passes (as in OCIO).
+const MAX_OPTIMIZATION_PASSES: usize = 80;
+
+/// All the `PAIR_IDENTITY_*` optimization flags.
+const PAIR_IDENTITY_MASK: u32 = OptimizationFlags::PAIR_IDENTITY_CDL.0
+    | OptimizationFlags::PAIR_IDENTITY_EXPOSURE_CONTRAST.0
+    | OptimizationFlags::PAIR_IDENTITY_FIXED_FUNCTION.0
+    | OptimizationFlags::PAIR_IDENTITY_GAMMA.0
+    | OptimizationFlags::PAIR_IDENTITY_LUT1D.0
+    | OptimizationFlags::PAIR_IDENTITY_LUT3D.0
+    | OptimizationFlags::PAIR_IDENTITY_LOG.0
+    | OptimizationFlags::PAIR_IDENTITY_GRADING.0;
 
 /// A processor for CPU evaluation.
 #[derive(Debug, Clone)]
