@@ -244,6 +244,7 @@ pub fn optimize_ops(ops: &[OpRc], flags: OptimizationFlags) -> OpVec {
         return v;
     }
 
+    let mut inverse_luts_replaced = false;
     // Limit the number of passes, as in OCIO.
     for _pass in 0..8 {
         let before = v.len();
@@ -267,7 +268,19 @@ pub fn optimize_ops(ops: &[OpRc], flags: OptimizationFlags) -> OpVec {
             }
         }
 
+        if flags.contains(OptimizationFlags::IDENTITY) {
+            changed |= ops::lut1d::replace_identity_luts(&mut v, flags) > 0;
+        }
+
         if !changed && v.len() == before {
+            // Once nothing else can be optimized, replace the inverse LUTs by
+            // fast forward approximations (as OCIO does), then try again.
+            if !inverse_luts_replaced {
+                inverse_luts_replaced = true;
+                if matches!(ops::lut1d::replace_inverse_luts(&mut v, flags), Ok(n) if n > 0) {
+                    continue;
+                }
+            }
             break;
         }
     }
