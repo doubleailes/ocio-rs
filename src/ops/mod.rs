@@ -25,6 +25,30 @@ pub mod matrix;
 pub mod noop;
 pub mod range;
 
+// GPU renderers of the ops (port of the `*OpGPU.cpp` files).
+#[path = "cdl/gpu.rs"]
+pub(crate) mod cdl_gpu;
+pub(crate) mod exponent_gpu;
+#[path = "exposure_contrast/gpu.rs"]
+pub(crate) mod exposure_contrast_gpu;
+#[path = "fixed_function/gpu.rs"]
+pub(crate) mod fixed_function_gpu;
+#[path = "gamma/gpu.rs"]
+pub(crate) mod gamma_gpu;
+pub(crate) mod grading_hue_curve_gpu;
+pub(crate) mod grading_primary_gpu;
+pub(crate) mod grading_rgb_curve_gpu;
+pub(crate) mod grading_tone_gpu;
+#[path = "log/gpu.rs"]
+pub(crate) mod log_gpu;
+#[path = "lut1d/gpu.rs"]
+pub(crate) mod lut1d_gpu;
+#[path = "lut3d/gpu.rs"]
+pub(crate) mod lut3d_gpu;
+#[path = "matrix/gpu.rs"]
+pub(crate) mod matrix_gpu;
+pub(crate) mod range_gpu;
+
 use crate::dynamic_property::DynamicProperty;
 use crate::transforms::Transform;
 use crate::types::{DynamicPropertyType, OptimizationFlags};
@@ -144,6 +168,19 @@ pub trait Op: Debug + Send + Sync + Any {
 
     /// Clone into a new boxed op (so it can be mutated before sharing).
     fn clone_box(&self) -> Box<dyn Op>;
+
+    /// Add the GPU shader program implementing the op (plus its textures and
+    /// uniforms) to `shader_creator` (port of `Op::extractGpuShaderInfo`).
+    ///
+    /// The default implementation handles every op of this crate (see
+    /// [`crate::gpu::default_extract_gpu_shader_info`]) and returns an error
+    /// for other op types.
+    fn extract_gpu_shader_info(
+        &self,
+        shader_creator: &mut dyn crate::gpu::GpuShaderCreator,
+    ) -> crate::error::Result<()> {
+        crate::gpu::default_extract_gpu_shader_info(self.as_any(), shader_creator)
+    }
 }
 
 impl dyn Op {

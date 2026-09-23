@@ -42,6 +42,7 @@ pub mod dynamic_property;
 pub mod error;
 pub mod fileformats;
 pub mod format_metadata;
+pub mod gpu;
 pub mod hash_utils;
 pub mod image_desc;
 pub mod math_utils;

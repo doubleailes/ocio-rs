@@ -55,6 +55,11 @@ pub struct Processor {
     metadata: ProcessorMetadata,
     format_metadata: FormatMetadata,
     transform_metadata: Vec<FormatMetadata>,
+    /// The ops including the no-ops (e.g. the GPU allocations), needed by the
+    /// legacy GPU processor.
+    legacy_ops: OpVec,
+    /// Cache of the GPU processors by optimization flags.
+    gpu_cache: crate::gpu::processor::GpuProcessorCache,
 }
 
 impl Processor {
@@ -65,8 +70,11 @@ impl Processor {
             metadata: ProcessorMetadata::new(),
             format_metadata: FormatMetadata::default(),
             transform_metadata: Vec::new(),
+            legacy_ops: OpVec::new(),
+            gpu_cache: Default::default(),
         };
         p.set_ops(ops);
+        p.legacy_ops = p.ops.clone();
         p
     }
 
@@ -223,6 +231,64 @@ impl Processor {
 /// `OpData::NoOpType` test): they are always removed.
 fn is_no_op_type(op: &OpRc) -> bool {
     op.is_no_op_type()
+}
+
+// GPU processors (port of the GPU parts of `Processor.cpp`).
+impl Processor {
+    fn gpu_processor(
+        &self,
+        gpu_ops: &[OpRc],
+        flags: OptimizationFlags,
+        cached: bool,
+    ) -> Result<Arc<crate::gpu::GpuProcessor>> {
+        let flags = crate::gpu::processor::environment_override(flags)?;
+        let create = || crate::gpu::GpuProcessor::from_ops(gpu_ops, flags);
+        if cached {
+            self.gpu_cache.get_or_create(flags, create)
+        } else {
+            Ok(Arc::new(create()?))
+        }
+    }
+
+    /// GPU processor with the default optimization.
+    pub fn default_gpu_processor(&self) -> Result<Arc<crate::gpu::GpuProcessor>> {
+        self.optimized_gpu_processor(OptimizationFlags::DEFAULT)
+    }
+
+    /// GPU processor with the given optimization (the processors are cached
+    /// by optimization flags).
+    pub fn optimized_gpu_processor(
+        &self,
+        flags: OptimizationFlags,
+    ) -> Result<Arc<crate::gpu::GpuProcessor>> {
+        self.gpu_processor(&self.ops, flags, true)
+    }
+
+    /// Legacy GPU processor (OCIO v1 approach): the ops not supported by the
+    /// legacy shaders (the 1D and 3D LUTs and the ops in between) are baked
+    /// into a single 3D LUT of edge length `edgelen`.
+    pub fn optimized_legacy_gpu_processor(
+        &self,
+        flags: OptimizationFlags,
+        edgelen: u32,
+    ) -> Result<Arc<crate::gpu::GpuProcessor>> {
+        // The legacy ops keep the GPU allocations; only use them if they
+        // still describe the current ops.
+        let legacy: OpVec = self
+            .legacy_ops
+            .iter()
+            .filter(|o| !o.is_no_op())
+            .cloned()
+            .collect();
+        let current: OpVec = self.ops.iter().filter(|o| !o.is_no_op()).cloned().collect();
+        let raw = if ops::ops_cache_id(&legacy) == ops::ops_cache_id(&current) {
+            &self.legacy_ops
+        } else {
+            &self.ops
+        };
+        let gpu_ops = crate::gpu::processor::legacy_gpu_ops(raw, edgelen)?;
+        self.gpu_processor(&gpu_ops, flags, false)
+    }
 }
 
 fn is_identity_range(op: &OpRc) -> bool {
