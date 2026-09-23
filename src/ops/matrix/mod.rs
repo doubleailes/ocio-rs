@@ -453,9 +453,11 @@ impl MatrixRenderer {
                 for p in pixels.iter_mut() {
                     let (r, g, b, a) = (p[0], p[1], p[2], p[3]);
                     for c in 0..4 {
-                        // Same evaluation order as the SSE path.
-                        p[c] = (r * columns[0][c] + g * columns[1][c])
-                            + (b * columns[2][c] + a * columns[3][c]);
+                        // Same evaluation order as the OCIO scalar path.
+                        p[c] = r * columns[0][c]
+                            + g * columns[1][c]
+                            + b * columns[2][c]
+                            + a * columns[3][c];
                     }
                 }
             }
@@ -463,8 +465,10 @@ impl MatrixRenderer {
                 for p in pixels.iter_mut() {
                     let (r, g, b, a) = (p[0], p[1], p[2], p[3]);
                     for c in 0..4 {
-                        p[c] = ((r * columns[0][c] + g * columns[1][c])
-                            + (b * columns[2][c] + a * columns[3][c]))
+                        p[c] = r * columns[0][c]
+                            + g * columns[1][c]
+                            + b * columns[2][c]
+                            + a * columns[3][c]
                             + offset[c];
                     }
                 }

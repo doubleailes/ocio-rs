@@ -127,11 +127,11 @@ impl Processor {
         self.ops.iter().any(|o| o.has_channel_crosstalk())
     }
 
-    /// Cache identifier.
+    /// Cache identifier: a hash of the op cache ids. As in OCIO, it is
+    /// computed even for a no-op processor, so that different lists of
+    /// identity ops do not share the same id (the config processor cache
+    /// reuses a processor having the same id).
     pub fn cache_id(&self) -> String {
-        if self.is_no_op() {
-            return "<NOOP>".to_string();
-        }
         format!(
             "{:x}",
             md5::compute(ops::ops_cache_id(&self.ops).as_bytes())
