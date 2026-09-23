@@ -255,6 +255,20 @@ pub fn optimize_ops(ops: &[OpRc], flags: OptimizationFlags) -> OpVec {
             changed |= v.len() != n;
         }
 
+        // Replace ops by simpler ones (SIMPLIFY_OPS, identity replacements).
+        let mut j = 0;
+        while j < v.len() {
+            if let Some(repl) = v[j].simplify(flags) {
+                let repl: OpVec = repl.into_iter().filter(|o| !o.is_no_op()).collect();
+                let n = repl.len();
+                v.splice(j..j + 1, repl);
+                changed = true;
+                j += n;
+            } else {
+                j += 1;
+            }
+        }
+
         let mut i = 0;
         while i + 1 < v.len() {
             if let Some(repl) = v[i].combine_with(v[i + 1].as_ref(), flags) {

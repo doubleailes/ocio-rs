@@ -91,6 +91,16 @@ pub trait Op: Debug + Send + Sync + Any {
         None
     }
 
+    /// If `self` alone can be replaced by simpler ops, return them (port of
+    /// OCIO's `getSimplerReplacement`, e.g. a CDL without power becoming
+    /// matrices, gated by `SIMPLIFY_OPS`, and of `getIdentityReplacement` for
+    /// identities that still clamp, e.g. a basic gamma of 1 becoming a clamp
+    /// range, gated by `IDENTITY` / `IDENTITY_GAMMA`). Implementations must
+    /// check `flags`. `None` (default) keeps the op.
+    fn simplify(&self, _flags: OptimizationFlags) -> Option<OpVec> {
+        None
+    }
+
     /// True if the op holds dynamic properties.
     fn is_dynamic(&self) -> bool {
         false
