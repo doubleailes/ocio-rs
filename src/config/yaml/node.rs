@@ -407,6 +407,78 @@ impl MarkedEventReceiver for Builder<'_> {
 
 /// Parse the first document of a YAML stream.
 pub fn load(text: &str) -> Result<Node> {
+    match load_impl(text) {
+        Err(e) if e.to_string().contains("invalid indentation in flow construct") => {
+            // yaml-cpp accepts flow collections whose continuation lines are
+            // not indented (e.g. "key: [a,\nb]"); yaml-rust2 does not. As the
+            // indentation has no meaning inside a flow collection, indent the
+            // continuation lines and try again.
+            load_impl(&indent_flow_continuations(text)).map_err(|_| e)
+        }
+        r => r,
+    }
+}
+
+/// Indent the lines that continue a flow collection so that they are more
+/// indented than the line where the (outermost) collection starts.
+fn indent_flow_continuations(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() + 16);
+    let mut depth = 0usize;
+    let mut base_indent = 0usize;
+    let mut in_single = false;
+    let mut in_double = false;
+    for line in text.split_inclusive('\n') {
+        let leading = line.chars().take_while(|c| *c == ' ').count();
+        if depth > 0 && leading < base_indent + 1 {
+            out.extend(std::iter::repeat_n(' ', base_indent + 1 - leading));
+        }
+        let mut prev_ws = true;
+        let mut chars = line.chars().peekable();
+        while let Some(c) = chars.next() {
+            out.push(c);
+            if in_single {
+                if c == '\'' {
+                    if chars.peek() == Some(&'\'') {
+                        out.push('\'');
+                        chars.next();
+                    } else {
+                        in_single = false;
+                    }
+                }
+            } else if in_double {
+                if c == '\\' {
+                    if let Some(n) = chars.next() {
+                        out.push(n);
+                    }
+                } else if c == '"' {
+                    in_double = false;
+                }
+            } else {
+                match c {
+                    '#' if prev_ws => {
+                        // Comment: copy the rest of the line as is.
+                        out.extend(chars.by_ref());
+                        break;
+                    }
+                    '\'' => in_single = true,
+                    '"' => in_double = true,
+                    '[' | '{' => {
+                        if depth == 0 {
+                            base_indent = leading;
+                        }
+                        depth += 1;
+                    }
+                    ']' | '}' => depth = depth.saturating_sub(1),
+                    _ => {}
+                }
+            }
+            prev_ws = c.is_whitespace();
+        }
+    }
+    out
+}
+
+fn load_impl(text: &str) -> Result<Node> {
     let chars: Vec<char> = text.chars().collect();
     let mut line_starts = vec![0usize];
     for (i, c) in chars.iter().enumerate() {
@@ -426,6 +498,13 @@ pub fn load(text: &str) -> Result<Node> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_unindented_flow_continuation() {
+        let n = load("a: [cs1\t\n   \n,   \ncs2]\nb: 1\n").unwrap();
+        assert_eq!(n.get("a").unwrap().seq_items().len(), 2);
+        assert_eq!(n.get("b").unwrap().as_f64().unwrap(), 1.0);
+    }
 
     #[test]
     fn parse_basic() {

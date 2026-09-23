@@ -240,6 +240,7 @@ fn config_view() {
 
 #[test]
 fn config_display_view_order() {
+    let _lock = env_lock();
     const CONFIG: &str = r#"
         ocio_profile_version: 2
 
@@ -283,6 +284,7 @@ fn config_display_view_order() {
 
 #[test]
 fn config_active_displayview_lists() {
+    let _lock = env_lock();
     let mut config = Config::create_raw().create_editable_copy();
 
     assert_eq!(config.num_active_displays(), 0);

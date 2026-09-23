@@ -12,6 +12,7 @@ fn matrix_with_offset(offset: [f64; 4]) -> Transform {
 
 #[test]
 fn named_transform_basic() {
+    let _lock = env_lock();
     let mut nt = NamedTransform::new();
     assert!(nt.name().is_empty());
     assert!(nt.transform(TransformDirection::Forward).is_none());
@@ -48,6 +49,7 @@ matrix=[1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], offset=[0, 0, 0, 0]>>"
 
 #[test]
 fn named_transform_alias() {
+    let _lock = env_lock();
     let mut nt = NamedTransform::new();
     assert_eq!(nt.num_aliases(), 0);
     const ALIAS_A: &str = "aliasA";
@@ -183,6 +185,7 @@ fn check_matrix(t: &Transform, name: &str, offset: &[f64]) {
 #[test]
 #[ignore = "needs-merge"]
 fn named_transform_static_get_transform() {
+    let _lock = env_lock();
     let config = Config::create_raw();
     let offset_f = [0.1, 0.2, 0.3, 0.4];
     let offset_i = [-0.1, -0.2, -0.3, -0.4];
@@ -272,6 +275,7 @@ named_transforms:
 
 #[test]
 fn config_named_transform_processor_access() {
+    let _lock = env_lock();
     // The part of the test that does not need to build ops.
     let config = Config::create_from_str(NT_PROCESSOR_CONFIG).unwrap();
     let nt = config.get_named_transform("forward").unwrap();
@@ -284,6 +288,7 @@ fn config_named_transform_processor_access() {
 #[test]
 #[ignore = "needs-merge"]
 fn config_named_transform_processor() {
+    let _lock = env_lock();
     let config = Config::create_from_str(NT_PROCESSOR_CONFIG).unwrap();
     let context = config.current_context().clone();
 
@@ -389,6 +394,7 @@ fn validation_config() -> Config {
 
 #[test]
 fn config_named_transform_validation() {
+    let _lock = env_lock();
     let mut config = validation_config();
     config.validate().unwrap();
 
@@ -445,6 +451,7 @@ fn config_named_transform_validation() {
 #[test]
 #[ignore = "needs-merge"]
 fn config_named_transform_validation_processors() {
+    let _lock = env_lock();
     let config = validation_config();
     config.get_processor("raw", "name").unwrap();
     config.get_processor("name", "name").unwrap();
@@ -484,6 +491,7 @@ colorspaces:
 
 #[test]
 fn config_named_transform_io() {
+    let _lock = env_lock();
     {
         const NT: &str = r#"named_transforms:
   - !<NamedTransform>
@@ -564,6 +572,7 @@ fn config_named_transform_io() {
 
 #[test]
 fn config_colorspace_transform_named_transform() {
+    let _lock = env_lock();
     const CONFIG: &str = r#"
 ocio_profile_version: 2
 
@@ -687,7 +696,6 @@ named_transforms:
 "#;
 
 fn inactive_config() -> Config {
-    let _lock = env_lock();
     let s = format!("{INACTIVE_NT_CONFIG_START}{INACTIVE_NT_CONFIG_END}");
     let config = Config::create_from_str(&s).unwrap().create_editable_copy();
     config.validate().unwrap();
@@ -696,6 +704,7 @@ fn inactive_config() -> Config {
 
 #[test]
 fn config_inactive_named_transforms() {
+    let _lock = env_lock();
     use NamedTransformVisibility as V;
     let mut config = inactive_config();
 
@@ -767,6 +776,7 @@ fn config_inactive_named_transforms() {
 #[test]
 #[ignore = "needs-merge"]
 fn config_inactive_named_transforms_processors() {
+    let _lock = env_lock();
     let mut config = inactive_config();
     config.set_inactive_color_spaces("lnh, alias1");
     config.get_processor("lnh", "nt1").unwrap();
@@ -777,8 +787,8 @@ fn config_inactive_named_transforms_processors() {
 
 #[test]
 fn config_inactive_named_transform_precedence() {
-    use NamedTransformVisibility as V;
     let _lock = env_lock();
+    use NamedTransformVisibility as V;
     let config_str =
         format!("{INACTIVE_NT_CONFIG_START}inactive_colorspaces: [nt2]\n{INACTIVE_NT_CONFIG_END}");
 
