@@ -23,8 +23,14 @@ fn config_create_raw_config() {
     let proc = config.get_processor("raw", "raw").unwrap();
     proc.default_cpu_processor();
 
-    assert_err!(config.get_processor("not_found", "raw"), "Color space 'not_found' could not be found");
-    assert_err!(config.get_processor("raw", "not_found"), "Color space 'not_found' could not be found");
+    assert_err!(
+        config.get_processor("not_found", "raw"),
+        "Color space 'not_found' could not be found"
+    );
+    assert_err!(
+        config.get_processor("raw", "not_found"),
+        "Color space 'not_found' could not be found"
+    );
 }
 
 #[test]
@@ -200,7 +206,9 @@ fn config_required_roles_for_version_2_2() {
     let mut cs = ColorSpace::new(ReferenceSpaceType::Scene);
     cs.set_name("default");
     config.add_color_space(&cs).unwrap();
-    config.add_display_view("display", "view1", "default", "").unwrap();
+    config
+        .add_display_view("display", "view1", "default", "")
+        .unwrap();
 
     let mut scs = ColorSpace::new(ReferenceSpaceType::Scene);
     scs.set_name("scs");
@@ -211,7 +219,10 @@ fn config_required_roles_for_version_2_2() {
 
     let mut vt = ViewTransform::new(ReferenceSpaceType::Scene);
     vt.set_name("view_transform");
-    vt.set_transform(Some(MatrixTransform::default().into()), ViewTransformDirection::FromReference);
+    vt.set_transform(
+        Some(MatrixTransform::default().into()),
+        ViewTransformDirection::FromReference,
+    );
     config.add_view_transform(&vt).unwrap();
 
     assert!(config.major_version() >= 2);
@@ -231,8 +242,12 @@ fn config_required_roles_for_version_2_2() {
     config.set_role(ROLE_SCENE_LINEAR, Some("scs")).unwrap();
     config.set_role(ROLE_COMPOSITING_LOG, Some("dcs")).unwrap();
     config.set_role(ROLE_COLOR_TIMING, Some("dcs")).unwrap();
-    config.set_role(ROLE_INTERCHANGE_SCENE, Some("scs")).unwrap();
-    config.set_role(ROLE_INTERCHANGE_DISPLAY, Some("dcs")).unwrap();
+    config
+        .set_role(ROLE_INTERCHANGE_SCENE, Some("scs"))
+        .unwrap();
+    config
+        .set_role(ROLE_INTERCHANGE_DISPLAY, Some("dcs"))
+        .unwrap();
     {
         let g = LogGuard::new();
         config.validate().unwrap();
@@ -267,27 +282,39 @@ fn config_required_roles_for_version_2_2() {
         let g = LogGuard::new();
         config.validate().unwrap();
         assert!(mute_aces_interchange_role_error(&g));
-        config.set_role(ROLE_INTERCHANGE_SCENE, Some("scs")).unwrap();
+        config
+            .set_role(ROLE_INTERCHANGE_SCENE, Some("scs"))
+            .unwrap();
     }
     {
         config.set_role(ROLE_INTERCHANGE_DISPLAY, None).unwrap();
         let g = LogGuard::new();
         config.validate().unwrap();
         assert!(mute_display_interchange_role_error(&g));
-        config.set_role(ROLE_INTERCHANGE_DISPLAY, Some("dcs")).unwrap();
+        config
+            .set_role(ROLE_INTERCHANGE_DISPLAY, Some("dcs"))
+            .unwrap();
     }
     {
-        config.set_role(ROLE_INTERCHANGE_SCENE, Some("dcs")).unwrap();
-        config.set_role(ROLE_INTERCHANGE_DISPLAY, Some("dcs")).unwrap();
+        config
+            .set_role(ROLE_INTERCHANGE_SCENE, Some("dcs"))
+            .unwrap();
+        config
+            .set_role(ROLE_INTERCHANGE_DISPLAY, Some("dcs"))
+            .unwrap();
         let g = LogGuard::new();
         config.validate().unwrap();
-        assert!(g
-            .output()
-            .starts_with("[OpenColorIO Error]: The aces_interchange role must be a scene-referred color space."));
+        assert!(g.output().starts_with(
+            "[OpenColorIO Error]: The aces_interchange role must be a scene-referred color space."
+        ));
     }
     {
-        config.set_role(ROLE_INTERCHANGE_SCENE, Some("scs")).unwrap();
-        config.set_role(ROLE_INTERCHANGE_DISPLAY, Some("scs")).unwrap();
+        config
+            .set_role(ROLE_INTERCHANGE_SCENE, Some("scs"))
+            .unwrap();
+        config
+            .set_role(ROLE_INTERCHANGE_DISPLAY, Some("scs"))
+            .unwrap();
         let g = LogGuard::new();
         config.validate().unwrap();
         assert!(g
@@ -336,7 +363,9 @@ fn config_serialize_group_transform() {
         cs.set_transform(Some(group.into()), ColorSpaceDirection::FromReference);
         config.add_color_space(&cs).unwrap();
         config.set_role(ROLE_DEFAULT, Some("testing")).unwrap();
-        config.set_role(ROLE_COMPOSITING_LOG, Some("testing")).unwrap();
+        config
+            .set_role(ROLE_COMPOSITING_LOG, Some("testing"))
+            .unwrap();
     }
     {
         let mut cs = ColorSpace::default();
@@ -346,7 +375,9 @@ fn config_serialize_group_transform() {
         group.transforms.push(ExponentTransform::default().into());
         cs.set_transform(Some(group.into()), ColorSpaceDirection::ToReference);
         config.add_color_space(&cs).unwrap();
-        config.set_role(ROLE_COMPOSITING_LOG, Some("testing2")).unwrap();
+        config
+            .set_role(ROLE_COMPOSITING_LOG, Some("testing2"))
+            .unwrap();
     }
     config.set_version(2, 2).unwrap();
 
@@ -543,7 +574,10 @@ displays:
   - !<View> {name: Raw, colorspace: raw}
 
 "#;
-    assert_err!(Config::create_from_str(DUP), "Colorspace with name 'raw' already defined");
+    assert_err!(
+        Config::create_from_str(DUP),
+        "Colorspace with name 'raw' already defined"
+    );
 
     const OK: &str = r#"ocio_profile_version: 1
 colorspaces:
@@ -602,7 +636,12 @@ displays:
     assert_eq!(config.num_environment_vars(), 5);
 
     let mut used = Context::new();
-    assert_eq!(config.current_context().resolve_string_var_with_used("test${test}", &mut used), "testbarchedder");
+    assert_eq!(
+        config
+            .current_context()
+            .resolve_string_var_with_used("test${test}", &mut used),
+        "testbarchedder"
+    );
     assert_eq!(used.num_string_vars(), 2);
     assert_eq!(used.string_var_name_by_index(0), Some("cheese"));
     assert_eq!(used.string_var_by_index(0), Some("chedder"));
@@ -610,7 +649,12 @@ displays:
     assert_eq!(used.string_var_by_index(1), Some("bar${cheese}"));
 
     used.clear_string_vars();
-    assert_eq!(config.current_context().resolve_string_var_with_used("${SHOW}", &mut used), "bar");
+    assert_eq!(
+        config
+            .current_context()
+            .resolve_string_var_with_used("${SHOW}", &mut used),
+        "bar"
+    );
     assert_eq!(used.num_string_vars(), 1);
     assert_eq!(used.string_var_name_by_index(0), Some("SHOW"));
     assert_eq!(used.string_var_by_index(0), Some("bar"));
@@ -643,7 +687,10 @@ displays:
     let noenv = Config::create_from_str(PROFILE2).unwrap();
     noenv.validate().unwrap();
     assert_eq!(noenv.environment_mode(), EnvironmentMode::LoadAll);
-    assert_eq!(noenv.current_context().resolve_string_var("${TASK}"), "lighting");
+    assert_eq!(
+        noenv.current_context().resolve_string_var("${TASK}"),
+        "lighting"
+    );
     assert_eq!(
         log.output(),
         "[OpenColorIO Debug]: This .ocio config has no environment section defined. The default behaviour is to load all environment variables (0), which reduces the efficiency of OCIO's caching. Consider predefining the environment variables used.\n"
@@ -715,7 +762,9 @@ fn config_context_variable_faulty_cases_processor() {
 /// `with_ops`: also check the errors that happen after some ops are built.
 fn faulty_cases(with_ops: bool) {
     let _lock = env_lock();
-    let mut cfg = Config::create_from_str(FAULTY_CONTEXT_CONFIG).unwrap().create_editable_copy();
+    let mut cfg = Config::create_from_str(FAULTY_CONTEXT_CONFIG)
+        .unwrap()
+        .create_editable_copy();
     cfg.validate().unwrap();
     let dv = |cfg: &Config, view: &str| {
         cfg.get_display_view_processor_dir("cs1", "disp1", view, TransformDirection::Forward)
@@ -848,7 +897,10 @@ colorspaces:
     let _g2 = EnvGuard::set("ENV2", None);
     let make = |env: &str| format!("ocio_profile_version: 2\n{env}{BODY}");
 
-    for env in ["environment: {ENV1: $ENV1}\n", "environment:\n  ENV1: ${ENV1}\n"] {
+    for env in [
+        "environment: {ENV1: $ENV1}\n",
+        "environment:\n  ENV1: ${ENV1}\n",
+    ] {
         let config = Config::create_from_str(&make(env)).unwrap();
         config.validate().unwrap();
     }

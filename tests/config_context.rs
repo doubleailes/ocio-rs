@@ -88,9 +88,15 @@ fn context_use_searchpaths_workingdir() {
     con.add_search_path("src/config/yaml");
     con.add_search_path("tests/config_common");
     let r = con.resolve_file_location("emitter.rs").unwrap();
-    assert_eq!(normpath(&r), normpath(&format!("{ROOT}/src/config/yaml/emitter.rs")));
+    assert_eq!(
+        normpath(&r),
+        normpath(&format!("{ROOT}/src/config/yaml/emitter.rs"))
+    );
     let r = con.resolve_file_location("mod.rs").unwrap();
-    assert_eq!(normpath(&r), normpath(&format!("{ROOT}/src/config/yaml/mod.rs")));
+    assert_eq!(
+        normpath(&r),
+        normpath(&format!("{ROOT}/src/config/yaml/mod.rs"))
+    );
 }
 
 #[test]

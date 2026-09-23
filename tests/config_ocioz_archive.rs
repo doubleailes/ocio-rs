@@ -62,7 +62,9 @@ colorspaces:\n\
 
 #[test]
 fn ocioz_is_config_archivable() {
-    let mut cfg = Config::create_from_str(IS_ARCHIVABLE_CONFIG).unwrap().create_editable_copy();
+    let mut cfg = Config::create_from_str(IS_ARCHIVABLE_CONFIG)
+        .unwrap()
+        .create_editable_copy();
     cfg.set_working_dir("/fake_working_dir");
     cfg.validate().unwrap();
 
@@ -84,7 +86,13 @@ fn ocioz_is_config_archivable() {
         assert!(cfg.is_archivable(), "search path {sp:?}");
     }
     // Illegal search paths.
-    for sp in ["luts:../luts", r"luts:..\myLuts", "luts:$SHOT", "luts:/luts", "luts:/$SHOT"] {
+    for sp in [
+        "luts:../luts",
+        r"luts:..\myLuts",
+        "luts:$SHOT",
+        "luts:/luts",
+        "luts:/$SHOT",
+    ] {
         cfg.set_search_path(sp);
         assert!(!cfg.is_archivable(), "search path {sp:?}");
     }
@@ -98,7 +106,11 @@ fn ocioz_is_config_archivable() {
         cs.set_name("csTest");
         cs.set_transform(Some(ft), ColorSpaceDirection::ToReference);
         cfg.add_color_space(&cs).unwrap();
-        assert_eq!(cfg.is_archivable(), archivable, "file transform path {full:?}");
+        assert_eq!(
+            cfg.is_archivable(),
+            archivable,
+            "file transform path {full:?}"
+        );
         cfg.remove_color_space("csTest");
     };
 
@@ -147,7 +159,9 @@ fn ocioz_load_archives() {
 #[ignore = "needs-merge"]
 fn ocioz_context_test_for_search_paths_and_filetransform_source_path() {
     for name in ["context_test1_windows.ocioz", "context_test1_linux.ocioz"] {
-        let cfg = Config::create_from_file(&archive_path(name)).unwrap().create_editable_copy();
+        let cfg = Config::create_from_file(&archive_path(name))
+            .unwrap()
+            .create_editable_copy();
         cfg.validate().unwrap();
         let mut ctx = cfg.current_context().clone();
         for v in ["SHOT", "LUT_PATH", "CAMERA", "CCCID"] {
@@ -155,7 +169,9 @@ fn ocioz_context_test_for_search_paths_and_filetransform_source_path() {
         }
 
         let value = |ctx: &Context, src: &str| {
-            let p = cfg.get_processor_with_context_names(ctx, src, "reference").unwrap();
+            let p = cfg
+                .get_processor_with_context_names(ctx, src, "reference")
+                .unwrap();
             first_matrix_value(&p)
         };
 
@@ -185,12 +201,16 @@ fn ocioz_context_test_for_search_paths_and_filetransform_source_path() {
 
         // File transform source is an absolute path, not in the archive.
         let t: Transform = FileTransform::new(&data_file("matrix_example4x4.ctf")).into();
-        let p = cfg.get_processor_for_transform(&t, TransformDirection::Forward).unwrap();
+        let p = cfg
+            .get_processor_for_transform(&t, TransformDirection::Forward)
+            .unwrap();
         assert_eq!(first_matrix_value(&p), 3.24);
 
         // File transform source is an abs path but doesn't exist anywhere.
         let t: Transform = FileTransform::new(&data_file("missing.ctf")).into();
-        assert!(cfg.get_processor_for_transform(&t, TransformDirection::Forward).is_err());
+        assert!(cfg
+            .get_processor_for_transform(&t, TransformDirection::Forward)
+            .is_err());
     }
 }
 
@@ -214,8 +234,14 @@ fn ocioz_archive_config_and_compare_to_original_no_processor() {
     let from_archive = Config::create_from_file(&archive_file).unwrap();
     from_archive.validate().unwrap();
 
-    assert_eq!(from_file.cache_id_with_context(None), from_archive.cache_id_with_context(None));
-    assert_eq!(from_file.serialize().unwrap(), from_archive.serialize().unwrap());
+    assert_eq!(
+        from_file.cache_id_with_context(None),
+        from_archive.cache_id_with_context(None)
+    );
+    assert_eq!(
+        from_file.serialize().unwrap(),
+        from_archive.serialize().unwrap()
+    );
 }
 
 #[test]
@@ -232,8 +258,12 @@ fn ocioz_archive_config_and_compare_to_original() {
     std::fs::write(&archive_file, &data).unwrap();
     let from_archive = Config::create_from_file(&archive_file).unwrap();
 
-    let p1 = from_file.get_processor("plain_lut1_cs", "shot1_lut1_cs").unwrap();
-    let p2 = from_archive.get_processor("plain_lut1_cs", "shot1_lut1_cs").unwrap();
+    let p1 = from_file
+        .get_processor("plain_lut1_cs", "shot1_lut1_cs")
+        .unwrap();
+    let p2 = from_archive
+        .get_processor("plain_lut1_cs", "shot1_lut1_cs")
+        .unwrap();
     assert_eq!(p1.cache_id(), p2.cache_id());
 }
 
@@ -249,8 +279,14 @@ fn ocioz_extract_config_and_compare_to_original_no_processor() {
     let extracted = Config::create_from_file(&format!("{}/config.ocio", dir.path())).unwrap();
     extracted.validate().unwrap();
 
-    assert_eq!(from_archive.cache_id_with_context(None), extracted.cache_id_with_context(None));
-    assert_eq!(from_archive.serialize().unwrap(), extracted.serialize().unwrap());
+    assert_eq!(
+        from_archive.cache_id_with_context(None),
+        extracted.cache_id_with_context(None)
+    );
+    assert_eq!(
+        from_archive.serialize().unwrap(),
+        extracted.serialize().unwrap()
+    );
 }
 
 #[test]
@@ -262,7 +298,11 @@ fn ocioz_extract_config_and_compare_to_original() {
     extract_ocioz_archive(&archive, &dir.path()).unwrap();
     let extracted = Config::create_from_file(&format!("{}/config.ocio", dir.path())).unwrap();
 
-    let p1 = from_archive.get_processor("plain_lut1_cs", "shot1_lut1_cs").unwrap();
-    let p2 = extracted.get_processor("plain_lut1_cs", "shot1_lut1_cs").unwrap();
+    let p1 = from_archive
+        .get_processor("plain_lut1_cs", "shot1_lut1_cs")
+        .unwrap();
+    let p2 = extracted
+        .get_processor("plain_lut1_cs", "shot1_lut1_cs")
+        .unwrap();
     assert_eq!(p1.cache_id(), p2.cache_id());
 }

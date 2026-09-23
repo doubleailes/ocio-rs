@@ -5,11 +5,13 @@
 use crate::error::{Error, Result};
 
 fn be32(d: &[u8], off: usize) -> Option<u32> {
-    d.get(off..off + 4).map(|b| u32::from_be_bytes([b[0], b[1], b[2], b[3]]))
+    d.get(off..off + 4)
+        .map(|b| u32::from_be_bytes([b[0], b[1], b[2], b[3]]))
 }
 
 fn be16(d: &[u8], off: usize) -> Option<u16> {
-    d.get(off..off + 2).map(|b| u16::from_be_bytes([b[0], b[1]]))
+    d.get(off..off + 2)
+        .map(|b| u16::from_be_bytes([b[0], b[1]]))
 }
 
 fn icc_error(msg: &str, file: &str) -> Error {
@@ -47,7 +49,8 @@ fn read_mluc(d: &[u8], off: usize, size: usize) -> Option<String> {
     if rec_size != 12 {
         return None;
     }
-    let (mut us, mut uk, mut en, mut first) = (String::new(), String::new(), String::new(), String::new());
+    let (mut us, mut uk, mut en, mut first) =
+        (String::new(), String::new(), String::new(), String::new());
     // As in SampleICC, the strings are read sequentially after each record.
     let mut pos = off + 16;
     for i in 0..num {
@@ -107,7 +110,8 @@ pub(crate) fn profile_description(path: &str) -> Result<String> {
     if be32(&d, 36) != Some(MAGIC) {
         return Err(icc_error("Wrong magic number.", path));
     }
-    let count = be32(&d, 128).ok_or_else(|| icc_error("Error loading number of tags.", path))? as usize;
+    let count =
+        be32(&d, 128).ok_or_else(|| icc_error("Error loading number of tags.", path))? as usize;
     if count > 100 {
         return Err(icc_error("Too many tags in ICC profile.", path));
     }
@@ -116,7 +120,12 @@ pub(crate) fn profile_description(path: &str) -> Result<String> {
         let base = 132 + 12 * i;
         match (be32(&d, base), be32(&d, base + 4), be32(&d, base + 8)) {
             (Some(s), Some(o), Some(z)) => tags.push((s, o as usize, z as usize)),
-            _ => return Err(icc_error("Error loading tag offset table from header.", path)),
+            _ => {
+                return Err(icc_error(
+                    "Error loading tag offset table from header.",
+                    path,
+                ))
+            }
         }
     }
     let find = |sig: u32| tags.iter().find(|t| t.0 == sig).copied();
@@ -124,7 +133,8 @@ pub(crate) fn profile_description(path: &str) -> Result<String> {
     let desc = match tag {
         None => String::new(),
         Some((_, off, size)) => {
-            let ty = be32(&d, off).ok_or_else(|| icc_error("The 'desc' (or 'dcsm') reader is missing.", path))?;
+            let ty = be32(&d, off)
+                .ok_or_else(|| icc_error("The 'desc' (or 'dcsm') reader is missing.", path))?;
             let r = match ty {
                 SIG_DESC => read_text_description(&d, off, size),
                 TYPE_MLUC => read_mluc(&d, off, size),

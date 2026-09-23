@@ -19,8 +19,12 @@ fn view_transform_basic() {
     assert_eq!(vt.family(), "family");
     vt.set_description("description");
     assert_eq!(vt.description(), "description");
-    vt.set_interchange_attribute("amf_transform_ids", "amf_text").unwrap();
-    assert_eq!(vt.interchange_attribute("amf_transform_ids").unwrap(), "amf_text");
+    vt.set_interchange_attribute("amf_transform_ids", "amf_text")
+        .unwrap();
+    assert_eq!(
+        vt.interchange_attribute("amf_transform_ids").unwrap(),
+        "amf_text"
+    );
     assert_eq!(vt.interchange_attributes().len(), 1);
 
     assert!(!vt.has_category("linear"));

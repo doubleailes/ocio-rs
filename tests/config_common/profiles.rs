@@ -123,11 +123,17 @@ pub fn simple_profile_b_v2() -> String {
 }
 
 pub fn profile_v2_start() -> String {
-    format!("{PROFILE_V2}{SIMPLE_PROFILE_A}{DEFAULT_RULES}{}", simple_profile_b_v2())
+    format!(
+        "{PROFILE_V2}{SIMPLE_PROFILE_A}{DEFAULT_RULES}{}",
+        simple_profile_b_v2()
+    )
 }
 
 pub fn profile_v21_start() -> String {
-    format!("{PROFILE_V21}{SIMPLE_PROFILE_A}{DEFAULT_RULES}{}", simple_profile_b_v2())
+    format!(
+        "{PROFILE_V21}{SIMPLE_PROFILE_A}{DEFAULT_RULES}{}",
+        simple_profile_b_v2()
+    )
 }
 
 /// `PROFILE_V1 + SIMPLE_PROFILE_A + SIMPLE_PROFILE_B_V1`.
@@ -138,7 +144,15 @@ pub fn simple_profile_v1() -> String {
 /// Port of the `PROFILE_START_V<Major, Minor>()` template.
 pub fn profile_start_v(major: u32, minor: u32) -> String {
     if major <= 1 {
-        return format!("{}{SIMPLE_PROFILE_A}{}", profile_v(major, minor), simple_profile_b_v1());
+        return format!(
+            "{}{SIMPLE_PROFILE_A}{}",
+            profile_v(major, minor),
+            simple_profile_b_v1()
+        );
     }
-    format!("{}{SIMPLE_PROFILE_B}{DEFAULT_RULES}{}", profile_v(major, minor), simple_profile_b_v2())
+    format!(
+        "{}{SIMPLE_PROFILE_B}{DEFAULT_RULES}{}",
+        profile_v(major, minor),
+        simple_profile_b_v2()
+    )
 }

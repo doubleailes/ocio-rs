@@ -76,14 +76,23 @@ fn config_virtual_display() {
     let config = check_roundtrip(VIRTUAL_CONFIG);
 
     assert_eq!(config.num_views("sRGB"), 3);
-    assert_eq!(config.num_views_by_type(ViewType::DisplayDefined, "sRGB"), 2);
+    assert_eq!(
+        config.num_views_by_type(ViewType::DisplayDefined, "sRGB"),
+        2
+    );
     assert_eq!(config.num_views_by_type(ViewType::Shared, "sRGB"), 1);
     assert_eq!(config.view_by_type(ViewType::Shared, "sRGB", 0), "sview1");
     assert!(config.has_view("sRGB", "sview1"));
     assert!(config.is_view_shared("sRGB", "sview1"));
     assert!(!config.is_view_shared("sRGB", ""));
-    assert_eq!(config.display_view_color_space_name("sRGB", "sview1"), "raw");
-    assert_eq!(config.virtual_display_view_color_space_name("sview2"), "raw");
+    assert_eq!(
+        config.display_view_color_space_name("sRGB", "sview1"),
+        "raw"
+    );
+    assert_eq!(
+        config.virtual_display_view_color_space_name("sview2"),
+        "raw"
+    );
 
     // Step 3 - Validate the virtual display information.
     let mut cfg = config.create_editable_copy();
@@ -92,7 +101,9 @@ fn config_virtual_display() {
     assert!(Config::are_views_equal(&config, &cfg, "sRGB", "view"));
 
     assert_eq!(cfg.virtual_display_num_views(ViewType::DisplayDefined), 2);
-    let name = cfg.virtual_display_view(ViewType::DisplayDefined, 0).to_string();
+    let name = cfg
+        .virtual_display_view(ViewType::DisplayDefined, 0)
+        .to_string();
     assert!(cfg.has_virtual_view(&name));
     assert_eq!(name, "Raw");
     assert_eq!(cfg.virtual_display_view_transform_name(&name), "");
@@ -102,10 +113,15 @@ fn config_virtual_display() {
     assert_eq!(cfg.virtual_display_view_description(&name), "");
     assert!(Config::are_virtual_views_equal(&config, &cfg, &name));
 
-    let name = cfg.virtual_display_view(ViewType::DisplayDefined, 1).to_string();
+    let name = cfg
+        .virtual_display_view(ViewType::DisplayDefined, 1)
+        .to_string();
     assert_eq!(name, "Film");
     assert_eq!(cfg.virtual_display_view_transform_name(&name), "display_vt");
-    assert_eq!(cfg.virtual_display_view_color_space_name(&name), "<USE_DISPLAY_NAME>");
+    assert_eq!(
+        cfg.virtual_display_view_color_space_name(&name),
+        "<USE_DISPLAY_NAME>"
+    );
     assert_eq!(cfg.virtual_display_view_looks(&name), "");
     assert_eq!(cfg.virtual_display_view_rule(&name), "");
     assert_eq!(cfg.virtual_display_view_description(&name), "");
@@ -123,7 +139,10 @@ fn config_virtual_display() {
     assert!(!Config::are_virtual_views_equal(&config, &cfg, "Raw"));
     assert!(!cfg.has_virtual_view("Raw"));
     assert_eq!(cfg.virtual_display_num_views(ViewType::DisplayDefined), 1);
-    assert_eq!(cfg.virtual_display_view(ViewType::DisplayDefined, 0), "Film");
+    assert_eq!(
+        cfg.virtual_display_view(ViewType::DisplayDefined, 0),
+        "Film"
+    );
     assert_eq!(cfg.virtual_display_num_views(ViewType::Shared), 1);
     assert_eq!(cfg.virtual_display_view(ViewType::Shared, 0), "sview2");
 
@@ -136,7 +155,10 @@ fn config_virtual_display() {
     assert!(!Config::are_virtual_views_equal(&config, &cfg, "sview2"));
     {
         let config2 = Config::create_from_str(&cfg.serialize().unwrap()).unwrap();
-        assert_eq!(config2.virtual_display_num_views(ViewType::DisplayDefined), 1);
+        assert_eq!(
+            config2.virtual_display_num_views(ViewType::DisplayDefined),
+            1
+        );
         assert_eq!(config2.virtual_display_num_views(ViewType::Shared), 0);
     }
 
@@ -152,18 +174,28 @@ fn config_virtual_display() {
     assert!(!cfg.is_virtual_view_shared("sview2"));
     {
         let config2 = Config::create_from_str(&cfg.serialize().unwrap()).unwrap();
-        assert_eq!(config2.virtual_display_num_views(ViewType::DisplayDefined), 0);
+        assert_eq!(
+            config2.virtual_display_num_views(ViewType::DisplayDefined),
+            0
+        );
         assert_eq!(config2.virtual_display_num_views(ViewType::Shared), 0);
     }
 
     // Step 4 - Instantiate a (display, view) using a custom ICC profile (the
     // Linux behavior of the C++ test: there are no system monitors).
     let mut cfg = config.create_editable_copy();
-    cfg.instantiate_display_from_icc_profile(&data_file("icc-test-1.icc")).unwrap();
+    cfg.instantiate_display_from_icc_profile(&data_file("icc-test-1.icc"))
+        .unwrap();
     assert_eq!(cfg.num_displays(), 1 + config.num_displays());
-    let num_cs = config.num_color_spaces_filtered(SearchReferenceSpaceType::Display, ColorSpaceVisibility::Active);
+    let num_cs = config.num_color_spaces_filtered(
+        SearchReferenceSpaceType::Display,
+        ColorSpaceVisibility::Active,
+    );
     assert_eq!(
-        cfg.num_color_spaces_filtered(SearchReferenceSpaceType::Display, ColorSpaceVisibility::Active),
+        cfg.num_color_spaces_filtered(
+            SearchReferenceSpaceType::Display,
+            ColorSpaceVisibility::Active
+        ),
         1 + num_cs
     );
     let custom = cfg.display(config.num_displays());
@@ -172,7 +204,9 @@ fn config_virtual_display() {
     assert_eq!(cfg.num_views_by_type(ViewType::Shared, &custom), 1);
 
     // There is no uniform way to retrieve the monitor information.
-    assert!(cfg.instantiate_display_from_monitor_name("monitor").is_err());
+    assert!(cfg
+        .instantiate_display_from_monitor_name("monitor")
+        .is_err());
 }
 
 #[test]
@@ -246,14 +280,23 @@ colorspaces:
     name: raw
 "#;
     let _lock = env_lock();
-    assert_err!(Config::create_from_str(CONFIG), "Only version 2 (or higher) can have a virtual display.");
+    assert_err!(
+        Config::create_from_str(CONFIG),
+        "Only version 2 (or higher) can have a virtual display."
+    );
 
     let mut cfg = Config::create_raw().create_editable_copy();
     cfg.add_virtual_display_shared_view("sview").unwrap();
     cfg.set_major_version(1).unwrap();
     cfg.set_file_rules(&FileRules::new());
-    assert_err!(cfg.validate(), "Only version 2 (or higher) can have a virtual display.");
-    assert_err!(cfg.serialize(), "Only version 2 (or higher) can have a virtual display.");
+    assert_err!(
+        cfg.validate(),
+        "Only version 2 (or higher) can have a virtual display."
+    );
+    assert_err!(
+        cfg.serialize(),
+        "Only version 2 (or higher) can have a virtual display."
+    );
 }
 
 #[test]
@@ -296,7 +339,9 @@ colorspaces:
     name: raw
 "#;
     let _lock = env_lock();
-    let mut cfg = Config::create_from_str(CONFIG).unwrap().create_editable_copy();
+    let mut cfg = Config::create_from_str(CONFIG)
+        .unwrap()
+        .create_editable_copy();
     cfg.validate().unwrap();
 
     assert_err!(
@@ -315,7 +360,8 @@ colorspaces:
         cfg.add_virtual_display_view("Raw", "", "raw", "", "", ""),
         "View could not be added to virtual_display in config: View 'Raw' already exists."
     );
-    cfg.add_virtual_display_view("Raw1", "", "raw1", "", "", "").unwrap();
+    cfg.add_virtual_display_view("Raw1", "", "raw1", "", "", "")
+        .unwrap();
     assert_err!(
         cfg.validate(),
         "Display 'virtual_display' has a view 'Raw1' that refers to a color space or a named transform, 'raw1', which is not defined."
@@ -323,7 +369,8 @@ colorspaces:
     cfg.remove_virtual_display_view("Raw1");
     cfg.validate().unwrap();
 
-    cfg.add_virtual_display_view("Raw1", "", "raw", "look", "", "").unwrap();
+    cfg.add_virtual_display_view("Raw1", "", "raw", "look", "", "")
+        .unwrap();
     assert_err!(
         cfg.validate(),
         "Display 'virtual_display' has a view 'Raw1' refers to a look, 'look', which is not defined."
@@ -412,7 +459,10 @@ fn config_alias_validation() {
     cs.add_alias("namedtransform");
     cfg.add_color_space(&cs).unwrap();
     let mut nt = NamedTransform::new();
-    nt.set_transform(Some(MatrixTransform::default().into()), TransformDirection::Forward);
+    nt.set_transform(
+        Some(MatrixTransform::default().into()),
+        TransformDirection::Forward,
+    );
     nt.set_name("namedtransform");
     assert_err!(
         cfg.add_named_transform(&nt),
@@ -468,7 +518,13 @@ fn config_get_processor_alias() {
     let mut src = ColorSpace::new(ReferenceSpaceType::Scene);
     src.set_name("source");
     src.set_transform(
-        Some(MatrixTransform { offset: [0.0, 0.1, 0.2, 0.0], ..Default::default() }.into()),
+        Some(
+            MatrixTransform {
+                offset: [0.0, 0.1, 0.2, 0.0],
+                ..Default::default()
+            }
+            .into(),
+        ),
         ColorSpaceDirection::ToReference,
     );
     src.add_alias("alias source");
@@ -491,19 +547,38 @@ fn config_get_processor_alias() {
     assert_eq!(with_alias.cache_id(), ref_proc.cache_id());
 
     config.set_processor_cache_flags(ProcessorCacheFlags::OFF);
-    assert_eq!(kinds(&config.get_processor("alias source", "destination").unwrap()), ["matrix", "ff"]);
-    assert_eq!(kinds(&config.get_processor("alias source", "dst").unwrap()), ["matrix", "ff"]);
+    assert_eq!(
+        kinds(&config.get_processor("alias source", "destination").unwrap()),
+        ["matrix", "ff"]
+    );
+    assert_eq!(
+        kinds(&config.get_processor("alias source", "dst").unwrap()),
+        ["matrix", "ff"]
+    );
 
     let mut nt = NamedTransform::new();
     nt.set_name("named_transform");
     nt.add_alias("nt");
-    nt.set_transform(Some(ExponentTransform::default().into()), TransformDirection::Forward);
+    nt.set_transform(
+        Some(ExponentTransform::default().into()),
+        TransformDirection::Forward,
+    );
     config.add_named_transform(&nt).unwrap();
-    assert_eq!(kinds(&config.get_processor("nt", "dst").unwrap()), ["exponent"]);
+    assert_eq!(
+        kinds(&config.get_processor("nt", "dst").unwrap()),
+        ["exponent"]
+    );
 
-    config.add_display_view("display", "view", "alias destination", "").unwrap();
+    config
+        .add_display_view("display", "view", "alias destination", "")
+        .unwrap();
     let p = config
-        .get_display_view_processor_dir("alias source", "display", "view", TransformDirection::Forward)
+        .get_display_view_processor_dir(
+            "alias source",
+            "display",
+            "view",
+            TransformDirection::Forward,
+        )
         .unwrap();
     assert_eq!(kinds(&p), ["matrix", "ff"]);
 }
@@ -537,7 +612,9 @@ colorspaces:
     let config = Config::create_from_str(CONFIG1).unwrap();
     config.validate().unwrap();
     for dir in [Forward, Inverse] {
-        let p = config.get_display_view_processor_dir("cs", "disp1", "view1", dir).unwrap();
+        let p = config
+            .get_display_view_processor_dir("cs", "disp1", "view1", dir)
+            .unwrap();
         assert!(p.is_no_op());
     }
 
@@ -546,7 +623,9 @@ colorspaces:
     let config = Config::create_from_str(&config2).unwrap();
     config.validate().unwrap();
     for dir in [Forward, Inverse] {
-        let p = config.get_display_view_processor_dir("cs", "disp1", "view1", dir).unwrap();
+        let p = config
+            .get_display_view_processor_dir("cs", "disp1", "view1", dir)
+            .unwrap();
         assert!(!p.is_no_op());
         assert!(p.optimized(OptimizationFlags::DEFAULT).is_no_op());
     }
@@ -583,7 +662,8 @@ fn config_look_fallback() {
 fn config_create_from_archive() {
     let _lock = env_lock();
     for name in ["context_test1_windows.ocioz", "context_test1_linux.ocioz"] {
-        let config = Config::create_from_file(&data_file(&format!("configs/context_test1/{name}"))).unwrap();
+        let config =
+            Config::create_from_file(&data_file(&format!("configs/context_test1/{name}"))).unwrap();
         config.validate().unwrap();
         assert_eq!(config.num_color_spaces(), 13);
     }
@@ -593,8 +673,10 @@ fn config_create_from_archive() {
             "Loading the OCIO profile failed. At line 0, '' parsing failed: The specified OCIO configuration file from Archive/ConfigIOProxy does not appear to have a valid version <null>"
         );
     }
-    let config =
-        Config::create_from_file(&data_file("configs/ocioz_archive_configs/config_missing_luts.ocioz")).unwrap();
+    let config = Config::create_from_file(&data_file(
+        "configs/ocioz_archive_configs/config_missing_luts.ocioz",
+    ))
+    .unwrap();
     // validate() does not try to fetch the LUT files.
     config.validate().unwrap();
 }
@@ -604,12 +686,17 @@ fn config_create_from_archive() {
 fn config_create_from_archive_processors() {
     let _lock = env_lock();
     for name in ["context_test1_windows.ocioz", "context_test1_linux.ocioz"] {
-        let config = Config::create_from_file(&data_file(&format!("configs/context_test1/{name}"))).unwrap();
-        let p = config.get_processor("plain_lut1_cs", "shot1_lut1_cs").unwrap();
+        let config =
+            Config::create_from_file(&data_file(&format!("configs/context_test1/{name}"))).unwrap();
+        let p = config
+            .get_processor("plain_lut1_cs", "shot1_lut1_cs")
+            .unwrap();
         p.default_cpu_processor();
     }
-    let config =
-        Config::create_from_file(&data_file("configs/ocioz_archive_configs/config_missing_luts.ocioz")).unwrap();
+    let config = Config::create_from_file(&data_file(
+        "configs/ocioz_archive_configs/config_missing_luts.ocioz",
+    ))
+    .unwrap();
     // Deviation: the archive LUTs are extracted to a temporary directory, so
     // the attempted paths are absolute.
     assert_err!(
@@ -629,14 +716,18 @@ fn config_interchange_attributes() {
     // Color space.
     {
         let mut cs = config.get_color_space("log").unwrap().clone();
-        cs.set_interchange_attribute("amf_transform_ids", "sample amf id").unwrap();
+        cs.set_interchange_attribute("amf_transform_ids", "sample amf id")
+            .unwrap();
         config.add_color_space(&cs).unwrap();
         config.validate().unwrap();
         let out = config.serialize().unwrap();
         assert!(out.contains("amf_transform_ids: sample amf id"));
         let cfg2 = Config::create_from_str(&out).unwrap();
         assert_eq!(
-            cfg2.get_color_space("log").unwrap().interchange_attribute("amf_transform_ids").unwrap(),
+            cfg2.get_color_space("log")
+                .unwrap()
+                .interchange_attribute("amf_transform_ids")
+                .unwrap(),
             "sample amf id"
         );
         config.set_version(2, 4).unwrap();
@@ -644,7 +735,8 @@ fn config_interchange_attributes() {
             config.validate(),
             "Config failed validation. The color space 'log' has non-empty interchange attributes and config version is less than 2.5."
         );
-        cs.set_interchange_attribute("amf_transform_ids", "").unwrap();
+        cs.set_interchange_attribute("amf_transform_ids", "")
+            .unwrap();
         config.add_color_space(&cs).unwrap();
         config.validate().unwrap();
         config.set_version(2, 5).unwrap();
@@ -652,7 +744,8 @@ fn config_interchange_attributes() {
     // View transform.
     {
         let mut vt = config.view_transform("vt1").unwrap().clone();
-        vt.set_interchange_attribute("amf_transform_ids", "sample amf id").unwrap();
+        vt.set_interchange_attribute("amf_transform_ids", "sample amf id")
+            .unwrap();
         config.add_view_transform(&vt).unwrap();
         config.validate().unwrap();
         assert_err!(
@@ -663,7 +756,10 @@ fn config_interchange_attributes() {
         assert!(out.contains("amf_transform_ids: sample amf id"));
         let cfg2 = Config::create_from_str(&out).unwrap();
         assert_eq!(
-            cfg2.view_transform("vt1").unwrap().interchange_attribute("amf_transform_ids").unwrap(),
+            cfg2.view_transform("vt1")
+                .unwrap()
+                .interchange_attribute("amf_transform_ids")
+                .unwrap(),
             "sample amf id"
         );
         config.set_version(2, 4).unwrap();
@@ -671,7 +767,8 @@ fn config_interchange_attributes() {
             config.validate(),
             "Config failed validation. The view transform 'vt1' has non-empty interchange attributes and config version is less than 2.5."
         );
-        vt.set_interchange_attribute("amf_transform_ids", "").unwrap();
+        vt.set_interchange_attribute("amf_transform_ids", "")
+            .unwrap();
         config.add_view_transform(&vt).unwrap();
         config.validate().unwrap();
         config.set_version(2, 5).unwrap();
@@ -679,14 +776,18 @@ fn config_interchange_attributes() {
     // Look.
     {
         let mut lk = config.look("beauty").unwrap().clone();
-        lk.set_interchange_attribute("amf_transform_ids", "sample amf id").unwrap();
+        lk.set_interchange_attribute("amf_transform_ids", "sample amf id")
+            .unwrap();
         config.add_look(&lk).unwrap();
         config.validate().unwrap();
         let out = config.serialize().unwrap();
         assert!(out.contains("amf_transform_ids: sample amf id"));
         let cfg2 = Config::create_from_str(&out).unwrap();
         assert_eq!(
-            cfg2.look("beauty").unwrap().interchange_attribute("amf_transform_ids").unwrap(),
+            cfg2.look("beauty")
+                .unwrap()
+                .interchange_attribute("amf_transform_ids")
+                .unwrap(),
             "sample amf id"
         );
         config.set_version(2, 4).unwrap();
@@ -694,7 +795,8 @@ fn config_interchange_attributes() {
             config.validate(),
             "Config failed validation. The look 'beauty' has non-empty interchange attributes and config version is less than 2.5."
         );
-        lk.set_interchange_attribute("amf_transform_ids", "").unwrap();
+        lk.set_interchange_attribute("amf_transform_ids", "")
+            .unwrap();
         config.add_look(&lk).unwrap();
         config.validate().unwrap();
         config.set_version(2, 5).unwrap();
@@ -730,7 +832,10 @@ fn config_cyclic_color_space_linearity_check() {
     let _lock = env_lock();
     const CONFIG: &str = "ocio_profile_version: 2\nroles:\n  default: cs0\ncolorspaces:\n  - !<ColorSpace>\n    name: cs0\n  - !<ColorSpace>\n    name: cs1\n    from_scene_reference: !<ColorSpaceTransform> {src: cs0, dst: cs1}\n";
     let config = Config::create_from_str(CONFIG).unwrap();
-    assert_err!(config.is_color_space_linear("cs1", ReferenceSpaceType::Scene), "Cycle detected");
+    assert_err!(
+        config.is_color_space_linear("cs1", ReferenceSpaceType::Scene),
+        "Cycle detected"
+    );
 }
 
 #[test]

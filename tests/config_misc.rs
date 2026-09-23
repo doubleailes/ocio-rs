@@ -18,7 +18,8 @@ fn config_family_separator() {
     assert_eq!(cfg.family_separator(), '\0');
 
     assert_eq!(Config::default_family_separator(), '/');
-    cfg.set_family_separator(Config::default_family_separator()).unwrap();
+    cfg.set_family_separator(Config::default_family_separator())
+        .unwrap();
     assert_eq!(cfg.family_separator(), '/');
 
     assert!(cfg.set_family_separator(127 as char).is_err());
@@ -75,14 +76,28 @@ colorspaces:
     name: raw
     allocation: uniform
 "#;
-    let mut cfg = Config::create_from_str(CONFIG_V1).unwrap().create_editable_copy();
+    let mut cfg = Config::create_from_str(CONFIG_V1)
+        .unwrap()
+        .create_editable_copy();
     assert_eq!(cfg.family_separator(), '/');
     cfg.set_family_separator('&').unwrap();
-    assert_err!(cfg.validate(), "Only version 2 (or higher) can have a family separator.");
-    assert_err!(cfg.serialize(), "Only version 2 (or higher) can have a family separator.");
+    assert_err!(
+        cfg.validate(),
+        "Only version 2 (or higher) can have a family separator."
+    );
+    assert_err!(
+        cfg.serialize(),
+        "Only version 2 (or higher) can have a family separator."
+    );
 
-    let v1bis = CONFIG_V1.replace("search_path: \"\"\n", "search_path: \"\"\nfamily_separator: \"/\"\n");
-    assert_err!(Config::create_from_str(&v1bis), "Config v1 can't have 'family_separator'.");
+    let v1bis = CONFIG_V1.replace(
+        "search_path: \"\"\n",
+        "search_path: \"\"\nfamily_separator: \"/\"\n",
+    );
+    assert_err!(
+        Config::create_from_str(&v1bis),
+        "Config v1 can't have 'family_separator'."
+    );
 }
 
 #[test]
@@ -94,7 +109,9 @@ fn config_add_remove_display() {
     assert_eq!(config.num_views("sRGB"), 1);
     assert_eq!(config.view("sRGB", 0), "Raw");
 
-    config.add_display_view("disp1", "view1", "raw", "").unwrap();
+    config
+        .add_display_view("disp1", "view1", "raw", "")
+        .unwrap();
     assert!(config.has_view("disp1", "view1"));
     assert_eq!(config.num_displays(), 2);
     assert_eq!(config.display(0), "sRGB");
@@ -191,7 +208,9 @@ colorspaces:
     let _lock = env_lock();
     let config = Config::create_from_str(CONFIG).unwrap();
     config.validate().unwrap();
-    for cs in ["cs1", "cs2", "cs3", "cs5", "cs6", "cs7", "cs8", "cs9", "cs10", "cs11"] {
+    for cs in [
+        "cs1", "cs2", "cs3", "cs5", "cs6", "cs7", "cs8", "cs9", "cs10", "cs11",
+    ] {
         assert!(config.is_color_space_used(cs), "{cs}");
     }
     assert!(!config.is_color_space_used("cs4"));
@@ -209,7 +228,10 @@ fn config_transform_versions() {
 
     let mut cs = ColorSpace::default();
     cs.set_name("range");
-    cs.set_transform(Some(RangeTransform::default().into()), ColorSpaceDirection::ToReference);
+    cs.set_transform(
+        Some(RangeTransform::default().into()),
+        ColorSpaceDirection::ToReference,
+    );
     config.add_color_space(&cs).unwrap();
     assert_err!(
         config.serialize(),
@@ -241,7 +263,10 @@ fn config_dynamic_properties() {
     let mut config = Config::create_raw().create_editable_copy();
     let mut cs = ColorSpace::default();
     cs.set_name("test");
-    let ec = ExposureContrastTransform { exposure_dynamic: true, ..Default::default() };
+    let ec = ExposureContrastTransform {
+        exposure_dynamic: true,
+        ..Default::default()
+    };
     cs.set_transform(Some(ec.into()), ColorSpaceDirection::ToReference);
     config.add_color_space(&cs).unwrap();
     config.validate().unwrap();
@@ -383,9 +408,17 @@ fn cacheids(with_ops: bool) {
 
     let dv = |cfg: &Config, ctx: Option<&Context>, view: &str| {
         if with_ops {
-            let ctx = ctx.cloned().unwrap_or_else(|| cfg.current_context().clone());
-            cfg.get_display_view_processor_with_context(&ctx, "cs2", "disp1", view, TransformDirection::Forward)
-                .unwrap();
+            let ctx = ctx
+                .cloned()
+                .unwrap_or_else(|| cfg.current_context().clone());
+            cfg.get_display_view_processor_with_context(
+                &ctx,
+                "cs2",
+                "disp1",
+                view,
+                TransformDirection::Forward,
+            )
+            .unwrap();
         }
     };
 

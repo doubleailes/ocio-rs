@@ -89,7 +89,9 @@ fn save_log_param(out: &mut Emitter, p: &[f64; 3], default: f64, name: &str) {
 fn save_rgbm(out: &mut Emitter, name: &str, v: &GradingRgbm, def: &GradingRgbm) {
     if v != def {
         out.key(name).manip(Flow).manip(BeginMap);
-        out.key("rgb").manip(Flow).double_seq(&[v.red, v.green, v.blue]);
+        out.key("rgb")
+            .manip(Flow)
+            .double_seq(&[v.red, v.green, v.blue]);
         out.key("master").manip(Flow).double(v.master);
         out.manip(EndMap);
     }
@@ -101,7 +103,15 @@ fn save_double(out: &mut Emitter, name: &str, v: f64, def: f64) {
     }
 }
 
-fn save_pivot(out: &mut Emitter, v: f64, save_contrast: bool, black: f64, def_black: f64, white: f64, def_white: f64) {
+fn save_pivot(
+    out: &mut Emitter,
+    v: f64,
+    save_contrast: bool,
+    black: f64,
+    def_black: f64,
+    white: f64,
+    def_white: f64,
+) {
     if save_contrast || black != def_black || white != def_white {
         out.key("pivot").manip(Flow).manip(BeginMap);
         if save_contrast {
@@ -133,13 +143,26 @@ fn save_curve(out: &mut Emitter, name: &str, c: &GradingBSplineCurve) {
     out.manip(EndMap);
 }
 
-fn save_rgbmsw(out: &mut Emitter, name: &str, v: &GradingRgbmsw, def: &GradingRgbmsw, center: bool, pivot: bool) {
+fn save_rgbmsw(
+    out: &mut Emitter,
+    name: &str,
+    v: &GradingRgbmsw,
+    def: &GradingRgbmsw,
+    center: bool,
+    pivot: bool,
+) {
     if v != def {
         out.key(name).manip(Flow).manip(BeginMap);
-        out.key("rgb").manip(Flow).double_seq(&[v.red, v.green, v.blue]);
+        out.key("rgb")
+            .manip(Flow)
+            .double_seq(&[v.red, v.green, v.blue]);
         out.key("master").manip(Flow).double(v.master);
-        out.key(if center { "center" } else { "start" }).manip(Flow).double(v.start);
-        out.key(if pivot { "pivot" } else { "width" }).manip(Flow).double(v.width);
+        out.key(if center { "center" } else { "start" })
+            .manip(Flow)
+            .double(v.start);
+        out.key(if pivot { "pivot" } else { "width" })
+            .manip(Flow)
+            .double(v.width);
         out.manip(EndMap);
     }
 }
@@ -148,7 +171,10 @@ fn is_experimental_ff(s: FixedFunctionStyle) -> bool {
     use FixedFunctionStyle as S;
     matches!(
         s,
-        S::AcesOutputTransform20 | S::AcesRgbToJmh20 | S::AcesTonescaleCompress20 | S::AcesGamutCompress20
+        S::AcesOutputTransform20
+            | S::AcesRgbToJmh20
+            | S::AcesTonescaleCompress20
+            | S::AcesGamutCompress20
     )
 }
 
@@ -175,8 +201,12 @@ fn is_m44_identity(m: &[f64; 16]) -> bool {
 pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()> {
     match t {
         Transform::Allocation(t) => {
-            out.verbatim_tag("AllocationTransform").manip(Flow).manip(BeginMap);
-            out.key("allocation").manip(Flow).string(t.allocation.as_str());
+            out.verbatim_tag("AllocationTransform")
+                .manip(Flow)
+                .manip(BeginMap);
+            out.key("allocation")
+                .manip(Flow)
+                .string(t.allocation.as_str());
             if !t.vars.is_empty() {
                 let vars: Vec<f32> = t.vars.iter().map(|v| *v as f32).collect();
                 out.key("vars").manip(Flow).float_seq(&vars);
@@ -185,7 +215,9 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             out.manip(EndMap);
         }
         Transform::Builtin(t) => {
-            out.verbatim_tag("BuiltinTransform").manip(Flow).manip(BeginMap);
+            out.verbatim_tag("BuiltinTransform")
+                .manip(Flow)
+                .manip(BeginMap);
             out.key("style").manip(Flow).string(&t.style);
             emit_direction(out, t.direction);
             out.manip(EndMap);
@@ -214,7 +246,9 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             out.manip(EndMap);
         }
         Transform::ColorSpace(t) => {
-            out.verbatim_tag("ColorSpaceTransform").manip(Flow).manip(BeginMap);
+            out.verbatim_tag("ColorSpaceTransform")
+                .manip(Flow)
+                .manip(BeginMap);
             out.key("src").string(&t.src);
             out.key("dst").string(&t.dst);
             if !t.data_bypass {
@@ -224,7 +258,9 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             out.manip(EndMap);
         }
         Transform::DisplayView(t) => {
-            out.verbatim_tag("DisplayViewTransform").manip(Flow).manip(BeginMap);
+            out.verbatim_tag("DisplayViewTransform")
+                .manip(Flow)
+                .manip(BeginMap);
             out.key("src").string(&t.src);
             out.key("display").string(&t.display);
             out.key("view").string(&t.view);
@@ -238,7 +274,9 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             out.manip(EndMap);
         }
         Transform::Exponent(t) => {
-            out.verbatim_tag("ExponentTransform").manip(Flow).manip(BeginMap);
+            out.verbatim_tag("ExponentTransform")
+                .manip(Flow)
+                .manip(BeginMap);
             if major >= 2 {
                 emit_name(out, &t.metadata);
             }
@@ -249,13 +287,17 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
                 out.key("value").manip(Flow).double_seq(&v);
             }
             if t.negative_style != NegativeStyle::Clamp {
-                out.key("style").manip(Flow).string(t.negative_style.as_str());
+                out.key("style")
+                    .manip(Flow)
+                    .string(t.negative_style.as_str());
             }
             emit_direction(out, t.direction);
             out.manip(EndMap);
         }
         Transform::ExponentWithLinear(t) => {
-            out.verbatim_tag("ExponentWithLinearTransform").manip(Flow).manip(BeginMap);
+            out.verbatim_tag("ExponentWithLinearTransform")
+                .manip(Flow)
+                .manip(BeginMap);
             emit_name(out, &t.metadata);
             let g = t.gamma;
             if g[0] == g[1] && g[0] == g[2] && g[3] == 1.0 {
@@ -270,13 +312,17 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
                 out.key("offset").manip(Flow).double_seq(&o);
             }
             if t.negative_style != NegativeStyle::Linear {
-                out.key("style").manip(Flow).string(t.negative_style.as_str());
+                out.key("style")
+                    .manip(Flow)
+                    .string(t.negative_style.as_str());
             }
             emit_direction(out, t.direction);
             out.manip(EndMap);
         }
         Transform::ExposureContrast(t) => {
-            out.verbatim_tag("ExposureContrastTransform").manip(Flow).manip(BeginMap);
+            out.verbatim_tag("ExposureContrastTransform")
+                .manip(Flow)
+                .manip(BeginMap);
             emit_name(out, &t.metadata);
             out.key("style").manip(Flow).string(t.style.as_str());
             if !t.exposure_dynamic {
@@ -290,16 +336,22 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             }
             out.key("pivot").manip(Flow).double(t.pivot);
             if t.log_exposure_step != 0.088 {
-                out.key("log_exposure_step").manip(Flow).double(t.log_exposure_step);
+                out.key("log_exposure_step")
+                    .manip(Flow)
+                    .double(t.log_exposure_step);
             }
             if t.log_mid_gray != 0.435 {
-                out.key("log_midway_gray").manip(Flow).double(t.log_mid_gray);
+                out.key("log_midway_gray")
+                    .manip(Flow)
+                    .double(t.log_mid_gray);
             }
             emit_direction(out, t.direction);
             out.manip(EndMap);
         }
         Transform::File(t) => {
-            out.verbatim_tag("FileTransform").manip(Flow).manip(BeginMap);
+            out.verbatim_tag("FileTransform")
+                .manip(Flow)
+                .manip(BeginMap);
             out.key("src").string(&t.src);
             if !t.ccc_id.is_empty() {
                 out.key("cccid").string(&t.ccc_id);
@@ -318,7 +370,9 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             out.manip(EndMap);
         }
         Transform::FixedFunction(t) => {
-            out.verbatim_tag("FixedFunctionTransform").manip(Flow).manip(BeginMap);
+            out.verbatim_tag("FixedFunctionTransform")
+                .manip(Flow)
+                .manip(BeginMap);
             emit_name(out, &t.metadata);
             let style = fixed_function_style_to_string(t.style)?;
             out.key("style").manip(Flow).string(style);
@@ -351,7 +405,15 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
                     save_rgbm(out, "gamma", &v.gamma, &d.gamma);
                     save_double(out, "saturation", v.saturation, d.saturation);
                     let force = v.contrast != d.contrast || v.pivot != d.pivot;
-                    save_pivot(out, v.pivot, force, v.pivot_black, d.pivot_black, v.pivot_white, d.pivot_white);
+                    save_pivot(
+                        out,
+                        v.pivot,
+                        force,
+                        v.pivot_black,
+                        d.pivot_black,
+                        v.pivot_white,
+                        d.pivot_white,
+                    );
                 }
                 GradingStyle::Lin => {
                     save_rgbm(out, "offset", &v.offset, &d.offset);
@@ -367,10 +429,24 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
                     save_rgbm(out, "gain", &v.gain, &d.gain);
                     save_rgbm(out, "offset", &v.offset, &d.offset);
                     save_double(out, "saturation", v.saturation, d.saturation);
-                    save_pivot(out, 0.0, false, v.pivot_black, d.pivot_black, v.pivot_white, d.pivot_white);
+                    save_pivot(
+                        out,
+                        0.0,
+                        false,
+                        v.pivot_black,
+                        d.pivot_black,
+                        v.pivot_white,
+                        d.pivot_white,
+                    );
                 }
             }
-            save_clamp(out, v.clamp_black, d.clamp_black, v.clamp_white, d.clamp_white);
+            save_clamp(
+                out,
+                v.clamp_black,
+                d.clamp_black,
+                v.clamp_white,
+                d.clamp_white,
+            );
             emit_direction(out, t.direction);
             out.manip(EndMap);
         }
@@ -397,8 +473,10 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             out.manip(EndMap);
         }
         Transform::GradingHueCurve(t) => {
-            let defs: Vec<GradingBSplineCurve> =
-                HueCurveType::ALL.iter().map(|c| default_hue_curve(*c, t.style)).collect();
+            let defs: Vec<GradingBSplineCurve> = HueCurveType::ALL
+                .iter()
+                .map(|c| default_hue_curve(*c, t.style))
+                .collect();
             let line_breaks = t.value.curves.iter().zip(&defs).any(|(c, d)| c != d);
             out.verbatim_tag("GradingHueCurveTransform");
             if !line_breaks {
@@ -410,8 +488,10 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             if t.rgb_to_hsy == HsyTransformStyle::None {
                 out.key("hsy_transform").manip(Flow).string("none");
             }
-            const NAMES: [&str; 8] =
-                ["hue_hue", "hue_sat", "hue_lum", "lum_sat", "sat_sat", "lum_lum", "sat_lum", "hue_fx"];
+            const NAMES: [&str; 8] = [
+                "hue_hue", "hue_sat", "hue_lum", "lum_sat", "sat_sat", "lum_lum", "sat_lum",
+                "hue_fx",
+            ];
             for (i, name) in NAMES.iter().enumerate() {
                 let c = &t.value.curves[i];
                 if *c != defs[i] || !c.slopes_are_default() {
@@ -454,7 +534,9 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             out.manip(EndMap);
         }
         Transform::LogAffine(t) => {
-            out.verbatim_tag("LogAffineTransform").manip(Flow).manip(BeginMap);
+            out.verbatim_tag("LogAffineTransform")
+                .manip(Flow)
+                .manip(BeginMap);
             emit_name(out, &t.metadata);
             if t.base != 2.0 {
                 out.key("base").double(t.base);
@@ -467,7 +549,9 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             out.manip(EndMap);
         }
         Transform::LogCamera(t) => {
-            out.verbatim_tag("LogCameraTransform").manip(Flow).manip(BeginMap);
+            out.verbatim_tag("LogCameraTransform")
+                .manip(Flow)
+                .manip(BeginMap);
             emit_name(out, &t.metadata);
             if t.base != 2.0 {
                 out.key("base").double(t.base);
@@ -495,7 +579,9 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             out.manip(EndMap);
         }
         Transform::Look(t) => {
-            out.verbatim_tag("LookTransform").manip(Flow).manip(BeginMap);
+            out.verbatim_tag("LookTransform")
+                .manip(Flow)
+                .manip(BeginMap);
             out.key("src").string(&t.src);
             out.key("dst").string(&t.dst);
             out.key("looks").string(&t.looks);
@@ -503,7 +589,9 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             out.manip(EndMap);
         }
         Transform::Matrix(t) => {
-            out.verbatim_tag("MatrixTransform").manip(Flow).manip(BeginMap);
+            out.verbatim_tag("MatrixTransform")
+                .manip(Flow)
+                .manip(BeginMap);
             if major >= 2 {
                 emit_name(out, &t.metadata);
             }
@@ -517,7 +605,9 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             out.manip(EndMap);
         }
         Transform::Range(t) => {
-            out.verbatim_tag("RangeTransform").manip(Flow).manip(BeginMap);
+            out.verbatim_tag("RangeTransform")
+                .manip(Flow)
+                .manip(BeginMap);
             emit_name(out, &t.metadata);
             if let Some(v) = t.min_in {
                 out.key("min_in_value").manip(Flow).double(v);
@@ -538,7 +628,9 @@ pub fn save_transform(out: &mut Emitter, t: &Transform, major: u32) -> Result<()
             out.manip(EndMap);
         }
         Transform::Lut1D(_) | Transform::Lut3D(_) => {
-            return Err(Error::msg("Unsupported Transform() type for serialization."));
+            return Err(Error::msg(
+                "Unsupported Transform() type for serialization.",
+            ));
         }
     }
     Ok(())
@@ -559,7 +651,9 @@ fn save_color_space(out: &mut Emitter, cs: &ColorSpace, major: u32) -> Result<()
     save_description(out, cs.description());
     out.key("isdata").boolean(cs.is_data());
     if cs.num_categories() > 0 {
-        out.key("categories").manip(Flow).string_seq(cs.categories());
+        out.key("categories")
+            .manip(Flow)
+            .string_seq(cs.categories());
     }
     if !cs.encoding().is_empty() {
         out.key("encoding").string(cs.encoding());
@@ -567,7 +661,9 @@ fn save_color_space(out: &mut Emitter, cs: &ColorSpace, major: u32) -> Result<()
     save_interchange(out, cs.interchange_attributes());
     out.key("allocation").string(cs.allocation().as_str());
     if cs.allocation_num_vars() > 0 {
-        out.key("allocationvars").manip(Flow).float_seq(cs.allocation_vars());
+        out.key("allocationvars")
+            .manip(Flow)
+            .float_seq(cs.allocation_vars());
     }
     let display = cs.reference_space_type() == ReferenceSpaceType::Display;
     if let Some(t) = cs.transform(ColorSpaceDirection::ToReference) {
@@ -623,15 +719,25 @@ fn save_view_transform(out: &mut Emitter, vt: &ViewTransform, major: u32) -> Res
     save_description(out, vt.description());
     save_interchange(out, vt.interchange_attributes());
     if vt.num_categories() > 0 {
-        out.key("categories").manip(Flow).string_seq(vt.categories());
+        out.key("categories")
+            .manip(Flow)
+            .string_seq(vt.categories());
     }
     let display = vt.reference_space_type() == ReferenceSpaceType::Display;
     if let Some(t) = vt.transform(ViewTransformDirection::ToReference) {
-        out.key(if display { "to_display_reference" } else { "to_scene_reference" });
+        out.key(if display {
+            "to_display_reference"
+        } else {
+            "to_scene_reference"
+        });
         save_transform(out, t, major)?;
     }
     if let Some(t) = vt.transform(ViewTransformDirection::FromReference) {
-        out.key(if display { "from_display_reference" } else { "from_scene_reference" });
+        out.key(if display {
+            "from_display_reference"
+        } else {
+            "from_scene_reference"
+        });
         save_transform(out, t, major)?;
     }
     out.manip(EndMap).manip(Newline);
@@ -649,7 +755,9 @@ fn save_named_transform(out: &mut Emitter, nt: &NamedTransform, major: u32) -> R
         out.key("family").string(nt.family());
     }
     if nt.num_categories() > 0 {
-        out.key("categories").manip(Flow).string_seq(nt.categories());
+        out.key("categories")
+            .manip(Flow)
+            .string_seq(nt.categories());
     }
     if !nt.encoding().is_empty() {
         out.key("encoding").string(nt.encoding());
@@ -690,7 +798,8 @@ fn save_file_rule(out: &mut Emitter, config: &Config, pos: usize) -> Result<()> 
     if n > 0 {
         out.key(fr_keys::CUSTOM_KEY).manip(BeginMap);
         for i in 0..n {
-            out.key(fr.custom_key_name(pos, i)?).string(fr.custom_key_value(pos, i)?);
+            out.key(fr.custom_key_name(pos, i)?)
+                .string(fr.custom_key_value(pos, i)?);
         }
         out.manip(EndMap);
     }
@@ -706,21 +815,26 @@ fn save_viewing_rule(out: &mut Emitter, config: &Config, pos: usize) -> Result<(
     if ncs == 1 {
         out.key("colorspaces").string(vr.color_space(pos, 0)?);
     } else if ncs > 1 {
-        let v: Vec<String> = (0..ncs).map(|i| vr.color_space(pos, i).unwrap_or("").to_string()).collect();
+        let v: Vec<String> = (0..ncs)
+            .map(|i| vr.color_space(pos, i).unwrap_or("").to_string())
+            .collect();
         out.key("colorspaces").manip(Flow).string_seq(&v);
     }
     let nenc = vr.num_encodings(pos)?;
     if nenc == 1 {
         out.key("encodings").string(vr.encoding(pos, 0)?);
     } else if nenc > 1 {
-        let v: Vec<String> = (0..nenc).map(|i| vr.encoding(pos, i).unwrap_or("").to_string()).collect();
+        let v: Vec<String> = (0..nenc)
+            .map(|i| vr.encoding(pos, i).unwrap_or("").to_string())
+            .collect();
         out.key("encodings").manip(Flow).string_seq(&v);
     }
     let n = vr.num_custom_keys(pos)?;
     if n > 0 {
         out.key("custom").manip(BeginMap);
         for i in 0..n {
-            out.key(vr.custom_key_name(pos, i)?).string(vr.custom_key_value(pos, i)?);
+            out.key(vr.custom_key_name(pos, i)?)
+                .string(vr.custom_key_value(pos, i)?);
         }
         out.manip(EndMap);
     }
@@ -742,7 +856,11 @@ fn view_of(config: &Config, display: &str, name: &str) -> View {
 fn save_config(out: &mut Emitter, config: &Config) -> Result<()> {
     let major = config.major_version();
     let minor = config.minor_version();
-    let version = if minor != 0 { format!("{major}.{minor}") } else { format!("{major}") };
+    let version = if minor != 0 {
+        format!("{major}.{minor}")
+    } else {
+        format!("{major}")
+    };
 
     out.manip(Block).manip(BeginMap);
     out.key("ocio_profile_version").string(&version);
@@ -761,7 +879,9 @@ fn save_config(out: &mut Emitter, config: &Config) -> Result<()> {
         out.key("search_path").string(&config.search_path());
     } else {
         let n = config.num_search_paths();
-        let paths: Vec<String> = (0..n).map(|i| config.search_path_by_index(i).to_string()).collect();
+        let paths: Vec<String> = (0..n)
+            .map(|i| config.search_path_by_index(i).to_string())
+            .collect();
         match n {
             0 => {
                 out.key("search_path").string("");
@@ -774,7 +894,8 @@ fn save_config(out: &mut Emitter, config: &Config) -> Result<()> {
             }
         }
     }
-    out.key("strictparsing").boolean(config.is_strict_parsing_enabled());
+    out.key("strictparsing")
+        .boolean(config.is_strict_parsing_enabled());
 
     if major >= 2 {
         let sep = config.family_separator();
@@ -783,7 +904,9 @@ fn save_config(out: &mut Emitter, config: &Config) -> Result<()> {
         }
     }
 
-    out.key("luma").manip(Flow).double_seq(&config.default_luma_coefs());
+    out.key("luma")
+        .manip(Flow)
+        .double_seq(&config.default_luma_coefs());
 
     if major >= 2 && !config.name().is_empty() {
         out.key("name").string(config.name());
@@ -846,11 +969,17 @@ fn save_config(out: &mut Emitter, config: &Config) -> Result<()> {
         let display = config.display_all(i).to_string();
         out.key(&display).manip(BeginSeq);
         for v in 0..config.num_views_by_type(ViewType::DisplayDefined, &display) {
-            let name = config.view_by_type(ViewType::DisplayDefined, &display, v).to_string();
+            let name = config
+                .view_by_type(ViewType::DisplayDefined, &display, v)
+                .to_string();
             save_view(out, &view_of(config, &display, &name));
         }
         let shared: Vec<String> = (0..config.num_views_by_type(ViewType::Shared, &display))
-            .map(|v| config.view_by_type(ViewType::Shared, &display, v).to_string())
+            .map(|v| {
+                config
+                    .view_by_type(ViewType::Shared, &display, v)
+                    .to_string()
+            })
             .collect();
         if !shared.is_empty() {
             out.verbatim_tag("Views").manip(Flow).string_seq(&shared);
@@ -860,13 +989,15 @@ fn save_config(out: &mut Emitter, config: &Config) -> Result<()> {
     out.manip(EndMap);
 
     // Virtual display.
-    let n_virtual =
-        config.virtual_display_num_views(ViewType::DisplayDefined) + config.virtual_display_num_views(ViewType::Shared);
+    let n_virtual = config.virtual_display_num_views(ViewType::DisplayDefined)
+        + config.virtual_display_num_views(ViewType::Shared);
     if major >= 2 && n_virtual > 0 {
         out.manip(Newline).manip(Newline);
         out.key("virtual_display").manip(BeginSeq);
         for i in 0..config.virtual_display_num_views(ViewType::DisplayDefined) {
-            let name = config.virtual_display_view(ViewType::DisplayDefined, i).to_string();
+            let name = config
+                .virtual_display_view(ViewType::DisplayDefined, i)
+                .to_string();
             let v = View::new(
                 &name,
                 config.virtual_display_view_transform_name(&name),
@@ -887,12 +1018,18 @@ fn save_config(out: &mut Emitter, config: &Config) -> Result<()> {
     }
 
     out.manip(Newline).manip(Newline);
-    let active_displays: Vec<String> =
-        (0..config.num_active_displays()).filter_map(|i| config.active_display(i).map(|s| s.to_string())).collect();
-    out.key("active_displays").manip(Flow).string_seq(&active_displays);
-    let active_views: Vec<String> =
-        (0..config.num_active_views()).filter_map(|i| config.active_view(i).map(|s| s.to_string())).collect();
-    out.key("active_views").manip(Flow).string_seq(&active_views);
+    let active_displays: Vec<String> = (0..config.num_active_displays())
+        .filter_map(|i| config.active_display(i).map(|s| s.to_string()))
+        .collect();
+    out.key("active_displays")
+        .manip(Flow)
+        .string_seq(&active_displays);
+    let active_views: Vec<String> = (0..config.num_active_views())
+        .filter_map(|i| config.active_view(i).map(|s| s.to_string()))
+        .collect();
+    out.key("active_views")
+        .manip(Flow)
+        .string_seq(&active_views);
 
     let inactive = config.inactive_color_spaces();
     if !inactive.is_empty() {
@@ -935,9 +1072,14 @@ fn save_config(out: &mut Emitter, config: &Config) -> Result<()> {
 
     let mut scene_cs = Vec::new();
     let mut display_cs = Vec::new();
-    let all = config.num_color_spaces_filtered(SearchReferenceSpaceType::All, ColorSpaceVisibility::All);
+    let all =
+        config.num_color_spaces_filtered(SearchReferenceSpaceType::All, ColorSpaceVisibility::All);
     for i in 0..all {
-        let name = config.color_space_name_by_index_filtered(SearchReferenceSpaceType::All, ColorSpaceVisibility::All, i);
+        let name = config.color_space_name_by_index_filtered(
+            SearchReferenceSpaceType::All,
+            ColorSpaceVisibility::All,
+            i,
+        );
         if let Some(cs) = config.get_color_space(name) {
             if cs.reference_space_type() == ReferenceSpaceType::Display {
                 match config.display_all_by_name(name) {
@@ -971,7 +1113,8 @@ fn save_config(out: &mut Emitter, config: &Config) -> Result<()> {
         out.manip(Newline);
         out.key("named_transforms").manip(BeginSeq);
         for i in 0..n_nt {
-            let name = config.named_transform_name_by_index_filtered(NamedTransformVisibility::All, i);
+            let name =
+                config.named_transform_name_by_index_filtered(NamedTransformVisibility::All, i);
             if let Some(nt) = config.get_named_transform(name) {
                 save_named_transform(out, nt, major)?;
             }

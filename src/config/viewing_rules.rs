@@ -17,7 +17,11 @@ struct ViewingRule {
 }
 
 impl ViewingRule {
-    fn validate<'a>(&self, cs_accessor: &dyn Fn(&str) -> Option<&'a ColorSpace>, colorspaces: &ColorSpaceSet) -> Result<()> {
+    fn validate<'a>(
+        &self,
+        cs_accessor: &dyn Fn(&str) -> Option<&'a ColorSpace>,
+        colorspaces: &ColorSpaceSet,
+    ) -> Result<()> {
         for cs in self.color_spaces.tokens() {
             if cs_accessor(cs).is_none() {
                 return Err(Error::msg(format!(
@@ -77,17 +81,25 @@ impl ViewingRules {
 
     fn validate_new_rule(&self, name: &str) -> Result<()> {
         if name.is_empty() {
-            return Err(Error::msg("Viewing rules: rule must have a non-empty name."));
+            return Err(Error::msg(
+                "Viewing rules: rule must have a non-empty name.",
+            ));
         }
         if self.rules.iter().any(|r| compare(&r.name, name)) {
-            return Err(Error::msg(format!("Viewing rules: A rule named '{name}' already exists.")));
+            return Err(Error::msg(format!(
+                "Viewing rules: A rule named '{name}' already exists."
+            )));
         }
         Ok(())
     }
 
     /// Validate all the rules. `cs_accessor` resolves color space names (and
     /// roles).
-    pub fn validate<'a>(&self, cs_accessor: &dyn Fn(&str) -> Option<&'a ColorSpace>, colorspaces: &ColorSpaceSet) -> Result<()> {
+    pub fn validate<'a>(
+        &self,
+        cs_accessor: &dyn Fn(&str) -> Option<&'a ColorSpace>,
+        colorspaces: &ColorSpaceSet,
+    ) -> Result<()> {
         for r in &self.rules {
             r.validate(cs_accessor, colorspaces)?;
         }
@@ -203,17 +215,23 @@ impl ViewingRules {
     pub fn custom_key_name(&self, idx: usize, key: usize) -> Result<&str> {
         self.validate_position(idx)?;
         let r = &self.rules[idx];
-        r.custom_keys
-            .name(key)
-            .map_err(|e| Error::msg(format!("Viewing rules: rule named '{}' error: {}", r.name, e)))
+        r.custom_keys.name(key).map_err(|e| {
+            Error::msg(format!(
+                "Viewing rules: rule named '{}' error: {}",
+                r.name, e
+            ))
+        })
     }
 
     pub fn custom_key_value(&self, idx: usize, key: usize) -> Result<&str> {
         self.validate_position(idx)?;
         let r = &self.rules[idx];
-        r.custom_keys
-            .value(key)
-            .map_err(|e| Error::msg(format!("Viewing rules: rule named '{}' error: {}", r.name, e)))
+        r.custom_keys.value(key).map_err(|e| {
+            Error::msg(format!(
+                "Viewing rules: rule named '{}' error: {}",
+                r.name, e
+            ))
+        })
     }
 
     pub fn set_custom_key(&mut self, idx: usize, key: &str, value: &str) -> Result<()> {
@@ -268,7 +286,11 @@ impl fmt::Display for ViewingRules {
                 write!(f, ", encodings=[{}]", r.encodings.tokens().join(", "))?;
             }
             if !r.custom_keys.is_empty() {
-                let keys: Vec<String> = r.custom_keys.iter().map(|(k, v)| format!("({k}, {v})")).collect();
+                let keys: Vec<String> = r
+                    .custom_keys
+                    .iter()
+                    .map(|(k, v)| format!("({k}, {v})"))
+                    .collect();
                 write!(f, ", customKeys=[{}]", keys.join(", "))?;
             }
             write!(f, ">")?;

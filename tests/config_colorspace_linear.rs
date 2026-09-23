@@ -8,7 +8,9 @@ use config_common::*;
 use ocio::*;
 
 fn linear_config() -> Config {
-    let mut config = Config::create_from_str(LINEAR_CONFIG).unwrap().create_editable_copy();
+    let mut config = Config::create_from_str(LINEAR_CONFIG)
+        .unwrap()
+        .create_editable_copy();
     config.set_search_path(&data_file(""));
     config
 }
@@ -53,7 +55,13 @@ fn config_is_colorspace_linear() {
     ];
     for (cs, expected) in scene {
         assert!(config.get_color_space(cs).is_some());
-        assert_eq!(config.is_color_space_linear(cs, ReferenceSpaceType::Scene).unwrap(), expected, "{cs}");
+        assert_eq!(
+            config
+                .is_color_space_linear(cs, ReferenceSpaceType::Scene)
+                .unwrap(),
+            expected,
+            "{cs}"
+        );
     }
     let display = [
         ("display_data", false),
@@ -74,12 +82,20 @@ fn config_is_colorspace_linear() {
         ("linear_lut3d_from_file", false),
     ];
     for (cs, expected) in display {
-        assert_eq!(config.is_color_space_linear(cs, ReferenceSpaceType::Display).unwrap(), expected, "{cs}");
+        assert_eq!(
+            config
+                .is_color_space_linear(cs, ReferenceSpaceType::Display)
+                .unwrap(),
+            expected,
+            "{cs}"
+        );
     }
 }
 
 fn known_config() -> Config {
-    let mut cfg = Config::create_from_str(KNOWN_CONFIG).unwrap().create_editable_copy();
+    let mut cfg = Config::create_from_str(KNOWN_CONFIG)
+        .unwrap()
+        .create_editable_copy();
     cfg.set_search_path(&data_file(""));
     cfg
 }
@@ -116,9 +132,15 @@ fn config_utils_processor_to_known_colorspace() {
         "Heuristics were not able to find a known color space in the provided config. Please set the interchange roles."
     );
 
-    let ref_proc =
-        Config::get_processor_from_configs_interchange(&cfg, src, "ref_cs", &builtin, builtin_name, "ACES2065-1")
-            .unwrap();
+    let ref_proc = Config::get_processor_from_configs_interchange(
+        &cfg,
+        src,
+        "ref_cs",
+        &builtin,
+        builtin_name,
+        "ACES2065-1",
+    )
+    .unwrap();
     for inactive in [
         "ACES cg, Linear ITU-R BT.709, OCIO v1 -- sRGB",
         "ACES cg, Texture -- sRGB, OCIO v1 -- sRGB",
@@ -129,9 +151,15 @@ fn config_utils_processor_to_known_colorspace() {
         assert_eq!(ref_proc.cache_id(), p.cache_id(), "{inactive}");
     }
 
-    let inv_ref_proc =
-        Config::get_processor_from_configs_interchange(&builtin, builtin_name, "ACES2065-1", &cfg, src, "ref_cs")
-            .unwrap();
+    let inv_ref_proc = Config::get_processor_from_configs_interchange(
+        &builtin,
+        builtin_name,
+        "ACES2065-1",
+        &cfg,
+        src,
+        "ref_cs",
+    )
+    .unwrap();
     for inactive in [
         "ACES cg, Linear ITU-R BT.709, ref_cs, OCIO v1 -- sRGB",
         "ACES cg, Texture -- sRGB, ref_cs, OCIO v1 -- sRGB",
@@ -151,14 +179,27 @@ fn config_utils_processor_to_known_colorspace() {
     ] {
         cfg.set_inactive_color_spaces(inactive);
         assert_eq!(
-            Config::identify_interchange_space(&cfg, "Linear ITU-R BT.709", &builtin, "lin_rec709_srgb").unwrap(),
+            Config::identify_interchange_space(
+                &cfg,
+                "Linear ITU-R BT.709",
+                &builtin,
+                "lin_rec709_srgb"
+            )
+            .unwrap(),
             pair("ref_cs", "ACES2065-1")
         );
     }
 
-    cfg.set_role("aces_interchange", Some("Texture -- sRGB")).unwrap();
+    cfg.set_role("aces_interchange", Some("Texture -- sRGB"))
+        .unwrap();
     assert_eq!(
-        Config::identify_interchange_space(&cfg, "Linear ITU-R BT.709", &builtin, "lin_rec709_srgb").unwrap(),
+        Config::identify_interchange_space(
+            &cfg,
+            "Linear ITU-R BT.709",
+            &builtin,
+            "lin_rec709_srgb"
+        )
+        .unwrap(),
         pair("Texture -- sRGB", "ACES2065-1")
     );
     cfg.set_role("aces_interchange", Some("")).unwrap();
@@ -170,7 +211,9 @@ fn config_utils_processor_to_known_colorspace() {
     );
 
     // Test IdentifyBuiltinColorSpace.
-    let id = |cfg: &Config, name: &str| Config::identify_builtin_color_space(cfg, &builtin, name).unwrap();
+    let id = |cfg: &Config, name: &str| {
+        Config::identify_builtin_color_space(cfg, &builtin, name).unwrap()
+    };
     cfg.set_inactive_color_spaces("OCIO v1 -- sRGB");
     assert_eq!(id(&cfg, "ACEScg"), "ACES cg");
     assert_eq!(id(&cfg, "sRGB - Texture"), "Texture -- sRGB");
@@ -190,7 +233,8 @@ fn config_utils_processor_to_known_colorspace() {
         "The heuristics currently only support scene-referred color spaces. Please set the interchange roles."
     );
 
-    cfg.set_role("cie_xyz_d65_interchange", Some("CIE-XYZ-D65")).unwrap();
+    cfg.set_role("cie_xyz_d65_interchange", Some("CIE-XYZ-D65"))
+        .unwrap();
     assert_eq!(id(&cfg, "sRGB - Display"), "sRGB - Display CS");
     cfg.set_inactive_color_spaces("CIE-XYZ-D65");
     assert_eq!(id(&cfg, "sRGB - Display"), "sRGB - Display CS");
@@ -204,8 +248,12 @@ fn config_utils_processor_to_known_colorspace() {
 #[ignore = "needs-merge"]
 fn config_utils_processor_to_known_colorspace_alt_config() {
     let _lock = env_lock();
-    let mut cfg = Config::create_from_str(ALT_CONFIG).unwrap().create_editable_copy();
-    let mut builtin = Config::create_from_file("ocio://default").unwrap().create_editable_copy();
+    let mut cfg = Config::create_from_str(ALT_CONFIG)
+        .unwrap()
+        .create_editable_copy();
+    let mut builtin = Config::create_from_file("ocio://default")
+        .unwrap()
+        .create_editable_copy();
     builtin.set_inactive_color_spaces(
         "ACES2065-1, ACEScg, Linear Rec.709 (sRGB), Linear P3-D65, Linear Rec.2020, CIE XYZ-D65 - Display-referred, sRGB - Display",
     );
@@ -214,13 +262,22 @@ fn config_utils_processor_to_known_colorspace_alt_config() {
         Config::identify_builtin_color_space(cfg, builtin, name).unwrap()
     };
 
-    assert_eq!(id(&cfg, &builtin, "Linear Rec.2020"), "scene-linear Rec.2020");
+    assert_eq!(
+        id(&cfg, &builtin, "Linear Rec.2020"),
+        "scene-linear Rec.2020"
+    );
     assert_eq!(id(&cfg, &builtin, "Linear P3-D65"), "scene-linear P3-D65");
 
     cfg.set_inactive_color_spaces("ACES2065-1");
-    assert_eq!(id(&cfg, &builtin, "Linear Rec.709 (sRGB)"), "scene-linear Rec.709-sRGB");
+    assert_eq!(
+        id(&cfg, &builtin, "Linear Rec.709 (sRGB)"),
+        "scene-linear Rec.709-sRGB"
+    );
     cfg.set_inactive_color_spaces("ACES2065-1, texture sRGB");
-    assert_eq!(id(&cfg, &builtin, "Linear Rec.709 (sRGB)"), "scene-linear Rec.709-sRGB");
+    assert_eq!(
+        id(&cfg, &builtin, "Linear Rec.709 (sRGB)"),
+        "scene-linear Rec.709-sRGB"
+    );
     cfg.set_inactive_color_spaces("ACES2065-1");
     assert_eq!(id(&cfg, &builtin, "sRGB - Texture"), "texture sRGB");
 
@@ -229,9 +286,13 @@ fn config_utils_processor_to_known_colorspace_alt_config() {
         "Heuristics were not able to find an equivalent to the requested color space: ACES2065-1."
     );
 
-    cfg.set_role("aces_interchange", Some("ACES2065-1")).unwrap();
+    cfg.set_role("aces_interchange", Some("ACES2065-1"))
+        .unwrap();
     assert_eq!(id(&cfg, &builtin, "sRGB - Texture"), "texture sRGB");
-    assert_eq!(id(&cfg, &builtin, "Linear Rec.709 (sRGB)"), "scene-linear Rec.709-sRGB");
+    assert_eq!(
+        id(&cfg, &builtin, "Linear Rec.709 (sRGB)"),
+        "scene-linear Rec.709-sRGB"
+    );
     cfg.set_inactive_color_spaces("");
     assert_eq!(id(&cfg, &builtin, "lin_ap0"), "ACES2065-1");
     cfg.set_role("aces_interchange", Some("")).unwrap();
@@ -240,8 +301,12 @@ fn config_utils_processor_to_known_colorspace_alt_config() {
         Config::identify_builtin_color_space(&cfg, &builtin, "sRGB - Display"),
         "The heuristics currently only support scene-referred color spaces. Please set the interchange roles."
     );
-    cfg.set_role("cie_xyz_d65_interchange", Some("CIE-XYZ D65")).unwrap();
-    assert_eq!(builtin.inactive_color_spaces().find("sRGB - Display"), Some(107));
+    cfg.set_role("cie_xyz_d65_interchange", Some("CIE-XYZ D65"))
+        .unwrap();
+    assert_eq!(
+        builtin.inactive_color_spaces().find("sRGB - Display"),
+        Some(107)
+    );
     assert_eq!(id(&cfg, &builtin, "sRGB - Display"), "sRGB");
     cfg.set_role("cie_xyz_d65_interchange", Some("")).unwrap();
 
@@ -252,10 +317,26 @@ fn config_utils_processor_to_known_colorspace_alt_config() {
 
     let pair = |a: &str, b: &str| (a.to_string(), b.to_string());
     let cases = [
-        ("scene-linear Rec.709-sRGB, ACES2065-1", "scene-linear Rec.709-sRGB", "lin_rec709_srgb"),
-        ("texture sRGB, scene-linear Rec.709-sRGB, ACES2065-1", "lin_p3d65", "lin_rec709_srgb"),
-        ("scene-linear P3-D65, texture sRGB, scene-linear Rec.709-sRGB, ACES2065-1", "Raw", "lin_rec709_srgb"),
-        ("scene-linear P3-D65, texture sRGB, scene-linear Rec.709-sRGB", "Raw", "Raw"),
+        (
+            "scene-linear Rec.709-sRGB, ACES2065-1",
+            "scene-linear Rec.709-sRGB",
+            "lin_rec709_srgb",
+        ),
+        (
+            "texture sRGB, scene-linear Rec.709-sRGB, ACES2065-1",
+            "lin_p3d65",
+            "lin_rec709_srgb",
+        ),
+        (
+            "scene-linear P3-D65, texture sRGB, scene-linear Rec.709-sRGB, ACES2065-1",
+            "Raw",
+            "lin_rec709_srgb",
+        ),
+        (
+            "scene-linear P3-D65, texture sRGB, scene-linear Rec.709-sRGB",
+            "Raw",
+            "Raw",
+        ),
     ];
     for (inactive, src, dst) in cases {
         cfg.set_inactive_color_spaces(inactive);

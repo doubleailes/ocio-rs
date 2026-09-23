@@ -38,15 +38,21 @@ impl OciozArchive {
     pub fn open(path: &str) -> Result<Self> {
         let file = std::fs::File::open(path)
             .map_err(|_| Error::msg(format!("Error could not read OCIOZ archive: {path}")))?;
-        let mut zip = zip::ZipArchive::new(file)
-            .map_err(|_| Error::msg(format!("Could not open {path} in order to get the entries.")))?;
+        let mut zip = zip::ZipArchive::new(file).map_err(|_| {
+            Error::msg(format!(
+                "Could not open {path} in order to get the entries."
+            ))
+        })?;
         let mut entries = BTreeMap::new();
         for i in 0..zip.len() {
             if let Ok(f) = zip.by_index_raw(i) {
                 entries.insert(f.name().to_string(), format!("{}{}", f.name(), f.crc32()));
             }
         }
-        Ok(Self { path: path.to_string(), entries })
+        Ok(Self {
+            path: path.to_string(),
+            entries,
+        })
     }
 
     /// Path of the archive.
@@ -61,10 +67,16 @@ impl OciozArchive {
 
     fn read_entry(&self, filepath: &str) -> Result<Vec<u8>> {
         let file = std::fs::File::open(&self.path).map_err(|_| {
-            Error::msg(format!("Could not open {} in order to get the file: {}", self.path, filepath))
+            Error::msg(format!(
+                "Could not open {} in order to get the file: {}",
+                self.path, filepath
+            ))
         })?;
         let mut zip = zip::ZipArchive::new(file).map_err(|_| {
-            Error::msg(format!("Could not open {} in order to get the file: {}", self.path, filepath))
+            Error::msg(format!(
+                "Could not open {} in order to get the file: {}",
+                self.path, filepath
+            ))
         })?;
         for i in 0..zip.len() {
             let mut f = match zip.by_index(i) {
@@ -111,10 +123,13 @@ impl OciozArchive {
     /// Make the LUT files available to the config: they are extracted in a
     /// private temporary directory used as the config working directory.
     pub(crate) fn prepare_context(&self, config: &mut Config) -> Result<()> {
-        let has_luts = self
-            .entries
-            .keys()
-            .any(|k| !k.ends_with('/') && !path_equal(k, &format!("{OCIO_CONFIG_DEFAULT_NAME}{OCIO_CONFIG_DEFAULT_FILE_EXT}")));
+        let has_luts = self.entries.keys().any(|k| {
+            !k.ends_with('/')
+                && !path_equal(
+                    k,
+                    &format!("{OCIO_CONFIG_DEFAULT_NAME}{OCIO_CONFIG_DEFAULT_FILE_EXT}"),
+                )
+        });
         if !has_luts {
             return Ok(());
         }
@@ -126,7 +141,10 @@ impl OciozArchive {
             .map(|d| d.as_nanos())
             .unwrap_or(0);
         let abs = crate::path_utils::absolute(&self.path);
-        let id = format!("{:x}", md5::compute(format!("{abs}{stamp}{}", meta.len()).as_bytes()));
+        let id = format!(
+            "{:x}",
+            md5::compute(format!("{abs}{stamp}{}", meta.len()).as_bytes())
+        );
         let dir = std::env::temp_dir().join(format!("ocio-ocioz-{id}"));
         let dir_str = dir.to_string_lossy().replace('\\', "/");
         if !dir.join(".complete").exists() {
@@ -142,14 +160,16 @@ impl OciozArchive {
 pub fn extract_ocioz_archive(archive_path: &str, destination: &str) -> Result<()> {
     let file = std::fs::File::open(archive_path)
         .map_err(|_| Error::msg(format!("Could not open {archive_path} for reading.")))?;
-    let mut zip =
-        zip::ZipArchive::new(file).map_err(|_| Error::msg(format!("Could not open {archive_path} for reading.")))?;
+    let mut zip = zip::ZipArchive::new(file)
+        .map_err(|_| Error::msg(format!("Could not open {archive_path} for reading.")))?;
     if zip.is_empty() {
         return Err(Error::msg("No files in archive."));
     }
     let dest = std::path::PathBuf::from(crate::path_utils::normpath(destination));
     for i in 0..zip.len() {
-        let mut f = zip.by_index(i).map_err(|_| Error::msg(format!("Could not extract: {archive_path}")))?;
+        let mut f = zip
+            .by_index(i)
+            .map_err(|_| Error::msg(format!("Could not extract: {archive_path}")))?;
         let rel = match f.enclosed_name() {
             Some(p) => p,
             None => return Err(Error::msg(format!("Could not extract: {archive_path}"))),
@@ -160,13 +180,16 @@ pub fn extract_ocioz_archive(archive_path: &str, destination: &str) -> Result<()
             continue;
         }
         if f.size() > MAX_ENTRY_SIZE {
-            return Err(Error::msg("OCIOZ archive entry size is invalid or exceeds maximum allowed size."));
+            return Err(Error::msg(
+                "OCIOZ archive entry size is invalid or exceeds maximum allowed size.",
+            ));
         }
         if let Some(parent) = out.parent() {
             std::fs::create_dir_all(parent)?;
         }
         let mut buf = Vec::new();
-        f.read_to_end(&mut buf).map_err(|_| Error::msg(format!("Could not extract: {archive_path}")))?;
+        f.read_to_end(&mut buf)
+            .map_err(|_| Error::msg(format!("Could not extract: {archive_path}")))?;
         std::fs::write(&out, buf)?;
     }
     Ok(())
@@ -194,10 +217,17 @@ fn add_supported_files<W: Write + std::io::Seek>(
                 _ => String::new(),
             };
             if !ext.is_empty() && FormatRegistry::instance().is_format_extension_supported(&ext) {
-                let rel = p.strip_prefix(root).unwrap_or(&p).to_string_lossy().replace('\\', "/");
+                let rel = p
+                    .strip_prefix(root)
+                    .unwrap_or(&p)
+                    .to_string_lossy()
+                    .replace('\\', "/");
                 let data = std::fs::read(&p)?;
                 zip.start_file(rel.as_str(), options).map_err(|_| {
-                    Error::msg(format!("Could not write LUT file {} to in-memory archive.", p.display()))
+                    Error::msg(format!(
+                        "Could not write LUT file {} to in-memory archive.",
+                        p.display()
+                    ))
                 })?;
                 zip.write_all(&data)?;
             }
@@ -223,7 +253,9 @@ pub fn archive_config(config: &Config, working_dir: &str) -> Result<Vec<u8>> {
         .map_err(|_| Error::msg("Could not write config to in-memory archive."))?;
     let root = std::path::PathBuf::from(working_dir);
     add_supported_files(&mut zip, &root, &root, options)?;
-    let cursor = zip.finish().map_err(|e| Error::msg(format!("Could not write the archive: {e}")))?;
+    let cursor = zip
+        .finish()
+        .map_err(|e| Error::msg(format!("Could not write the archive: {e}")))?;
     Ok(cursor.into_inner())
 }
 
@@ -240,7 +272,8 @@ impl Config {
             let norm = crate::path_utils::normpath(path);
             !(crate::path_utils::is_absolute(&norm)
                 || norm.starts_with("..")
-                || (super::utils::contains_context_variables(path) && (path.starts_with('$') || path.starts_with('%'))))
+                || (super::utils::contains_context_variables(path)
+                    && (path.starts_with('$') || path.starts_with('%'))))
         };
         for i in 0..self.num_search_paths() {
             if !valid(self.search_path_by_index(i)) {

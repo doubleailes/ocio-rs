@@ -155,7 +155,21 @@ impl ColorSpace {
                     || c.is_ascii_lowercase()
                     || matches!(
                         c,
-                        '.' | '-' | '_' | '~' | '/' | '*' | '#' | '%' | '^' | '+' | '(' | ')' | '[' | ']' | '|' | ':'
+                        '.' | '-'
+                            | '_'
+                            | '~'
+                            | '/'
+                            | '*'
+                            | '#'
+                            | '%'
+                            | '^'
+                            | '+'
+                            | '('
+                            | ')'
+                            | '['
+                            | ']'
+                            | '|'
+                            | ':'
                     )
             };
             if !id.chars().all(allowed) {
@@ -349,7 +363,10 @@ impl PartialEq for ColorSpaceSet {
     /// Only the names are compared.
     fn eq(&self, other: &Self) -> bool {
         self.color_spaces.len() == other.color_spaces.len()
-            && self.color_spaces.iter().all(|cs| other.has_color_space(cs.name()))
+            && self
+                .color_spaces
+                .iter()
+                .all(|cs| other.has_color_space(cs.name()))
     }
 }
 
@@ -373,7 +390,8 @@ impl ColorSpaceSet {
 
     /// Color space by name or alias.
     pub fn color_space(&self, name: &str) -> Option<&ColorSpace> {
-        self.color_space_index(name).and_then(|i| self.color_spaces.get(i))
+        self.color_space_index(name)
+            .and_then(|i| self.color_spaces.get(i))
     }
 
     /// Index of the color space by name or alias.
@@ -442,7 +460,11 @@ impl ColorSpaceSet {
             return;
         }
         let n = lower(name);
-        if let Some(pos) = self.color_spaces.iter().position(|cs| lower(cs.name()) == n) {
+        if let Some(pos) = self
+            .color_spaces
+            .iter()
+            .position(|cs| lower(cs.name()) == n)
+        {
             self.color_spaces.remove(pos);
         }
     }

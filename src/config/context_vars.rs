@@ -6,7 +6,9 @@ use super::look_parse::LookParseResult;
 use super::{ColorSpace, Config, Look, NamedTransform};
 use crate::context::Context;
 use crate::error::{Error, Result};
-use crate::transforms::{ColorSpaceTransform, DisplayViewTransform, FileTransform, LookTransform, Transform};
+use crate::transforms::{
+    ColorSpaceTransform, DisplayViewTransform, FileTransform, LookTransform, Transform,
+};
 use crate::types::{ColorSpaceDirection, TransformDirection, ViewTransformDirection};
 use std::cell::Cell;
 
@@ -20,7 +22,9 @@ impl DepthGuard {
     fn enter() -> Result<Self> {
         let d = DEPTH.with(|d| d.get());
         if d > 32 {
-            return Err(Error::msg("Cycle detected while collecting context variables."));
+            return Err(Error::msg(
+                "Cycle detected while collecting context variables.",
+            ));
         }
         DEPTH.with(|c| c.set(d + 1));
         Ok(DepthGuard)
@@ -60,20 +64,40 @@ pub fn collect_context_variables(
     }
 }
 
-fn collect_opt(config: &Config, context: &Context, t: Option<&Transform>, used: &mut Context) -> Result<bool> {
+fn collect_opt(
+    config: &Config,
+    context: &Context,
+    t: Option<&Transform>,
+    used: &mut Context,
+) -> Result<bool> {
     match t {
         Some(t) => collect_context_variables(config, context, t, used),
         None => Ok(false),
     }
 }
 
-fn collect_color_space(config: &Config, context: &Context, cs: Option<&ColorSpace>, used: &mut Context) -> Result<bool> {
+fn collect_color_space(
+    config: &Config,
+    context: &Context,
+    cs: Option<&ColorSpace>,
+    used: &mut Context,
+) -> Result<bool> {
     let mut found = false;
     if let Some(cs) = cs {
-        if collect_opt(config, context, cs.transform(ColorSpaceDirection::ToReference), used)? {
+        if collect_opt(
+            config,
+            context,
+            cs.transform(ColorSpaceDirection::ToReference),
+            used,
+        )? {
             found = true;
         }
-        if collect_opt(config, context, cs.transform(ColorSpaceDirection::FromReference), used)? {
+        if collect_opt(
+            config,
+            context,
+            cs.transform(ColorSpaceDirection::FromReference),
+            used,
+        )? {
             found = true;
         }
     }
@@ -88,10 +112,20 @@ fn collect_named_transform(
 ) -> Result<bool> {
     let mut found = false;
     if let Some(nt) = nt {
-        if collect_opt(config, context, nt.transform(TransformDirection::Forward), used)? {
+        if collect_opt(
+            config,
+            context,
+            nt.transform(TransformDirection::Forward),
+            used,
+        )? {
             found = true;
         }
-        if collect_opt(config, context, nt.transform(TransformDirection::Inverse), used)? {
+        if collect_opt(
+            config,
+            context,
+            nt.transform(TransformDirection::Inverse),
+            used,
+        )? {
             found = true;
         }
     }
@@ -121,7 +155,8 @@ fn collect_color_space_transform(
                 }
             }
             None => {
-                if collect_named_transform(config, context, config.get_named_transform(name), used)? {
+                if collect_named_transform(config, context, config.get_named_transform(name), used)?
+                {
                     found = true;
                 }
             }
@@ -158,7 +193,12 @@ pub(crate) fn collect_look(
     Ok(found)
 }
 
-fn collect_looks_str(config: &Config, context: &Context, looks: &str, used: &mut Context) -> Result<bool> {
+fn collect_looks_str(
+    config: &Config,
+    context: &Context,
+    looks: &str,
+    used: &mut Context,
+) -> Result<bool> {
     let mut found = false;
     let mut parse = LookParseResult::new();
     parse.parse(looks);
@@ -174,22 +214,39 @@ fn collect_looks_str(config: &Config, context: &Context, looks: &str, used: &mut
     Ok(found)
 }
 
-fn collect_display_view(config: &Config, context: &Context, t: &DisplayViewTransform, used: &mut Context) -> Result<bool> {
+fn collect_display_view(
+    config: &Config,
+    context: &Context,
+    t: &DisplayViewTransform,
+    used: &mut Context,
+) -> Result<bool> {
     let mut found = false;
     if collect_color_space(config, context, config.get_color_space(&t.src), used)? {
         found = true;
     }
     let cs_name = config.display_view_color_space_name(&t.display, &t.view);
-    if !cs_name.is_empty() && collect_color_space(config, context, config.get_color_space(cs_name), used)? {
+    if !cs_name.is_empty()
+        && collect_color_space(config, context, config.get_color_space(cs_name), used)?
+    {
         found = true;
     }
     let vt_name = config.display_view_transform_name(&t.display, &t.view);
     if !vt_name.is_empty() {
         if let Some(vt) = config.view_transform(vt_name) {
-            if collect_opt(config, context, vt.transform(ViewTransformDirection::ToReference), used)? {
+            if collect_opt(
+                config,
+                context,
+                vt.transform(ViewTransformDirection::ToReference),
+                used,
+            )? {
                 found = true;
             }
-            if collect_opt(config, context, vt.transform(ViewTransformDirection::FromReference), used)? {
+            if collect_opt(
+                config,
+                context,
+                vt.transform(ViewTransformDirection::FromReference),
+                used,
+            )? {
                 found = true;
             }
         }
@@ -203,7 +260,12 @@ fn collect_display_view(config: &Config, context: &Context, t: &DisplayViewTrans
     Ok(found)
 }
 
-fn collect_look_transform(config: &Config, context: &Context, t: &LookTransform, used: &mut Context) -> Result<bool> {
+fn collect_look_transform(
+    config: &Config,
+    context: &Context,
+    t: &LookTransform,
+    used: &mut Context,
+) -> Result<bool> {
     let mut found = false;
     if collect_color_space(config, context, config.get_color_space(&t.src), used)? {
         found = true;
@@ -240,7 +302,10 @@ fn collect_file(context: &Context, t: &FileTransform, used: &mut Context) -> boo
     let mut ctx_filepath = new_context_like(context);
     match context.resolve_file_location_with_used(&resolved, &mut ctx_filepath) {
         Ok(path) => {
-            let same = empty.resolve_file_location(&resolved).map(|p| p == path).unwrap_or(false);
+            let same = empty
+                .resolve_file_location(&resolved)
+                .map(|p| p == path)
+                .unwrap_or(false);
             if !same {
                 found = true;
                 used.add_string_vars(&ctx_filepath);

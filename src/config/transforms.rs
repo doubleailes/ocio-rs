@@ -11,7 +11,9 @@ use crate::error::{Error, Result};
 use crate::ops::noop::create_look_no_op;
 use crate::ops::{Op, OpVec, Pixel};
 use crate::transforms::build::build_ops;
-use crate::transforms::{BuildOps, ColorSpaceTransform, DisplayViewTransform, LookTransform, Validate};
+use crate::transforms::{
+    BuildOps, ColorSpaceTransform, DisplayViewTransform, LookTransform, Validate,
+};
 use crate::types::{
     Allocation, ColorSpaceDirection, ReferenceSpaceType, TransformDirection, ViewTransformDirection,
 };
@@ -73,19 +75,33 @@ fn create_gpu_allocation_no_op(ops: &mut OpVec, cs: &ColorSpace) {
 impl Validate for ColorSpaceTransform {
     fn validate(&self) -> Result<()> {
         if self.src.is_empty() {
-            return Err(Error::msg("ColorSpaceTransform: empty source color space name."));
+            return Err(Error::msg(
+                "ColorSpaceTransform: empty source color space name.",
+            ));
         }
         if self.dst.is_empty() {
-            return Err(Error::msg("ColorSpaceTransform: empty destination color space name."));
+            return Err(Error::msg(
+                "ColorSpaceTransform: empty destination color space name.",
+            ));
         }
         Ok(())
     }
 }
 
 impl BuildOps for ColorSpaceTransform {
-    fn build_ops(&self, ops: &mut OpVec, config: &Config, context: &Context, dir: TransformDirection) -> Result<()> {
+    fn build_ops(
+        &self,
+        ops: &mut OpVec,
+        config: &Config,
+        context: &Context,
+        dir: TransformDirection,
+    ) -> Result<()> {
         let forward = dir.combine(self.direction) == TransformDirection::Forward;
-        let (src_name, dst_name) = if forward { (&self.src, &self.dst) } else { (&self.dst, &self.src) };
+        let (src_name, dst_name) = if forward {
+            (&self.src, &self.dst)
+        } else {
+            (&self.dst, &self.src)
+        };
         let src_resolved = context.resolve_string_var(src_name);
         let dst_resolved = context.resolve_string_var(dst_name);
         let src = config.get_color_space(&src_resolved);
@@ -109,7 +125,9 @@ impl BuildOps for ColorSpaceTransform {
             return build_ops(ops, config, context, &t, TransformDirection::Forward);
         }
         match (src, dst) {
-            (Some(s), Some(d)) => build_color_space_ops(ops, config, context, s, d, self.data_bypass),
+            (Some(s), Some(d)) => {
+                build_color_space_ops(ops, config, context, s, d, self.data_bypass)
+            }
             _ => Ok(()),
         }
     }
@@ -195,7 +213,13 @@ pub(crate) fn build_color_space_ops(
         return Ok(());
     }
     build_color_space_to_reference_ops(ops, config, context, src, data_bypass)?;
-    build_reference_conversion_ops(ops, config, context, src.reference_space_type(), dst.reference_space_type())?;
+    build_reference_conversion_ops(
+        ops,
+        config,
+        context,
+        src.reference_space_type(),
+        dst.reference_space_type(),
+    )?;
     build_color_space_from_reference_ops(ops, config, context, dst, data_bypass)
 }
 
@@ -253,9 +277,15 @@ pub(crate) fn build_reference_conversion_ops(
         Error::msg("There is no view transform between the main scene-referred space and the display-referred space.")
     })?;
     let (primary, secondary) = if src_ref == ReferenceSpaceType::Scene {
-        (ViewTransformDirection::FromReference, ViewTransformDirection::ToReference)
+        (
+            ViewTransformDirection::FromReference,
+            ViewTransformDirection::ToReference,
+        )
     } else {
-        (ViewTransformDirection::ToReference, ViewTransformDirection::FromReference)
+        (
+            ViewTransformDirection::ToReference,
+            ViewTransformDirection::FromReference,
+        )
     };
     if let Some(t) = view.transform(primary) {
         build_ops(ops, config, context, t, TransformDirection::Forward)?;
@@ -274,7 +304,9 @@ impl Validate for LookTransform {
             return Err(Error::msg("LookTransform: empty source color space name."));
         }
         if self.dst.is_empty() {
-            return Err(Error::msg("LookTransform: empty destination color space name."));
+            return Err(Error::msg(
+                "LookTransform: empty destination color space name.",
+            ));
         }
         Ok(())
     }
@@ -294,11 +326,14 @@ fn run_look_tokens<'a>(
             continue;
         }
         let look = config.look(name).ok_or_else(|| {
-            let mut s = format!("RunLookTokens error. The specified look, '{name}', cannot be found. ");
+            let mut s =
+                format!("RunLookTokens error. The specified look, '{name}', cannot be found. ");
             if config.num_looks() == 0 {
                 s.push_str(" (No looks defined in config).");
             } else {
-                let names: Vec<&str> = (0..config.num_looks()).map(|i| config.look_name_by_index(i)).collect();
+                let names: Vec<&str> = (0..config.num_looks())
+                    .map(|i| config.look_name_by_index(i))
+                    .collect();
                 s.push_str(&format!(" (looks: {}).", names.join(", ")));
             }
             Error::msg(s)
@@ -354,13 +389,27 @@ pub(crate) fn build_look_ops_from_result<'a>(
         return Ok(());
     }
     if options.len() == 1 {
-        return run_look_tokens(ops, current, skip_cs_conversion, config, context, &options[0]);
+        return run_look_tokens(
+            ops,
+            current,
+            skip_cs_conversion,
+            config,
+            context,
+            &options[0],
+        );
     }
     let mut msg = String::new();
     for (i, option) in options.iter().enumerate() {
         let mut cs = *current;
         let mut tmp = OpVec::new();
-        match run_look_tokens(&mut tmp, &mut cs, skip_cs_conversion, config, context, option) {
+        match run_look_tokens(
+            &mut tmp,
+            &mut cs,
+            skip_cs_conversion,
+            config,
+            context,
+            option,
+        ) {
             Ok(()) => {
                 *current = cs;
                 ops.extend(tmp);
@@ -379,7 +428,13 @@ pub(crate) fn build_look_ops_from_result<'a>(
 }
 
 impl BuildOps for LookTransform {
-    fn build_ops(&self, ops: &mut OpVec, config: &Config, context: &Context, dir: TransformDirection) -> Result<()> {
+    fn build_ops(
+        &self,
+        ops: &mut OpVec,
+        config: &Config,
+        context: &Context,
+        dir: TransformDirection,
+    ) -> Result<()> {
         let mut src = config.get_color_space(&self.src).ok_or_else(|| {
             Error::msg(format!(
                 "BuildLookOps error.The specified lookTransform specifies a src colorspace, '{}', which is not defined.",
@@ -412,7 +467,11 @@ impl BuildOps for LookTransform {
 
 /// Name of the color space resulting from applying the looks (the process
 /// space of the last applied look), `""` if none.
-pub(crate) fn looks_result_color_space(config: &Config, context: &Context, looks: &LookParseResult) -> Result<String> {
+pub(crate) fn looks_result_color_space(
+    config: &Config,
+    context: &Context,
+    looks: &LookParseResult,
+) -> Result<String> {
     if looks.is_empty() {
         return Ok(String::new());
     }
@@ -424,7 +483,11 @@ pub(crate) fn looks_result_color_space(config: &Config, context: &Context, looks
 
 /// `LookTransform::GetLooksResultColorSpace`: the color space resulting from
 /// applying the looks of `looks_str`.
-pub fn get_looks_result_color_space(config: &Config, context: &Context, looks_str: &str) -> Result<String> {
+pub fn get_looks_result_color_space(
+    config: &Config,
+    context: &Context,
+    looks_str: &str,
+) -> Result<String> {
     if looks_str.is_empty() {
         return Ok(String::new());
     }
@@ -439,7 +502,9 @@ pub fn get_looks_result_color_space(config: &Config, context: &Context, looks_st
 impl Validate for DisplayViewTransform {
     fn validate(&self) -> Result<()> {
         if self.src.is_empty() {
-            return Err(Error::msg("DisplayViewTransform: empty source color space name."));
+            return Err(Error::msg(
+                "DisplayViewTransform: empty source color space name.",
+            ));
         }
         if self.display.is_empty() {
             return Err(Error::msg("DisplayViewTransform: empty display name."));
@@ -468,7 +533,13 @@ fn build_source_to_display(
     data_bypass: bool,
 ) -> Result<()> {
     build_color_space_to_reference_ops(ops, config, context, source, data_bypass)?;
-    build_reference_conversion_ops(ops, config, context, source.reference_space_type(), vt.reference_space_type())?;
+    build_reference_conversion_ops(
+        ops,
+        config,
+        context,
+        source.reference_space_type(),
+        vt.reference_space_type(),
+    )?;
     if let Some(t) = vt.transform(ViewTransformDirection::FromReference) {
         build_ops(ops, config, context, t, TransformDirection::Forward)?;
     } else if let Some(t) = vt.transform(ViewTransformDirection::ToReference) {
@@ -496,12 +567,24 @@ fn build_display_to_source(
     } else {
         return Err(view_transform_error(vt));
     }
-    build_reference_conversion_ops(ops, config, context, vt.reference_space_type(), source.reference_space_type())?;
+    build_reference_conversion_ops(
+        ops,
+        config,
+        context,
+        vt.reference_space_type(),
+        source.reference_space_type(),
+    )?;
     build_color_space_from_reference_ops(ops, config, context, source, data_bypass)
 }
 
 impl BuildOps for DisplayViewTransform {
-    fn build_ops(&self, ops: &mut OpVec, config: &Config, context: &Context, dir: TransformDirection) -> Result<()> {
+    fn build_ops(
+        &self,
+        ops: &mut OpVec,
+        config: &Config,
+        context: &Context,
+        dir: TransformDirection,
+    ) -> Result<()> {
         let src_name = &self.src;
         let src_cs = config.get_color_space(src_name).ok_or_else(|| {
             if src_name.is_empty() {
@@ -514,7 +597,9 @@ impl BuildOps for DisplayViewTransform {
         })?;
         let display = &self.display;
         if config.num_views(display) == 0 {
-            return Err(Error::msg(format!("DisplayViewTransform error. Display '{display}' not found.")));
+            return Err(Error::msg(format!(
+                "DisplayViewTransform error. Display '{display}' not found."
+            )));
         }
         let view = &self.view;
         let vt_name = config.display_view_transform_name(display, view);
@@ -532,7 +617,11 @@ impl BuildOps for DisplayViewTransform {
             }
         }
         let cs_name = config.display_view_color_space_name(display, view);
-        let display_cs_name: &str = if View::use_display_name(cs_name) { display } else { cs_name };
+        let display_cs_name: &str = if View::use_display_name(cs_name) {
+            display
+        } else {
+            cs_name
+        };
         let display_cs = config.get_color_space(display_cs_name);
         let mut cs_nt: Option<&NamedTransform> = None;
         if display_cs.is_none() {
@@ -579,11 +668,25 @@ impl BuildOps for DisplayViewTransform {
                     let t = NamedTransform::get_transform(nt, TransformDirection::Forward)?;
                     build_ops(ops, config, context, &t, TransformDirection::Forward)?;
                     if let Some(dcs) = display_cs {
-                        build_color_space_from_reference_ops(ops, config, context, dcs, data_bypass)?;
+                        build_color_space_from_reference_ops(
+                            ops,
+                            config,
+                            context,
+                            dcs,
+                            data_bypass,
+                        )?;
                     }
                 } else if let Some(vt) = view_transform {
                     if let Some(dcs) = display_cs {
-                        build_source_to_display(ops, config, context, current, vt, dcs, data_bypass)?;
+                        build_source_to_display(
+                            ops,
+                            config,
+                            context,
+                            current,
+                            vt,
+                            dcs,
+                            data_bypass,
+                        )?;
                     }
                 } else if let Some(dcs) = display_cs {
                     build_color_space_ops(ops, config, context, current, dcs, data_bypass)?;
@@ -620,8 +723,14 @@ impl BuildOps for DisplayViewTransform {
                     let mut current = vt_source;
                     build_look_ops_from_result(ops, &mut current, false, config, context, &looks)?;
                     match current {
-                        Some(cur) => build_color_space_ops(ops, config, context, cur, src_cs, data_bypass)?,
-                        None => return Err(Error::msg("BuildColorSpaceOps failed, null srcColorSpace.")),
+                        Some(cur) => {
+                            build_color_space_ops(ops, config, context, cur, src_cs, data_bypass)?
+                        }
+                        None => {
+                            return Err(Error::msg(
+                                "BuildColorSpaceOps failed, null srcColorSpace.",
+                            ))
+                        }
                     }
                 }
             }

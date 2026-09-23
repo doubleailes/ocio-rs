@@ -7,7 +7,11 @@ use ocio::config::{ColorSpace, FileRules, Look, NamedTransform, ViewTransform};
 use ocio::*;
 
 fn matrix_with_offset(offset: [f64; 4]) -> Transform {
-    MatrixTransform { offset, ..Default::default() }.into()
+    MatrixTransform {
+        offset,
+        ..Default::default()
+    }
+    .into()
 }
 
 #[test]
@@ -20,8 +24,14 @@ fn named_transform_basic() {
     nt.set_name("NewName");
     assert_eq!(nt.name(), "NewName");
 
-    nt.set_transform(Some(MatrixTransform::default().into()), TransformDirection::Forward);
-    assert!(matches!(nt.transform(TransformDirection::Forward), Some(Transform::Matrix(_))));
+    nt.set_transform(
+        Some(MatrixTransform::default().into()),
+        TransformDirection::Forward,
+    );
+    assert!(matches!(
+        nt.transform(TransformDirection::Forward),
+        Some(Transform::Matrix(_))
+    ));
     assert!(nt.transform(TransformDirection::Inverse).is_none());
 
     let fwd = NamedTransform::get_transform(&nt, TransformDirection::Forward).unwrap();
@@ -39,7 +49,10 @@ matrix=[1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], offset=[0, 0, 0, 0]>>"
     // Faulty cases.
     let mut config = Config::create_raw().create_editable_copy();
     let mut nt_inv = NamedTransform::new();
-    assert_err!(config.add_named_transform(&nt_inv), "Named transform must have a non-empty name");
+    assert_err!(
+        config.add_named_transform(&nt_inv),
+        "Named transform must have a non-empty name"
+    );
     nt_inv.set_name("name");
     assert_err!(
         config.add_named_transform(&nt_inv),
@@ -108,7 +121,10 @@ fn named_transform_alias() {
     // Add and access named transforms in a config.
     let mut config = Config::create_raw().create_editable_copy();
     nt.set_name("name");
-    nt.set_transform(Some(MatrixTransform::default().into()), TransformDirection::Forward);
+    nt.set_transform(
+        Some(MatrixTransform::default().into()),
+        TransformDirection::Forward,
+    );
     {
         config.add_named_transform(&nt).unwrap();
         nt.set_name("other");
@@ -191,9 +207,15 @@ fn named_transform_static_get_transform() {
     let offset_i = [-0.1, -0.2, -0.3, -0.4];
 
     let mut nt1 = NamedTransform::new();
-    nt1.set_transform(Some(matrix_with_offset(offset_f)), TransformDirection::Forward);
+    nt1.set_transform(
+        Some(matrix_with_offset(offset_f)),
+        TransformDirection::Forward,
+    );
     let mut nt2 = NamedTransform::new();
-    nt2.set_transform(Some(matrix_with_offset(offset_i)), TransformDirection::Inverse);
+    nt2.set_transform(
+        Some(matrix_with_offset(offset_i)),
+        TransformDirection::Inverse,
+    );
 
     let cases = [
         (&nt1, TransformDirection::Forward, offset_f),
@@ -203,7 +225,9 @@ fn named_transform_static_get_transform() {
     ];
     for (nt, dir, expected) in cases {
         let t = NamedTransform::get_transform(nt, dir).unwrap();
-        let proc = config.get_processor_for_transform(&t, TransformDirection::Forward).unwrap();
+        let proc = config
+            .get_processor_for_transform(&t, TransformDirection::Forward)
+            .unwrap();
         check_single_matrix(&proc, "", &expected);
     }
 }
@@ -301,14 +325,20 @@ fn config_named_transform_processor() {
     for name in ["forward", "nt1"] {
         let nt = config.get_named_transform(name).unwrap();
         let tf = nt.transform(TransformDirection::Forward).unwrap();
-        let proc = config.get_processor_for_transform(tf, TransformDirection::Forward).unwrap();
+        let proc = config
+            .get_processor_for_transform(tf, TransformDirection::Forward)
+            .unwrap();
         check_single_matrix(&proc, FWD, &offset_f);
     }
 
     let nt = config.get_named_transform("forward").unwrap().clone();
-    let proc = config.get_processor_for_named_transform(&nt, TransformDirection::Forward).unwrap();
+    let proc = config
+        .get_processor_for_named_transform(&nt, TransformDirection::Forward)
+        .unwrap();
     check_single_matrix(&proc, FWD, &offset_f);
-    let proc = config.get_processor_for_named_transform(&nt, TransformDirection::Inverse).unwrap();
+    let proc = config
+        .get_processor_for_named_transform(&nt, TransformDirection::Inverse)
+        .unwrap();
     check_single_matrix(&proc, FWD, &neg(offset_f));
 
     let nt = config.get_named_transform("inverse").unwrap().clone();
@@ -321,44 +351,82 @@ fn config_named_transform_processor() {
         .unwrap();
     check_single_matrix(&proc, INV, &offset_i);
 
-    let proc = config.get_processor_named_transform("inverse", TransformDirection::Forward).unwrap();
+    let proc = config
+        .get_processor_named_transform("inverse", TransformDirection::Forward)
+        .unwrap();
     check_single_matrix(&proc, INV, &neg(offset_i));
-    let proc = config.get_processor_named_transform("inverse", TransformDirection::Inverse).unwrap();
+    let proc = config
+        .get_processor_named_transform("inverse", TransformDirection::Inverse)
+        .unwrap();
     check_single_matrix(&proc, INV, &offset_i);
 
     let proc = config
-        .get_processor_named_transform_with_context(&context, "forward", TransformDirection::Forward)
+        .get_processor_named_transform_with_context(
+            &context,
+            "forward",
+            TransformDirection::Forward,
+        )
         .unwrap();
     check_single_matrix(&proc, FWD, &offset_f);
     let proc = config
-        .get_processor_named_transform_with_context(&context, "forward", TransformDirection::Inverse)
+        .get_processor_named_transform_with_context(
+            &context,
+            "forward",
+            TransformDirection::Inverse,
+        )
         .unwrap();
     check_single_matrix(&proc, FWD, &neg(offset_f));
 
-    let proc = config.get_processor_named_transform("ntb", TransformDirection::Forward).unwrap();
+    let proc = config
+        .get_processor_named_transform("ntb", TransformDirection::Forward)
+        .unwrap();
     check_single_matrix(&proc, FWD, &offset_f);
-    let proc = config.get_processor_named_transform("nt3", TransformDirection::Inverse).unwrap();
+    let proc = config
+        .get_processor_named_transform("nt3", TransformDirection::Inverse)
+        .unwrap();
     check_single_matrix(&proc, INV, &offset_i);
 
     // Display color space to named transform.
-    check_single_matrix(&config.get_processor("dcs", FWD).unwrap(), FWD, &neg(offset_f));
-    check_single_matrix(&config.get_processor("display color space", "ntf").unwrap(), FWD, &neg(offset_f));
+    check_single_matrix(
+        &config.get_processor("dcs", FWD).unwrap(),
+        FWD,
+        &neg(offset_f),
+    );
+    check_single_matrix(
+        &config.get_processor("display color space", "ntf").unwrap(),
+        FWD,
+        &neg(offset_f),
+    );
 
     // Color space to named transform.
     check_single_matrix(&config.get_processor("cs", INV).unwrap(), INV, &offset_i);
-    check_single_matrix(&config.get_processor("colorspace", "nt2").unwrap(), INV, &offset_i);
+    check_single_matrix(
+        &config.get_processor("colorspace", "nt2").unwrap(),
+        INV,
+        &offset_i,
+    );
 
     // Display color space to named transform (using ColorSpaceTransform).
     let cst: Transform = ColorSpaceTransform::new("dcs", "both").into();
-    let proc = config.get_processor_for_transform(&cst, TransformDirection::Forward).unwrap();
+    let proc = config
+        .get_processor_for_transform(&cst, TransformDirection::Forward)
+        .unwrap();
     check_single_matrix(&proc, INV, &offset_i);
 
     // Named transform to color space.
     check_single_matrix(&config.get_processor(FWD, "cs").unwrap(), FWD, &offset_f);
-    check_single_matrix(&config.get_processor("ntf", "colorspace").unwrap(), FWD, &offset_f);
+    check_single_matrix(
+        &config.get_processor("ntf", "colorspace").unwrap(),
+        FWD,
+        &offset_f,
+    );
 
     // Named transform to display color space.
-    check_single_matrix(&config.get_processor(INV, "dcs").unwrap(), INV, &neg(offset_i));
+    check_single_matrix(
+        &config.get_processor(INV, "dcs").unwrap(),
+        INV,
+        &neg(offset_i),
+    );
     check_single_matrix(&config.get_processor("both", "cs").unwrap(), FWD, &offset_f);
 
     // Named transform to named transform.
@@ -409,7 +477,10 @@ fn config_named_transform_validation() {
     assert!(nt.transform(TransformDirection::Forward).is_some());
     assert!(nt.transform(TransformDirection::Inverse).is_some());
 
-    assert_err!(config.get_processor("raw", "missing"), "Color space 'missing' could not be found");
+    assert_err!(
+        config.get_processor("raw", "missing"),
+        "Color space 'missing' could not be found"
+    );
 
     // NamedTransform can't use a role name.
     assert_err!(
@@ -438,14 +509,23 @@ fn config_named_transform_validation() {
     // NamedTransform can't use a view transform name.
     let mut vt = ViewTransform::new(ReferenceSpaceType::Scene);
     vt.set_name("name");
-    vt.set_transform(Some(MatrixTransform::default().into()), ViewTransformDirection::ToReference);
+    vt.set_transform(
+        Some(MatrixTransform::default().into()),
+        ViewTransformDirection::ToReference,
+    );
     config.add_view_transform(&vt).unwrap();
-    assert_err!(config.validate(), "This name is already used for a view transform");
+    assert_err!(
+        config.validate(),
+        "This name is already used for a view transform"
+    );
     config.clear_view_transforms();
 
     config.set_major_version(1).unwrap();
     config.set_file_rules(&FileRules::new());
-    assert_err!(config.validate(), "Only version 2 (or higher) can have NamedTransforms");
+    assert_err!(
+        config.validate(),
+        "Only version 2 (or higher) can have NamedTransforms"
+    );
 }
 
 #[test]
@@ -537,7 +617,9 @@ fn config_named_transform_io() {
         config_edit.clear_looks();
 
         // Role can't use named transform.
-        config_edit.set_role("newrole", Some("namedTransform1")).unwrap();
+        config_edit
+            .set_role("newrole", Some("namedTransform1"))
+            .unwrap();
         assert_err!(
             config_edit.validate(),
             "refers to a color space, 'namedTransform1', which is not defined"
@@ -546,7 +628,9 @@ fn config_named_transform_io() {
 
         // File rule can use named transform.
         let mut rules = config_edit.file_rules().clone();
-        rules.insert_rule(0, "newrule", "namedTransform1", "*", "*").unwrap();
+        rules
+            .insert_rule(0, "newrule", "namedTransform1", "*", "*")
+            .unwrap();
         config_edit.set_file_rules(&rules);
         config_edit.validate().unwrap();
     }
@@ -566,7 +650,10 @@ fn config_named_transform_io() {
 "#;
         let config_str = format!("{NT_IO_CONFIG_START}{NT}");
         let config = Config::create_from_str(&config_str).unwrap();
-        assert_err!(config.validate(), "ColorSpaceTransform: empty destination color space name");
+        assert_err!(
+            config.validate(),
+            "ColorSpaceTransform: empty destination color space name"
+        );
     }
 }
 
@@ -712,9 +799,18 @@ fn config_inactive_named_transforms() {
     assert_eq!(config.num_named_transforms_filtered(V::Inactive), 0);
     assert_eq!(config.num_named_transforms_filtered(V::Active), 3);
     assert_eq!(config.num_named_transforms_filtered(V::All), 3);
-    assert_eq!(config.named_transform_name_by_index_filtered(V::All, 0), "nt1");
-    assert_eq!(config.named_transform_name_by_index_filtered(V::All, 1), "nt2");
-    assert_eq!(config.named_transform_name_by_index_filtered(V::All, 2), "nt3");
+    assert_eq!(
+        config.named_transform_name_by_index_filtered(V::All, 0),
+        "nt1"
+    );
+    assert_eq!(
+        config.named_transform_name_by_index_filtered(V::All, 1),
+        "nt2"
+    );
+    assert_eq!(
+        config.named_transform_name_by_index_filtered(V::All, 2),
+        "nt3"
+    );
     assert_eq!(config.named_transform_name_by_index_filtered(V::All, 3), "");
     assert_eq!(config.num_named_transforms(), 3);
     assert_eq!(config.named_transform_name_by_index(0), "nt1");
@@ -735,12 +831,30 @@ fn config_inactive_named_transforms() {
     assert_eq!(config.num_named_transforms_filtered(V::Active), 2);
     assert_eq!(config.num_named_transforms_filtered(V::All), 3);
 
-    assert_eq!(config.named_transform_name_by_index_filtered(V::All, 0), "nt1");
-    assert_eq!(config.named_transform_name_by_index_filtered(V::All, 1), "nt2");
-    assert_eq!(config.named_transform_name_by_index_filtered(V::All, 2), "nt3");
-    assert_eq!(config.named_transform_name_by_index_filtered(V::Active, 0), "nt2");
-    assert_eq!(config.named_transform_name_by_index_filtered(V::Active, 1), "nt3");
-    assert_eq!(config.named_transform_name_by_index_filtered(V::Inactive, 0), "nt1");
+    assert_eq!(
+        config.named_transform_name_by_index_filtered(V::All, 0),
+        "nt1"
+    );
+    assert_eq!(
+        config.named_transform_name_by_index_filtered(V::All, 1),
+        "nt2"
+    );
+    assert_eq!(
+        config.named_transform_name_by_index_filtered(V::All, 2),
+        "nt3"
+    );
+    assert_eq!(
+        config.named_transform_name_by_index_filtered(V::Active, 0),
+        "nt2"
+    );
+    assert_eq!(
+        config.named_transform_name_by_index_filtered(V::Active, 1),
+        "nt3"
+    );
+    assert_eq!(
+        config.named_transform_name_by_index_filtered(V::Inactive, 0),
+        "nt1"
+    );
 
     assert_eq!(config.num_named_transforms(), 2);
     assert_eq!(config.named_transform_name_by_index(0), "nt2");
@@ -793,7 +907,9 @@ fn config_inactive_named_transform_precedence() {
         format!("{INACTIVE_NT_CONFIG_START}inactive_colorspaces: [nt2]\n{INACTIVE_NT_CONFIG_END}");
 
     let _unset = EnvGuard::set(OCIO_INACTIVE_COLORSPACES_ENVVAR, None);
-    let config = Config::create_from_str(&config_str).unwrap().create_editable_copy();
+    let config = Config::create_from_str(&config_str)
+        .unwrap()
+        .create_editable_copy();
     config.validate().unwrap();
 
     let n = |c: &Config, v| c.num_color_spaces_filtered(SearchReferenceSpaceType::All, v);
@@ -807,7 +923,9 @@ fn config_inactive_named_transform_precedence() {
 
     // Env. variable supersedes the config content.
     let _guard = EnvGuard::set(OCIO_INACTIVE_COLORSPACES_ENVVAR, Some("nt3, nt1, lnh"));
-    let mut config = Config::create_from_str(&config_str).unwrap().create_editable_copy();
+    let mut config = Config::create_from_str(&config_str)
+        .unwrap()
+        .create_editable_copy();
     config.validate().unwrap();
 
     assert_eq!(config.num_named_transforms_filtered(V::Inactive), 2);

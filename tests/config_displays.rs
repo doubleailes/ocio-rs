@@ -60,7 +60,9 @@ fn display_profile(active: &str) -> String {
 }
 
 fn displays(config: &Config) -> Vec<String> {
-    (0..config.num_displays()).map(|i| config.display(i)).collect()
+    (0..config.num_displays())
+        .map(|i| config.display(i))
+        .collect()
 }
 
 #[test]
@@ -70,7 +72,10 @@ fn config_display() {
     {
         let p = display_profile("[]");
         let config = check_roundtrip(&p);
-        assert_eq!(displays(&config), ["sRGB_2", "sRGB_F", "sRGB_1", "sRGB_3", "sRGB_B", "sRGB_A"]);
+        assert_eq!(
+            displays(&config),
+            ["sRGB_2", "sRGB_F", "sRGB_1", "sRGB_3", "sRGB_B", "sRGB_A"]
+        );
         assert_eq!(config.default_display(), "sRGB_2");
     }
     {
@@ -164,7 +169,9 @@ fn view_profile(active: &str) -> String {
 }
 
 fn views(config: &Config, display: &str) -> Vec<String> {
-    (0..config.num_views(display)).map(|i| config.view(display, i)).collect()
+    (0..config.num_views(display))
+        .map(|i| config.view(display, i))
+        .collect()
 }
 
 #[track_caller]
@@ -306,11 +313,15 @@ fn config_active_displayview_lists() {
     assert_eq!(config.num_active_displays(), 2);
     assert_eq!(config.num_active_views(), 2);
 
-    config.set_active_displays("sRGB:01, \"Name, with comma\", \"Quoted name\"").unwrap();
+    config
+        .set_active_displays("sRGB:01, \"Name, with comma\", \"Quoted name\"")
+        .unwrap();
     assert_eq!(config.num_active_displays(), 3);
     assert_eq!(config.active_display(0), Some("sRGB:01"));
     assert_eq!(config.active_display(1), Some("Name, with comma"));
-    config.set_active_views("v:01, \"View, with comma\", \"Quoted view\"").unwrap();
+    config
+        .set_active_views("v:01, \"View, with comma\", \"Quoted view\"")
+        .unwrap();
     assert_eq!(config.num_active_views(), 3);
     assert_eq!(config.active_view(0), Some("v:01"));
     assert_eq!(config.active_view(1), Some("View, with comma"));
@@ -331,7 +342,10 @@ fn config_active_displayview_lists() {
         config.remove_active_display("not found"),
         "Active display could not be removed from config"
     );
-    assert_err!(config.remove_active_view("not found"), "Active view could not be removed from config");
+    assert_err!(
+        config.remove_active_view("not found"),
+        "Active view could not be removed from config"
+    );
 
     config.set_active_displays("").unwrap();
     assert_eq!(config.num_active_displays(), 0);
@@ -343,8 +357,12 @@ fn config_active_displayview_lists() {
     assert_eq!(config.num_active_views(), 1);
 
     {
-        config.set_active_displays("sRGB:01, \"Name, with comma\", \"Quoted name\"").unwrap();
-        config.set_active_views("v:01, \"View, with comma\", \"Quoted view\"").unwrap();
+        config
+            .set_active_displays("sRGB:01, \"Name, with comma\", \"Quoted name\"")
+            .unwrap();
+        config
+            .set_active_views("v:01, \"View, with comma\", \"Quoted view\"")
+            .unwrap();
         let config2 = Config::create_from_str(&config.serialize().unwrap()).unwrap();
         assert_eq!(config2.num_active_displays(), 3);
         assert_eq!(config2.active_display(0), Some("sRGB:01"));
@@ -356,8 +374,12 @@ fn config_active_displayview_lists() {
         assert_eq!(config2.active_view(2), Some("Quoted view"));
     }
     {
-        config.set_active_displays("sRGB01 : Name : \"Quoted name\"").unwrap();
-        config.set_active_views("v01:View: \"Quoted view\"").unwrap();
+        config
+            .set_active_displays("sRGB01 : Name : \"Quoted name\"")
+            .unwrap();
+        config
+            .set_active_views("v01:View: \"Quoted view\"")
+            .unwrap();
         let config2 = Config::create_from_str(&config.serialize().unwrap()).unwrap();
         assert_eq!(config2.num_active_displays(), 3);
         assert_eq!(config2.active_displays(), "sRGB01, Name, Quoted name");

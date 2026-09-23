@@ -40,7 +40,12 @@ macro_rules! assert_err {
             Ok(_) => panic!("expected an error containing {:?}", $what),
             Err(e) => {
                 let msg = e.to_string();
-                assert!(msg.contains($what), "error {:?} does not contain {:?}", msg, $what);
+                assert!(
+                    msg.contains($what),
+                    "error {:?} does not contain {:?}",
+                    msg,
+                    $what
+                );
             }
         }
     }};
@@ -65,7 +70,10 @@ impl EnvGuard {
             Some(v) => std::env::set_var(name, v),
             None => std::env::remove_var(name),
         }
-        Self { name: name.to_string(), old }
+        Self {
+            name: name.to_string(),
+            old,
+        }
     }
 }
 
@@ -145,7 +153,20 @@ pub fn check_lines(actual: &str, expected: &str) {
     let a: Vec<&str> = actual.lines().collect();
     let e: Vec<&str> = expected.lines().collect();
     for (i, (x, y)) in a.iter().zip(e.iter()).enumerate() {
-        assert_eq!(x, y, "line {} differs:\nactual:\n{}\nexpected:\n{}", i + 1, actual, expected);
+        assert_eq!(
+            x,
+            y,
+            "line {} differs:\nactual:\n{}\nexpected:\n{}",
+            i + 1,
+            actual,
+            expected
+        );
     }
-    assert_eq!(a.len(), e.len(), "line count differs:\nactual:\n{}\nexpected:\n{}", actual, expected);
+    assert_eq!(
+        a.len(),
+        e.len(),
+        "line count differs:\nactual:\n{}\nexpected:\n{}",
+        actual,
+        expected
+    );
 }

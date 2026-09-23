@@ -132,16 +132,25 @@ colorspaces:
         config.validate().unwrap();
         assert_eq!(rules_of(&config).color_space(1).unwrap(), "default");
 
-        assert_eq!(config.color_space_from_filepath_with_index("/usr/cs2_file.exr"), ("cs2".into(), 0));
+        assert_eq!(
+            config.color_space_from_filepath_with_index("/usr/cs2_file.exr"),
+            ("cs2".into(), 0)
+        );
         assert!(!config.filepath_only_matches_default_rule("/usr/cs2_file.exr"));
-        assert_eq!(config.color_space_from_filepath_with_index("/usr/cs3/file.exr"), ("cs3".into(), 0));
+        assert_eq!(
+            config.color_space_from_filepath_with_index("/usr/cs3/file.exr"),
+            ("cs3".into(), 0)
+        );
         assert!(!config.filepath_only_matches_default_rule("/usr/cs3/file.exr"));
         assert_eq!(
             config.color_space_from_filepath_with_index("/usr/cs3/cs2_file.exr"),
             ("cs2".into(), 0)
         );
         assert!(!config.filepath_only_matches_default_rule("/usr/cs3/cs2_file.exr"));
-        assert_eq!(config.color_space_from_filepath_with_index("/usr/file.exr"), ("default".into(), 1));
+        assert_eq!(
+            config.color_space_from_filepath_with_index("/usr/file.exr"),
+            ("default".into(), 1)
+        );
         assert!(config.filepath_only_matches_default_rule("/usr/file.exr"));
     }
 }
@@ -157,7 +166,10 @@ fn file_rules_config_read_only() {
     assert_eq!(fr.extension(0).unwrap(), "");
     assert_eq!(fr.regex(0).unwrap(), "");
     assert_eq!(fr.color_space(0).unwrap(), ROLE_DEFAULT);
-    assert_err!(fr.name(1), "rule index '1' invalid. There are only '1' rules.");
+    assert_err!(
+        fr.name(1),
+        "rule index '1' invalid. There are only '1' rules."
+    );
     assert_err!(fr.index_for_rule("toto"), "rule name 'toto' not found");
 }
 
@@ -168,10 +180,17 @@ fn file_rules_config_insert_rule() {
     assert_eq!(fr.num_entries(), 1);
     fr.insert_rule(0, "rule", "raw", "*", "a").unwrap();
     assert_eq!(fr.num_entries(), 2);
-    fr.insert_rule_regex(0, "TIFF rule", "raw", r".*\.TIF?F$").unwrap();
+    fr.insert_rule_regex(0, "TIFF rule", "raw", r".*\.TIF?F$")
+        .unwrap();
     assert_eq!(fr.num_entries(), 3);
-    assert_err!(fr.insert_rule(0, "rule", "raw", "*", "b"), "A rule named 'rule' already exists");
-    assert_err!(fr.insert_rule(4, "rule2", "raw", "*", "a"), "rule index '4' invalid");
+    assert_err!(
+        fr.insert_rule(0, "rule", "raw", "*", "b"),
+        "A rule named 'rule' already exists"
+    );
+    assert_err!(
+        fr.insert_rule(4, "rule2", "raw", "*", "a"),
+        "rule index '4' invalid"
+    );
     assert_err!(fr.remove_rule(3), "invalid");
     assert_err!(fr.remove_rule(2), "is the default rule");
     fr.remove_rule(1).unwrap();
@@ -190,7 +209,8 @@ fn file_rules_config_insert_rule() {
         fr.insert_rule(0, FILE_PATH_SEARCH_RULE_NAME, "", "", "extension"),
         "do not accept any extension"
     );
-    fr.insert_rule(0, FILE_PATH_SEARCH_RULE_NAME, "", "", "").unwrap();
+    fr.insert_rule(0, FILE_PATH_SEARCH_RULE_NAME, "", "", "")
+        .unwrap();
     assert_err!(
         fr.insert_rule(0, FILE_PATH_SEARCH_RULE_NAME, "", "", "extension"),
         "File rules: A rule named 'ColorSpaceNamePathSearch' already exists."
@@ -211,10 +231,22 @@ fn file_rules_config_insert_rule() {
     fr.remove_rule(0).unwrap();
     fr.insert_path_search_rule(0).unwrap();
 
-    assert_err!(fr.insert_rule(0, "", "raw", "*", "a"), "rule should have a non-empty name");
-    assert_err!(fr.insert_rule(0, "rule", "raw", "", "a"), "file name pattern is empty");
-    assert_err!(fr.insert_rule(0, "rule", "raw", "*", ""), "file extension pattern is empty");
-    assert_err!(fr.insert_rule(0, "rule", "raw", "[", "a"), "invalid regular expression");
+    assert_err!(
+        fr.insert_rule(0, "", "raw", "*", "a"),
+        "rule should have a non-empty name"
+    );
+    assert_err!(
+        fr.insert_rule(0, "rule", "raw", "", "a"),
+        "file name pattern is empty"
+    );
+    assert_err!(
+        fr.insert_rule(0, "rule", "raw", "*", ""),
+        "file extension pattern is empty"
+    );
+    assert_err!(
+        fr.insert_rule(0, "rule", "raw", "[", "a"),
+        "invalid regular expression"
+    );
     assert_err!(
         fr.insert_rule_regex(0, "rule", "raw", "(.*)(\u{8}what"),
         "invalid regular expression"
@@ -237,7 +269,10 @@ fn file_rules_config_rule_customkeys() {
     assert_err!(fr.custom_key_value(1, 0), "Key index '0' is invalid");
     fr.set_custom_key(0, "key", "val").unwrap();
     fr.set_custom_key(1, "keyDef", "valDef").unwrap();
-    assert_err!(fr.set_custom_key(0, "", "val"), "Key has to be a non-empty string");
+    assert_err!(
+        fr.set_custom_key(0, "", "val"),
+        "Key has to be a non-empty string"
+    );
     assert_eq!(fr.num_custom_keys(0).unwrap(), 1);
     assert_eq!(fr.num_custom_keys(1).unwrap(), 1);
     assert_eq!(fr.custom_key_name(0, 0).unwrap(), "key");
@@ -365,7 +400,9 @@ const G_FILE_EXT: &str = "exr";
 const G_FILE_PATTERN: &str = "*";
 
 fn g_config() -> Config {
-    Config::create_from_str(G_CONFIG).unwrap().create_editable_copy()
+    Config::create_from_str(G_CONFIG)
+        .unwrap()
+        .create_editable_copy()
 }
 
 #[test]
@@ -375,7 +412,9 @@ fn file_rules_rule_invalid() {
     let mut rules = config.file_rules().clone();
     assert_eq!(rules.num_entries(), 1);
 
-    rules.insert_rule(0, G_NAME, "cs1", G_FILE_PATTERN, G_FILE_EXT).unwrap();
+    rules
+        .insert_rule(0, G_NAME, "cs1", G_FILE_PATTERN, G_FILE_EXT)
+        .unwrap();
     config.set_file_rules(&rules);
     config.validate().unwrap();
 
@@ -394,7 +433,9 @@ fn file_rules_rule_invalid() {
 #[test]
 fn file_rules_pattern_error() {
     let mut rules = Config::create_raw().file_rules().clone();
-    rules.insert_rule(0, FILE_PATH_SEARCH_RULE_NAME, "", "", "").unwrap();
+    rules
+        .insert_rule(0, FILE_PATH_SEARCH_RULE_NAME, "", "", "")
+        .unwrap();
     rules.insert_rule(0, "new rule", "raw", "*", "a").unwrap();
     assert_eq!(rules.num_entries(), 3);
 
@@ -408,7 +449,9 @@ fn file_rules_pattern_error() {
 fn file_rules_with_defaults() {
     let config = Config::create_raw().create_editable_copy();
     let mut rules = config.file_rules().clone();
-    rules.insert_rule(0, FILE_PATH_SEARCH_RULE_NAME, "", "", "").unwrap();
+    rules
+        .insert_rule(0, FILE_PATH_SEARCH_RULE_NAME, "", "", "")
+        .unwrap();
     assert_eq!(rules.num_entries(), 2);
 
     assert!(rules.insert_rule(0, "new rule2", "raw", "", "a").is_err());
@@ -419,10 +462,15 @@ fn file_rules_with_defaults() {
 #[test]
 fn file_rules_extension_error() {
     let mut rules = Config::create_raw().file_rules().clone();
-    rules.insert_rule(0, FILE_PATH_SEARCH_RULE_NAME, "", "", "").unwrap();
+    rules
+        .insert_rule(0, FILE_PATH_SEARCH_RULE_NAME, "", "", "")
+        .unwrap();
     rules.insert_rule(0, "new rule", "raw", "*", "a").unwrap();
     assert_eq!(rules.num_entries(), 3);
-    assert_err!(rules.set_extension(0, ""), "file extension pattern is empty");
+    assert_err!(
+        rules.set_extension(0, ""),
+        "file extension pattern is empty"
+    );
 }
 
 #[test]
@@ -454,7 +502,9 @@ fn file_rules_rules_filepattern() {
     let mut config = g_config();
     let mut rules = config.file_rules().clone();
 
-    rules.insert_rule(0, G_NAME, "cs1", "*", "[eE][xX][r]").unwrap();
+    rules
+        .insert_rule(0, G_NAME, "cs1", "*", "[eE][xX][r]")
+        .unwrap();
     config.set_file_rules(&rules);
 
     assert_eq!(pos(&config, "/An/Arbitrary/Path/MyFile.exr"), 0);
@@ -469,7 +519,11 @@ fn file_rules_rules_filepattern() {
         rules.set_pattern(0, pattern).unwrap();
         config.set_file_rules(&rules);
         for (path, expected) in cases {
-            assert_eq!(pos(&config, path), *expected, "pattern {pattern:?} path {path:?}");
+            assert_eq!(
+                pos(&config, path),
+                *expected,
+                "pattern {pattern:?} path {path:?}"
+            );
         }
     };
 
@@ -617,10 +671,17 @@ fn file_rules_rules_filepattern() {
         rules.set_extension(0, ext).unwrap();
         config.set_file_rules(&rules);
         for (path, expected) in cases {
-            assert_eq!(pos(&config, path), *expected, "extension {ext:?} path {path:?}");
+            assert_eq!(
+                pos(&config, path),
+                *expected,
+                "extension {ext:?} path {path:?}"
+            );
         }
     };
-    check_ext("jp[gG]", &[("test.jpg", 0), ("test.jpG", 0), ("test.Jpg", 2)]);
+    check_ext(
+        "jp[gG]",
+        &[("test.jpg", 0), ("test.jpG", 0), ("test.Jpg", 2)],
+    );
     check_ext("[Jj]pg", &[("/mnt/media/image.Jpg", 0)]);
     check_ext("?pg", &[("/mnt/media/image.Jpg", 0)]);
     check_ext("jpg", &[("/mnt/media/image.Jpg", 0)]);
@@ -710,9 +771,13 @@ fn file_rules_rules_test() {
 fn file_rules_rules_priority() {
     let mut config = g_config();
     let mut rules = config.file_rules().clone();
-    rules.insert_rule(0, "pattern dpx file", "raw", "*cs2*", "dpx").unwrap();
+    rules
+        .insert_rule(0, "pattern dpx file", "raw", "*cs2*", "dpx")
+        .unwrap();
     rules.insert_path_search_rule(1).unwrap();
-    rules.insert_rule_regex(2, "regex rule", "cs5", ".*cs5.dpx").unwrap();
+    rules
+        .insert_rule_regex(2, "regex rule", "cs5", ".*cs5.dpx")
+        .unwrap();
     config.set_file_rules(&rules);
 
     let f = |p: &str| config.color_space_from_filepath_with_index(p);
@@ -770,8 +835,12 @@ file_rules:
   - !<Rule> {name: Default, colorspace: cs1}
 "#;
     let guard = LogGuard::new();
-    let config = Config::create_from_str(CONFIG).unwrap().create_editable_copy();
-    assert!(guard.output().contains("that does not match the default role"));
+    let config = Config::create_from_str(CONFIG)
+        .unwrap()
+        .create_editable_copy();
+    assert!(guard
+        .output()
+        .contains("that does not match the default role"));
 
     let rules = config.file_rules();
     assert_eq!(rules.num_entries(), 1);
@@ -841,7 +910,10 @@ fn file_rules_config_no_default_rule() {
     let cfg = format!(
         "{RULES_BASE}file_rules:\n  - !<Rule> {{name: Custom, pattern: \"*\", extension: jpg, colorspace: cs1}}\n"
     );
-    assert_err!(Config::create_from_str(&cfg), "'file_rules' does not contain a Default <Rule>");
+    assert_err!(
+        Config::create_from_str(&cfg),
+        "'file_rules' does not contain a Default <Rule>"
+    );
 }
 
 #[test]
@@ -859,21 +931,30 @@ fn file_rules_config_filerule_no_colorspace() {
 fn file_rules_config_v1_faulty() {
     let cfg = RULES_BASE.replace("ocio_profile_version: 2", "ocio_profile_version: 1")
         + "file_rules:\n  - !<Rule> {name: Default, colorspace: default}\n";
-    assert_err!(Config::create_from_str(&cfg), "Config v1 can't use 'file_rules'");
+    assert_err!(
+        Config::create_from_str(&cfg),
+        "Config v1 can't use 'file_rules'"
+    );
 }
 
 fn validate_muting_roles(config: &Config) {
     let guard = LogGuard::new();
     config.validate().unwrap();
     mute_missing_role_errors(&guard);
-    assert!(guard.output().is_empty(), "unexpected log: {}", guard.output());
+    assert!(
+        guard.output().is_empty(),
+        "unexpected log: {}",
+        guard.output()
+    );
 }
 
 #[test]
 fn file_rules_config_v1_to_v2_from_file() {
     {
         let cfg = RULES_BASE.replace("ocio_profile_version: 2", "ocio_profile_version: 1");
-        let mut config = Config::create_from_str(&cfg).unwrap().create_editable_copy();
+        let mut config = Config::create_from_str(&cfg)
+            .unwrap()
+            .create_editable_copy();
         config.validate().unwrap();
         assert_eq!(config.major_version(), 1);
         let rules = config.file_rules();
@@ -913,7 +994,9 @@ colorspaces:
   - !<ColorSpace>
       name: cs2
 "#;
-        let mut config = Config::create_from_str(CONFIG).unwrap().create_editable_copy();
+        let mut config = Config::create_from_str(CONFIG)
+            .unwrap()
+            .create_editable_copy();
         config.validate().unwrap();
         assert_eq!(config.major_version(), 1);
         assert_eq!(config.file_rules().num_entries(), 2);
@@ -925,7 +1008,10 @@ colorspaces:
         validate_muting_roles(&config);
         assert_eq!(config.major_version(), 2);
         assert_eq!(config.file_rules().num_entries(), 2);
-        assert_eq!(config.file_rules().name(0).unwrap(), FILE_PATH_SEARCH_RULE_NAME);
+        assert_eq!(
+            config.file_rules().name(0).unwrap(),
+            FILE_PATH_SEARCH_RULE_NAME
+        );
         assert_eq!(config.file_rules().color_space(1).unwrap(), "rAw");
         assert_eq!(config.color_space_from_filepath("/usr/cs2_file.exr"), "cs2");
         assert_eq!(config.color_space_from_filepath("/usr/file.exr"), "rAw");
@@ -995,7 +1081,11 @@ fn validate_error_muting_roles(config: &Config, what: &str) {
     let guard = LogGuard::new();
     assert_err!(config.validate(), what);
     mute_missing_role_errors(&guard);
-    assert!(guard.output().is_empty(), "unexpected log: {}", guard.output());
+    assert!(
+        guard.output().is_empty(),
+        "unexpected log: {}",
+        guard.output()
+    );
 }
 
 #[test]
@@ -1005,7 +1095,9 @@ fn file_rules_config_v1_to_v2_from_memory() {
     {
         let mut config = Config::create();
         config.set_major_version(1).unwrap();
-        config.add_display_view("disp1", "view1", "cs1", "").unwrap();
+        config
+            .add_display_view("disp1", "view1", "cs1", "")
+            .unwrap();
         let mut cs1 = ColorSpace::default();
         cs1.set_name("cs1");
         cs1.set_is_data(true);
@@ -1031,7 +1123,9 @@ fn file_rules_config_v1_to_v2_from_memory() {
     {
         let mut config = Config::create();
         config.set_major_version(1).unwrap();
-        config.add_display_view("disp1", "view1", "cs1", "").unwrap();
+        config
+            .add_display_view("disp1", "view1", "cs1", "")
+            .unwrap();
         let mut cs1 = ColorSpace::default();
         cs1.set_name("cs1");
         config.add_color_space(&cs1).unwrap();
@@ -1052,7 +1146,9 @@ fn file_rules_config_v1_to_v2_from_memory() {
     {
         let mut config = Config::create();
         config.set_major_version(1).unwrap();
-        config.add_display_view("disp1", "view1", "cs1", "").unwrap();
+        config
+            .add_display_view("disp1", "view1", "cs1", "")
+            .unwrap();
         let mut cs1 = ColorSpace::default();
         cs1.set_name("cs1");
         config.add_color_space(&cs1).unwrap();
@@ -1159,8 +1255,14 @@ fn file_rules_rule_move() {
     }
     assert_eq!(rules.num_entries(), 6);
 
-    assert_err!(rules.increase_rule_priority(0), "may not be moved to index '-1'");
-    assert_err!(rules.decrease_rule_priority(4), "may not be moved to index '5'");
+    assert_err!(
+        rules.increase_rule_priority(0),
+        "may not be moved to index '-1'"
+    );
+    assert_err!(
+        rules.decrease_rule_priority(4),
+        "may not be moved to index '5'"
+    );
     assert_err!(rules.increase_rule_priority(5), "is the default rule");
     assert_err!(rules.decrease_rule_priority(5), "is the default rule");
 
@@ -1189,21 +1291,35 @@ fn file_rules_rule_move() {
 fn file_rules_clone() {
     let config = Config::create_raw().create_editable_copy();
     let mut file_rules = config.file_rules().clone();
-    file_rules.insert_rule(0, FILE_PATH_SEARCH_RULE_NAME, "", "", "").unwrap();
+    file_rules
+        .insert_rule(0, FILE_PATH_SEARCH_RULE_NAME, "", "", "")
+        .unwrap();
     file_rules.insert_rule(0, "rule", "raw", "*", "a").unwrap();
     assert_eq!(file_rules.num_entries(), 3);
 
     let mut new_rules = file_rules.clone();
     assert_eq!(new_rules.num_entries(), 3);
-    assert_eq!(new_rules.pattern(0).unwrap(), file_rules.pattern(0).unwrap());
+    assert_eq!(
+        new_rules.pattern(0).unwrap(),
+        file_rules.pattern(0).unwrap()
+    );
 
     new_rules.set_pattern(0, "*A").unwrap();
-    assert_ne!(new_rules.pattern(0).unwrap(), file_rules.pattern(0).unwrap());
+    assert_ne!(
+        new_rules.pattern(0).unwrap(),
+        file_rules.pattern(0).unwrap()
+    );
     file_rules.set_pattern(0, "*B").unwrap();
-    assert_ne!(new_rules.pattern(0).unwrap(), file_rules.pattern(0).unwrap());
+    assert_ne!(
+        new_rules.pattern(0).unwrap(),
+        file_rules.pattern(0).unwrap()
+    );
     new_rules.set_pattern(0, "*").unwrap();
     file_rules.set_pattern(0, "*").unwrap();
-    assert_eq!(new_rules.pattern(0).unwrap(), file_rules.pattern(0).unwrap());
+    assert_eq!(
+        new_rules.pattern(0).unwrap(),
+        file_rules.pattern(0).unwrap()
+    );
 }
 
 #[test]

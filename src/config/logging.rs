@@ -34,7 +34,10 @@ fn global() -> &'static Mutex<Global> {
             }
             _ => (LoggingLevel::Info, false),
         };
-        Mutex::new(Global { level, env_override })
+        Mutex::new(Global {
+            level,
+            env_override,
+        })
     })
 }
 
@@ -48,7 +51,10 @@ pub fn logging_level() -> LoggingLevel {
     if let Some(l) = captured {
         return l;
     }
-    global().lock().map(|g| g.level).unwrap_or(LoggingLevel::Info)
+    global()
+        .lock()
+        .map(|g| g.level)
+        .unwrap_or(LoggingLevel::Info)
 }
 
 /// Set the logging level (ignored when `$OCIO_LOGGING_LEVEL` is set).
@@ -131,7 +137,12 @@ impl LogGuard {
 
     /// Captured output.
     pub fn output(&self) -> String {
-        CAPTURE.with(|c| c.borrow().as_ref().map(|(_, s)| s.clone()).unwrap_or_default())
+        CAPTURE.with(|c| {
+            c.borrow()
+                .as_ref()
+                .map(|(_, s)| s.clone())
+                .unwrap_or_default()
+        })
     }
 
     /// True if nothing was captured.
@@ -206,7 +217,10 @@ mod tests {
     fn capture() {
         let g = LogGuard::new();
         log_warning("abc\ndef");
-        assert_eq!(g.output(), "[OpenColorIO Warning]: abc\n[OpenColorIO Warning]: def\n");
+        assert_eq!(
+            g.output(),
+            "[OpenColorIO Warning]: abc\n[OpenColorIO Warning]: def\n"
+        );
         assert!(g.find_and_remove("[OpenColorIO Warning]: abc"));
         assert_eq!(g.output(), "[OpenColorIO Warning]: def\n");
         g.clear();

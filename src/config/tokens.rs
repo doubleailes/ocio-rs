@@ -106,7 +106,12 @@ impl CustomKeys {
     /// Value of the key at `idx`.
     pub fn value(&self, idx: usize) -> Result<&str> {
         self.validate_index(idx)?;
-        Ok(self.keys.values().nth(idx).map(|s| s.as_str()).unwrap_or(""))
+        Ok(self
+            .keys
+            .values()
+            .nth(idx)
+            .map(|s| s.as_str())
+            .unwrap_or(""))
     }
 
     /// Set (or remove when `value` is empty) a key.
@@ -168,7 +173,10 @@ mod tests {
         k.set("a", "1").unwrap();
         assert_eq!(k.name(0).unwrap(), "a");
         assert_eq!(k.value(1).unwrap(), "2");
-        assert_eq!(k.name(2).unwrap_err().to_string(), "Key index '2' is invalid, there are '2' custom keys.");
+        assert_eq!(
+            k.name(2).unwrap_err().to_string(),
+            "Key index '2' is invalid, there are '2' custom keys."
+        );
         k.set("a", "").unwrap();
         assert_eq!(k.len(), 1);
         assert!(k.set("", "x").is_err());

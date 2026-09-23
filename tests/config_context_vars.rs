@@ -60,7 +60,10 @@ fn sanity_check(with_ops: bool) {
 
     assert_eq!(cfg.num_environment_vars(), 1);
     assert_eq!(cfg.current_context().num_string_vars(), 1);
-    assert_eq!(cfg.current_context().environment_mode(), EnvironmentMode::LoadPredefined);
+    assert_eq!(
+        cfg.current_context().environment_mode(),
+        EnvironmentMode::LoadPredefined
+    );
 
     cfg.add_environment_var("CS2", Some("lut1d_green.ctf"));
     assert_eq!(cfg.num_environment_vars(), 1);
@@ -89,14 +92,23 @@ fn sanity_check(with_ops: bool) {
         "Unresolved context variable in environment declaration 'CS2 = $TOTO'."
     );
     if with_ops {
-        assert_err!(dv(&cfg), "The specified file reference '$CS2' could not be located");
+        assert_err!(
+            dv(&cfg),
+            "The specified file reference '$CS2' could not be located"
+        );
     }
 
     cfg.add_environment_var("CS2", None);
     assert_eq!(cfg.num_environment_vars(), 0);
-    assert_err!(cfg.validate(), "The file transform source cannot be resolved: '$CS2'.");
+    assert_err!(
+        cfg.validate(),
+        "The file transform source cannot be resolved: '$CS2'."
+    );
     if with_ops {
-        assert_err!(dv(&cfg), "The specified file reference '$CS2' could not be located");
+        assert_err!(
+            dv(&cfg),
+            "The specified file reference '$CS2' could not be located"
+        );
     }
 
     cfg.add_environment_var("CS2", Some("lut1d_green.ctf"));
@@ -114,7 +126,10 @@ fn sanity_check(with_ops: bool) {
 
     cfg.clear_search_paths();
     cfg.set_search_path("$MYPATH");
-    assert_err!(cfg.validate(), "The search_path '$MYPATH' cannot be resolved.");
+    assert_err!(
+        cfg.validate(),
+        "The search_path '$MYPATH' cannot be resolved."
+    );
 
     cfg.clear_search_paths();
     cfg.set_search_path("");
@@ -161,9 +176,13 @@ fn config_context_variable_with_colorspacename() {
     let _lock = env_lock();
     let _g = EnvGuard::set("VAR3", None);
     {
-        let s = format!("{CSNAME_CONFIG}    from_scene_reference: !<FileTransform> {{src: $VAR3}}\n");
+        let s =
+            format!("{CSNAME_CONFIG}    from_scene_reference: !<FileTransform> {{src: $VAR3}}\n");
         let mut cfg = Config::create_from_str(&s).unwrap().create_editable_copy();
-        assert_err!(cfg.validate(), "The file transform source cannot be resolved: '$VAR3'.");
+        assert_err!(
+            cfg.validate(),
+            "The file transform source cannot be resolved: '$VAR3'."
+        );
         cfg.add_environment_var("VAR3", Some("file.clf"));
         cfg.validate().unwrap();
     }
@@ -201,7 +220,10 @@ fn config_context_variable_with_colorspacename() {
             "{CSNAME_CONFIG}    from_scene_reference: !<ColorSpaceTransform> {{src: $VAR3, dst: cs1}}\n"
         );
         let cfg = Config::create_from_str(&s).unwrap().create_editable_copy();
-        assert_err!(cfg.get_processor("cs1", "cs2"), "Color space '$VAR3' could not be found.");
+        assert_err!(
+            cfg.get_processor("cs1", "cs2"),
+            "Color space '$VAR3' could not be found."
+        );
 
         let mut ctx = cfg.current_context().clone();
         assert_err!(
@@ -209,9 +231,11 @@ fn config_context_variable_with_colorspacename() {
             "Color space '$VAR3' could not be found."
         );
         ctx.set_string_var("VAR3", Some("cs1"));
-        cfg.get_processor_with_context_names(&ctx, "cs1", "cs2").unwrap();
+        cfg.get_processor_with_context_names(&ctx, "cs1", "cs2")
+            .unwrap();
         ctx.set_string_var("VAR3", Some("reference"));
-        cfg.get_processor_with_context_names(&ctx, "cs1", "cs2").unwrap();
+        cfg.get_processor_with_context_names(&ctx, "cs1", "cs2")
+            .unwrap();
         ctx.set_string_var("VAR3", Some(""));
         assert_err!(
             cfg.get_processor_with_context_names(&ctx, "cs1", "cs2"),
@@ -233,7 +257,8 @@ named_transforms:\n  - !<NamedTransform>\n    name: nt1\n    transform: !<RangeT
     cfg.add_environment_var("VAR3", Some("nt1"));
     cfg.validate().unwrap();
     let ctx = cfg.current_context().clone();
-    cfg.get_processor_with_context_names(&ctx, "cs1", "cs2").unwrap();
+    cfg.get_processor_with_context_names(&ctx, "cs1", "cs2")
+        .unwrap();
 }
 
 #[test]
@@ -279,13 +304,18 @@ colorspaces:
 "#;
     let _lock = env_lock();
     let _g = EnvGuard::set("ENV1", None);
-    let cfg = Config::create_from_str(CONFIG).unwrap().create_editable_copy();
+    let cfg = Config::create_from_str(CONFIG)
+        .unwrap()
+        .create_editable_copy();
     cfg.set_processor_cache_flags(ProcessorCacheFlags::OFF);
     assert_err!(
         cfg.validate(),
         "The role 'reference' refers to a color space, '$ENV1', which is not defined."
     );
-    assert_err!(cfg.get_processor("cs1", "cs3"), "Color space 'reference' could not be found.");
+    assert_err!(
+        cfg.get_processor("cs1", "cs3"),
+        "Color space 'reference' could not be found."
+    );
 }
 
 #[test]
@@ -350,8 +380,13 @@ colorspaces:
 fn config_context_variable_with_search_path_v1_validation() {
     let _lock = env_lock();
     let _g = EnvGuard::set("ENV1", None);
-    let mut cfg = Config::create_from_str(SEARCH_PATH_V1_CONFIG).unwrap().create_editable_copy();
-    assert_err!(cfg.validate(), "The search_path '$ENV1' cannot be resolved.");
+    let mut cfg = Config::create_from_str(SEARCH_PATH_V1_CONFIG)
+        .unwrap()
+        .create_editable_copy();
+    assert_err!(
+        cfg.validate(),
+        "The search_path '$ENV1' cannot be resolved."
+    );
 
     cfg.add_environment_var("ENV1", Some(&data_file("")));
     cfg.validate().unwrap();
@@ -371,7 +406,9 @@ fn config_context_variable_with_search_path_v1_validation() {
 fn config_context_variable_with_search_path_v1() {
     let _lock = env_lock();
     let _g = EnvGuard::set("ENV1", None);
-    let mut cfg = Config::create_from_str(SEARCH_PATH_V1_CONFIG).unwrap().create_editable_copy();
+    let mut cfg = Config::create_from_str(SEARCH_PATH_V1_CONFIG)
+        .unwrap()
+        .create_editable_copy();
     assert_err!(
         cfg.get_processor("cs1", "cs2"),
         "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: '$ENV1/lut1d_green.ctf'."
@@ -422,14 +459,24 @@ colorspaces:
 fn config_context_variable_with_search_path_v2_validation() {
     let _lock = env_lock();
     let _g = EnvGuard::set("ENV1", None);
-    let mut cfg = Config::create_from_str(&search_path_v2_config()).unwrap().create_editable_copy();
+    let mut cfg = Config::create_from_str(&search_path_v2_config())
+        .unwrap()
+        .create_editable_copy();
     cfg.validate().unwrap();
 
     cfg.add_environment_var("ENV1", None);
-    assert_err!(cfg.validate(), "The search_path '$ENV1' cannot be resolved.");
+    assert_err!(
+        cfg.validate(),
+        "The search_path '$ENV1' cannot be resolved."
+    );
 
     let dir = data_file("");
-    for sp in [format!("{dir}:$ENV1"), format!("$ENV1:{dir}"), format!("{dir}:"), format!(":{dir}")] {
+    for sp in [
+        format!("{dir}:$ENV1"),
+        format!("$ENV1:{dir}"),
+        format!("{dir}:"),
+        format!(":{dir}"),
+    ] {
         cfg.set_search_path(&sp);
         cfg.validate().unwrap();
     }
@@ -442,7 +489,9 @@ fn config_context_variable_with_search_path_v2_validation() {
 fn config_context_variable_with_search_path_v2() {
     let _lock = env_lock();
     let _g = EnvGuard::set("ENV1", None);
-    let mut cfg = Config::create_from_str(&search_path_v2_config()).unwrap().create_editable_copy();
+    let mut cfg = Config::create_from_str(&search_path_v2_config())
+        .unwrap()
+        .create_editable_copy();
     cfg.get_processor("cs1", "cs2").unwrap();
     cfg.add_environment_var("ENV1", None);
     assert_err!(
@@ -450,7 +499,12 @@ fn config_context_variable_with_search_path_v2() {
         "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: '$ENV1/lut1d_green.ctf'."
     );
     let dir = data_file("");
-    for sp in [format!("{dir}:$ENV1"), format!("$ENV1:{dir}"), format!("{dir}:"), format!(":{dir}")] {
+    for sp in [
+        format!("{dir}:$ENV1"),
+        format!("$ENV1:{dir}"),
+        format!("{dir}:"),
+        format!(":{dir}"),
+    ] {
         cfg.set_search_path(&sp);
         cfg.get_processor("cs1", "cs2").unwrap();
     }
@@ -517,14 +571,23 @@ fn config_env_colorspace_name() {
             config.validate(),
             "This config references a color space '$MISSING_ENV' using an unknown context variable"
         );
-        assert_err!(config.get_processor("raw", "lgh"), "Color space '$MISSING_ENV' could not be found");
+        assert_err!(
+            config.get_processor("raw", "lgh"),
+            "Color space '$MISSING_ENV' could not be found"
+        );
     }
     {
         let _g = EnvGuard::set("OCIO_TEST", Some("FaultyColorSpaceName"));
         let s = format!("{ENV_CS_CONFIG}    from_reference: !<ColorSpaceTransform> {{src: raw, dst: $OCIO_TEST}}\n");
         let config = Config::create_from_str(&s).unwrap();
-        assert_err!(config.validate(), "color space, 'FaultyColorSpaceName', which is not defined");
-        assert_err!(config.get_processor("raw", "lgh"), "Color space '$OCIO_TEST' could not be found");
+        assert_err!(
+            config.validate(),
+            "color space, 'FaultyColorSpaceName', which is not defined"
+        );
+        assert_err!(
+            config.get_processor("raw", "lgh"),
+            "Color space '$OCIO_TEST' could not be found"
+        );
     }
     {
         let _g = EnvGuard::set("OCIO_TEST", Some("lnh"));
@@ -552,7 +615,9 @@ displays:
   - !<View> {name: Raw, colorspace: raw}
 
 "#;
-    let mut config = Config::create_from_str(PROFILE).unwrap().create_editable_copy();
+    let mut config = Config::create_from_str(PROFILE)
+        .unwrap()
+        .create_editable_copy();
     config.validate().unwrap();
 
     config.set_major_version(1).unwrap();
@@ -565,10 +630,18 @@ displays:
         "The minor version 1 is not supported for major version 1. Maximum minor version is 0"
     );
     config.set_minor_version(0).unwrap();
-    assert!(config.serialize().unwrap().to_lowercase().starts_with("ocio_profile_version: 1"));
+    assert!(config
+        .serialize()
+        .unwrap()
+        .to_lowercase()
+        .starts_with("ocio_profile_version: 1"));
 
     config.set_major_version(2).unwrap();
-    assert!(config.serialize().unwrap().to_lowercase().starts_with("ocio_profile_version: 2"));
+    assert!(config
+        .serialize()
+        .unwrap()
+        .to_lowercase()
+        .starts_with("ocio_profile_version: 2"));
 
     assert_err!(
         config.set_version(2, 9),
@@ -599,7 +672,10 @@ displays:
 
 "#;
     let with = |v: &str| format!("ocio_profile_version: {v}\n{END}");
-    assert_err!(Config::create_from_str(&with("2.0.1")), "does not appear to have a valid version 2.0.1");
+    assert_err!(
+        Config::create_from_str(&with("2.0.1")),
+        "does not appear to have a valid version 2.0.1"
+    );
     assert_err!(
         Config::create_from_str(&with("2.9")),
         "The minor version 9 is not supported for major version 2"

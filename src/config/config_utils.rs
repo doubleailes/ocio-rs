@@ -13,8 +13,13 @@ use crate::types::*;
 pub const SRGB_COLOR_SPACE_NAME: &str = "sRGB - Texture";
 
 /// The candidate linear spaces of the builtin default config.
-pub const BUILTIN_LINEAR_SPACES: [&str; 5] =
-    ["ACES2065-1", "ACEScg", "Linear Rec.709 (sRGB)", "Linear P3-D65", "Linear Rec.2020"];
+pub const BUILTIN_LINEAR_SPACES: [&str; 5] = [
+    "ACES2065-1",
+    "ACEScg",
+    "Linear Rec.709 (sRGB)",
+    "Linear P3-D65",
+    "Linear Rec.2020",
+];
 
 /// Temporarily disable the processor cache of a config.
 struct SuspendCacheGuard<'a> {
@@ -47,38 +52,51 @@ pub fn get_interchange_roles_for_color_space_conversion(
     dst_config: &Config,
     dst_name: &str,
 ) -> Result<(Option<(String, String)>, ReferenceSpaceType)> {
-    let dst_cs = dst_config
-        .get_color_space(dst_name)
-        .ok_or_else(|| Error::msg(format!("Could not find destination color space '{dst_name}'.")))?;
+    let dst_cs = dst_config.get_color_space(dst_name).ok_or_else(|| {
+        Error::msg(format!(
+            "Could not find destination color space '{dst_name}'."
+        ))
+    })?;
     let mut ty = ReferenceSpaceType::Scene;
     if src_name.is_empty() {
         if dst_cs.reference_space_type() == ReferenceSpaceType::Display {
             ty = ReferenceSpaceType::Display;
         }
     } else {
-        let src_cs = src_config
-            .get_color_space(src_name)
-            .ok_or_else(|| Error::msg(format!("Could not find source color space '{src_name}'.")))?;
+        let src_cs = src_config.get_color_space(src_name).ok_or_else(|| {
+            Error::msg(format!("Could not find source color space '{src_name}'."))
+        })?;
         if src_cs.reference_space_type() == ReferenceSpaceType::Display
             && dst_cs.reference_space_type() == ReferenceSpaceType::Display
         {
             ty = ReferenceSpaceType::Display;
         }
     }
-    let role = if ty == ReferenceSpaceType::Scene { ROLE_INTERCHANGE_SCENE } else { ROLE_INTERCHANGE_DISPLAY };
+    let role = if ty == ReferenceSpaceType::Scene {
+        ROLE_INTERCHANGE_SCENE
+    } else {
+        ROLE_INTERCHANGE_DISPLAY
+    };
     if !src_config.has_role(role) {
         return Ok((None, ty));
     }
     let src_ex = src_config.get_color_space(role).ok_or_else(|| {
-        Error::msg(format!("The role '{role}' refers to a color space that is missing in the source config."))
+        Error::msg(format!(
+            "The role '{role}' refers to a color space that is missing in the source config."
+        ))
     })?;
     if !dst_config.has_role(role) {
         return Ok((None, ty));
     }
     let dst_ex = dst_config.get_color_space(role).ok_or_else(|| {
-        Error::msg(format!("The role '{role}' refers to a color space that is missing in the destination config."))
+        Error::msg(format!(
+            "The role '{role}' refers to a color space that is missing in the destination config."
+        ))
     })?;
-    Ok((Some((src_ex.name().to_string(), dst_ex.name().to_string())), ty))
+    Ok((
+        Some((src_ex.name().to_string(), dst_ex.name().to_string())),
+        ty,
+    ))
 }
 
 fn contains_srgb(cs: &ColorSpace) -> bool {
@@ -86,9 +104,14 @@ fn contains_srgb(cs: &ColorSpace) -> bool {
 }
 
 fn ref_space_name(cfg: &Config) -> String {
-    let n = cfg.num_color_spaces_filtered(SearchReferenceSpaceType::Scene, ColorSpaceVisibility::All);
+    let n =
+        cfg.num_color_spaces_filtered(SearchReferenceSpaceType::Scene, ColorSpaceVisibility::All);
     for i in 0..n {
-        let name = cfg.color_space_name_by_index_filtered(SearchReferenceSpaceType::Scene, ColorSpaceVisibility::All, i);
+        let name = cfg.color_space_name_by_index_filtered(
+            SearchReferenceSpaceType::Scene,
+            ColorSpaceVisibility::All,
+            i,
+        );
         if let Some(cs) = cfg.get_color_space(name) {
             if cs.is_data()
                 || cs.transform(ColorSpaceDirection::ToReference).is_some()
@@ -103,10 +126,19 @@ fn ref_space_name(cfg: &Config) -> String {
 }
 
 fn data_space_name(cfg: &Config) -> String {
-    let n = cfg.num_color_spaces_filtered(SearchReferenceSpaceType::Scene, ColorSpaceVisibility::All);
+    let n =
+        cfg.num_color_spaces_filtered(SearchReferenceSpaceType::Scene, ColorSpaceVisibility::All);
     for i in 0..n {
-        let name = cfg.color_space_name_by_index_filtered(SearchReferenceSpaceType::Scene, ColorSpaceVisibility::All, i);
-        if cfg.get_color_space(name).map(|c| c.is_data()).unwrap_or(false) {
+        let name = cfg.color_space_name_by_index_filtered(
+            SearchReferenceSpaceType::Scene,
+            ColorSpaceVisibility::All,
+            i,
+        );
+        if cfg
+            .get_color_space(name)
+            .map(|c| c.is_data())
+            .unwrap_or(false)
+        {
             return name.to_string();
         }
     }
@@ -117,13 +149,17 @@ fn is_identity_transform(proc: &Processor, vals: &[[f32; 4]], tol: f32) -> bool 
     let cpu = proc.optimized_cpu_processor(OptimizationFlags::NONE);
     let mut out = vals.to_vec();
     cpu.apply_pixels(&mut out);
-    vals.iter().zip(&out).all(|(a, b)| (0..4).all(|c| (a[c] - b[c]).abs() <= tol))
+    vals.iter()
+        .zip(&out)
+        .all(|(a, b)| (0..4).all(|c| (a[c] - b[c]).abs() <= tol))
 }
 
 fn has_non_trivial_matrix(proc: &Processor) -> bool {
     let gt = proc.create_group_transform();
     gt.transforms.iter().any(|t| match t {
-        Transform::Matrix(m) => (0..3).any(|j| (0..3).any(|k| j != k && m.matrix[j * 4 + k].abs() > 0.1)),
+        Transform::Matrix(m) => {
+            (0..3).any(|j| (0..3).any(|k| j != k && m.matrix[j * 4 + k].abs() > 0.1))
+        }
         _ => false,
     })
 }
@@ -141,7 +177,11 @@ fn contains_blocked_transform(t: &Transform) -> bool {
     }
 }
 
-fn exclude_from_heuristics(cs: &ColorSpace, ref_type: ReferenceSpaceType, block_ref_spaces: bool) -> bool {
+fn exclude_from_heuristics(
+    cs: &ColorSpace,
+    ref_type: ReferenceSpaceType,
+    block_ref_spaces: bool,
+) -> bool {
     if cs.is_data() || cs.reference_space_type() != ref_type {
         return true;
     }
@@ -210,7 +250,10 @@ fn reference_space_from_srgb_space(
     } else {
         return Ok(None);
     };
-    let vals: [f32; 18] = [0.5, 0.5, 0.5, 0.03, 0.03, 0.03, 0.25, 0.25, 0.25, 0.75, 0.75, 0.75, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
+    let vals: [f32; 18] = [
+        0.5, 0.5, 0.5, 0.03, 0.03, 0.03, 0.25, 0.25, 0.25, 0.75, 0.75, 0.75, 0.0, 0.0, 0.0, 1.0,
+        1.0, 1.0,
+    ];
     let proc = src_config.get_processor_for_transform(&to_ref, TransformDirection::Forward)?;
     if !has_non_trivial_matrix(&proc) {
         return Ok(None);
@@ -253,14 +296,19 @@ pub fn identify_interchange_space(
     builtin: &Config,
     builtin_name: &str,
 ) -> Result<(String, String)> {
-    if let (Some(pair), _) =
-        get_interchange_roles_for_color_space_conversion(src_config, src_name, builtin, builtin_name)?
-    {
+    if let (Some(pair), _) = get_interchange_roles_for_color_space_conversion(
+        src_config,
+        src_name,
+        builtin,
+        builtin_name,
+    )? {
         return Ok(pair);
     }
-    let builtin_cs = builtin
-        .get_color_space(builtin_name)
-        .ok_or_else(|| Error::msg(format!("Could not find destination color space '{builtin_name}'.")))?;
+    let builtin_cs = builtin.get_color_space(builtin_name).ok_or_else(|| {
+        Error::msg(format!(
+            "Could not find destination color space '{builtin_name}'."
+        ))
+    })?;
     if builtin_cs.reference_space_type() == ReferenceSpaceType::Display {
         return Err(Error::msg(
             "The heuristics currently only support scene-referred color spaces. Please set the interchange roles.",
@@ -268,7 +316,9 @@ pub fn identify_interchange_space(
     }
     let src_ref = ref_space_name(src_config);
     if src_ref.is_empty() {
-        return Err(Error::msg("The supplied config does not have a color space for the reference."));
+        return Err(Error::msg(
+            "The supplied config does not have a color space for the reference.",
+        ));
     }
     let _g1 = SuspendCacheGuard::new(src_config);
     let _g2 = SuspendCacheGuard::new(builtin);
@@ -318,9 +368,15 @@ pub fn identify_interchange_space(
 
 /// Name of the color space of `src_config` equivalent to `builtin_name` of
 /// `builtin` (`IdentifyBuiltinColorSpace`).
-pub fn identify_builtin_color_space(src_config: &Config, builtin: &Config, builtin_name: &str) -> Result<String> {
+pub fn identify_builtin_color_space(
+    src_config: &Config,
+    builtin: &Config,
+    builtin_name: &str,
+) -> Result<String> {
     let builtin_cs = builtin.get_color_space(builtin_name).ok_or_else(|| {
-        Error::msg(format!("Built-in config does not contain the requested color space: {builtin_name}."))
+        Error::msg(format!(
+            "Built-in config does not contain the requested color space: {builtin_name}."
+        ))
     })?;
     if builtin_cs.is_data() {
         let d = data_space_name(src_config);
@@ -377,7 +433,8 @@ pub(crate) fn get_processor_to_builtin_cs(
             "Built-in config does not contain the requested color space: {builtin_name}."
         )));
     }
-    let (src_ex, builtin_ex) = identify_interchange_space(src_config, src_name, &builtin, builtin_name)?;
+    let (src_ex, builtin_ex) =
+        identify_interchange_space(src_config, src_name, &builtin, builtin_name)?;
     if builtin_ex.is_empty() {
         return Err(Error::msg(
             "Heuristics were not able to find a known color space in the provided config.\nPlease set the interchange roles.",

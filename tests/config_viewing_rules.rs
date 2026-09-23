@@ -11,8 +11,14 @@ fn viewing_rules_basic() {
     assert_eq!(vrules.num_entries(), 0);
 
     assert_err!(vrules.name(0), "Viewing rules: rule index '0' invalid.");
-    assert_err!(vrules.insert_rule(1, "test"), "Viewing rules: rule index '1' invalid.");
-    assert_err!(vrules.insert_rule(0, ""), "Viewing rules: rule must have a non-empty name.");
+    assert_err!(
+        vrules.insert_rule(1, "test"),
+        "Viewing rules: rule index '1' invalid."
+    );
+    assert_err!(
+        vrules.insert_rule(0, ""),
+        "Viewing rules: rule must have a non-empty name."
+    );
 
     vrules.insert_rule(0, "Rule0").unwrap();
     vrules.insert_rule(1, "Rule2").unwrap();
@@ -24,7 +30,10 @@ fn viewing_rules_basic() {
     assert_eq!(vrules.name(2).unwrap(), "Rule2");
 
     assert_err!(vrules.name(3), "Viewing rules: rule index '3' invalid.");
-    assert_err!(vrules.insert_rule(1, "Rule1"), "A rule named 'Rule1' already exists");
+    assert_err!(
+        vrules.insert_rule(1, "Rule1"),
+        "A rule named 'Rule1' already exists"
+    );
 
     for r in 0..3 {
         assert_eq!(vrules.num_color_spaces(r).unwrap(), 0);
@@ -37,8 +46,14 @@ fn viewing_rules_basic() {
     assert_eq!(vrules.num_color_spaces(0).unwrap(), 2);
     assert_eq!(vrules.color_space(0, 0).unwrap(), "colorspace0");
     assert_eq!(vrules.color_space(0, 1).unwrap(), "colorspace1");
-    assert_err!(vrules.color_space(0, 2), "rule 'Rule0' at index '0': colorspace index '2' is invalid.");
-    assert_err!(vrules.remove_color_space(3, 0), "Viewing rules: rule index '3' invalid.");
+    assert_err!(
+        vrules.color_space(0, 2),
+        "rule 'Rule0' at index '0': colorspace index '2' is invalid."
+    );
+    assert_err!(
+        vrules.remove_color_space(3, 0),
+        "Viewing rules: rule index '3' invalid."
+    );
     assert_err!(
         vrules.remove_color_space(0, 2),
         "rule 'Rule0' at index '0': colorspace index '2' is invalid."
@@ -61,8 +76,14 @@ fn viewing_rules_basic() {
     assert_eq!(vrules.num_encodings(1).unwrap(), 2);
     assert_eq!(vrules.encoding(1, 0).unwrap(), "encoding0");
     assert_eq!(vrules.encoding(1, 1).unwrap(), "encoding1");
-    assert_err!(vrules.encoding(1, 2), "rule 'Rule1' at index '1': encoding index '2' is invalid.");
-    assert_err!(vrules.remove_encoding(3, 0), "Viewing rules: rule index '3' invalid.");
+    assert_err!(
+        vrules.encoding(1, 2),
+        "rule 'Rule1' at index '1': encoding index '2' is invalid."
+    );
+    assert_err!(
+        vrules.remove_encoding(3, 0),
+        "Viewing rules: rule index '3' invalid."
+    );
     assert_err!(
         vrules.remove_encoding(1, 2),
         "rule 'Rule1' at index '1': encoding index '2' is invalid."
@@ -79,8 +100,14 @@ fn viewing_rules_basic() {
     assert_eq!(vrules.custom_key_value(0, 0).unwrap(), "value0");
     assert_eq!(vrules.custom_key_name(0, 1).unwrap(), "key1");
     assert_eq!(vrules.custom_key_value(0, 1).unwrap(), "value1");
-    assert_err!(vrules.custom_key_name(0, 2), "rule named 'Rule0' error: Key index '2' is invalid");
-    assert_err!(vrules.custom_key_value(0, 2), "rule named 'Rule0' error: Key index '2' is invalid");
+    assert_err!(
+        vrules.custom_key_name(0, 2),
+        "rule named 'Rule0' error: Key index '2' is invalid"
+    );
+    assert_err!(
+        vrules.custom_key_value(0, 2),
+        "rule named 'Rule0' error: Key index '2' is invalid"
+    );
 
     vrules.set_custom_key(0, "key0", "newvalue0").unwrap();
     assert_eq!(vrules.num_custom_keys(0).unwrap(), 2);
@@ -92,7 +119,10 @@ fn viewing_rules_basic() {
     assert_eq!(vrules.to_string(), expected);
 
     let num_rules = vrules.num_entries();
-    assert_err!(vrules.remove_rule(num_rules), "rule index '3' invalid. There are only '3' rules");
+    assert_err!(
+        vrules.remove_rule(num_rules),
+        "rule index '3' invalid. There are only '3' rules"
+    );
     assert_eq!(vrules.num_entries(), num_rules);
     assert_eq!(vrules.num_color_spaces(0).unwrap(), 2);
     assert_eq!(vrules.num_encodings(1).unwrap(), 2);
@@ -104,7 +134,10 @@ fn viewing_rules_basic() {
 
     assert_eq!(vrules.index_for_rule("Rule0").unwrap(), 0);
     assert_eq!(vrules.index_for_rule("Rule2").unwrap(), 1);
-    assert_err!(vrules.index_for_rule("I am not there"), "rule name 'I am not there' not found");
+    assert_err!(
+        vrules.index_for_rule("I am not there"),
+        "rule name 'I am not there' not found"
+    );
 }
 
 #[test]
@@ -120,7 +153,10 @@ fn viewing_rules_config_io() {
     vrules.add_encoding(1, "encoding1").unwrap();
 
     config.set_viewing_rules(&vrules);
-    assert_err!(config.validate(), "must have either a color space or an encoding");
+    assert_err!(
+        config.validate(),
+        "must have either a color space or an encoding"
+    );
 
     vrules.add_color_space(0, "colorspace0").unwrap();
     let mut cs = ColorSpace::default();
@@ -276,7 +312,10 @@ fn viewing_rules_filtered_views() {
     assert_eq!(config.display_view_rule("sRGB", "unknown"), "");
     assert_eq!(config.display_view_rule("sRGB", "View_b"), "Rule_2");
 
-    assert_eq!(config.num_views_for_color_space("no", "unknown").unwrap(), 0);
+    assert_eq!(
+        config.num_views_for_color_space("no", "unknown").unwrap(),
+        0
+    );
     assert_eq!(config.view_for_color_space("no", "unknown", 0).unwrap(), "");
 
     assert_err!(
@@ -290,7 +329,9 @@ fn viewing_rules_filtered_views() {
 
     let views = |cs: &str, cfg: &Config| -> Vec<String> {
         let n = cfg.num_views_for_color_space("sRGB", cs).unwrap();
-        (0..n).map(|i| cfg.view_for_color_space("sRGB", cs, i).unwrap()).collect()
+        (0..n)
+            .map(|i| cfg.view_for_color_space("sRGB", cs, i).unwrap())
+            .collect()
     };
 
     assert_eq!(views("c6", &config), ["View_g", "View_h", "SView_e"]);
@@ -313,7 +354,10 @@ fn viewing_rules_filtered_views() {
         .unwrap();
     configav.validate().unwrap();
 
-    assert_eq!(views("c3", &configav), ["SView_e", "View_h", "View_d", "SView_a", "View_b"]);
+    assert_eq!(
+        views("c3", &configav),
+        ["SView_e", "View_h", "View_d", "SView_a", "View_b"]
+    );
 
     assert_eq!(configav.default_display(), "sRGB");
     assert_eq!(

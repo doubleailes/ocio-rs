@@ -11,13 +11,21 @@ impl Config {
         Error::msg(msg)
     }
 
-    fn validate_view(&self, display: &str, view: &View, check_use_display_name: bool) -> Result<()> {
+    fn validate_view(
+        &self,
+        display: &str,
+        view: &View,
+        check_use_display_name: bool,
+    ) -> Result<()> {
         if view.name.is_empty() {
             return Err(self.fail(prefix_error_msg(display, view)));
         }
         let shared_with_vt = display.is_empty() && !view.view_transform.is_empty();
         if view.colorspace.is_empty() {
-            return Err(self.fail(format!("{}does not refer to a color space.", prefix_error_msg(display, view))));
+            return Err(self.fail(format!(
+                "{}does not refer to a color space.",
+                prefix_error_msg(display, view)
+            )));
         }
         if check_use_display_name && !shared_with_vt && view.use_display_name_for_colorspace() {
             return Err(self.fail(format!(
@@ -46,7 +54,11 @@ impl Config {
                     view.view_transform
                 )));
             }
-            let display_cs = if view.use_display_name_for_colorspace() { display } else { view.colorspace.as_str() };
+            let display_cs = if view.use_display_name_for_colorspace() {
+                display
+            } else {
+                view.colorspace.as_str()
+            };
             if let Some(cs) = self.get_color_space(display_cs) {
                 if cs.reference_space_type() != ReferenceSpaceType::Display {
                     return Err(self.fail(format!(
@@ -122,7 +134,11 @@ impl Config {
     /// Validate the config (the result is cached until the config changes).
     pub fn validate(&self) -> Result<()> {
         {
-            let v = self.validation.lock().map(|v| v.clone()).unwrap_or((Validation::Unknown, String::new()));
+            let v = self
+                .validation
+                .lock()
+                .map(|v| v.clone())
+                .unwrap_or((Validation::Unknown, String::new()));
             match v.0 {
                 Validation::Passed => return Ok(()),
                 Validation::Failed => return Err(Error::msg(v.1)),
@@ -141,10 +157,14 @@ impl Config {
 
     fn validate_impl(&self) -> Result<()> {
         // Predefined context variables.
-        if self.major_version >= 2 && self.context.environment_mode() == EnvironmentMode::LoadPredefined {
+        if self.major_version >= 2
+            && self.context.environment_mode() == EnvironmentMode::LoadPredefined
+        {
             for (k, v) in &self.env {
                 if contains_context_variables(v) {
-                    let valid = *v == format!("${k}") || *v == format!("${{{k}}}") || *v == format!("%{k}%");
+                    let valid = *v == format!("${k}")
+                        || *v == format!("${{{k}}}")
+                        || *v == format!("%{k}%");
                     if !valid {
                         return Err(Error::msg(format!(
                             "Unresolved context variable in environment declaration '{k} = {v}'."
@@ -227,7 +247,9 @@ impl Config {
                 log_error("The scene_linear role is required for a config version 2.2 or higher.");
             }
             if !compositing_log {
-                log_error("The compositing_log role is required for a config version 2.2 or higher.");
+                log_error(
+                    "The compositing_log role is required for a config version 2.2 or higher.",
+                );
             }
             if !color_timing {
                 log_error("The color_timing role is required for a config version 2.2 or higher.");
@@ -244,20 +266,27 @@ impl Config {
                     "The cie_xyz_d65_interchange role is required when there are display-referred color spaces and the config version is 2.2 or higher.",
                 );
             } else if cie_interchange && !cie_display {
-                log_error("The cie_xyz_d65_interchange role must be a display-referred color space.");
+                log_error(
+                    "The cie_xyz_d65_interchange role must be a display-referred color space.",
+                );
             }
         }
 
         // Inactive color spaces.
         for name in self.build_inactive_names_list(InactiveType::All) {
             if self.get_color_space(&name).is_none() && self.get_named_transform(&name).is_none() {
-                log_info(&format!("Inactive '{name}' is neither a color space nor a named transform."));
+                log_info(&format!(
+                    "Inactive '{name}' is neither a color space nor a named transform."
+                ));
             }
         }
 
         // Viewing rules.
         let accessor = |n: &str| self.get_color_space(n);
-        if let Err(e) = self.viewing_rules.validate(&accessor, &self.all_color_spaces) {
+        if let Err(e) = self
+            .viewing_rules
+            .validate(&accessor, &self.all_color_spaces)
+        {
             return Err(self.fail(format!(
                 "Config failed validation. Viewing rules failed validation with: {}",
                 e.message()
@@ -286,13 +315,19 @@ impl Config {
             }
         }
         if num_displays == 0 {
-            return Err(self.fail("Config failed display validation. No displays are specified.".to_string()));
+            return Err(self
+                .fail("Config failed display validation. No displays are specified.".to_string()));
         }
 
         // Virtual display.
         if self.major_version >= 2 {
             for sv in &self.virtual_display.shared_views {
-                self.validate_shared_view("virtual_display", &self.virtual_display.views, sv, false)?;
+                self.validate_shared_view(
+                    "virtual_display",
+                    &self.virtual_display.views,
+                    sv,
+                    false,
+                )?;
             }
             for view in &self.virtual_display.views {
                 self.validate_view("virtual_display", view, false)?;
@@ -302,7 +337,8 @@ impl Config {
         // Active displays.
         let displays: Vec<String> = self.displays.iter().map(|d| d.0.clone()).collect();
         if !self.active_displays_env_override.is_empty() {
-            let all = self.active_displays_env_override.len() == 1 && self.active_displays_env_override[0].is_empty();
+            let all = self.active_displays_env_override.len() == 1
+                && self.active_displays_env_override[0].is_empty();
             if !all {
                 let ordered = intersect_case_ignore(&self.active_displays_env_override, &displays);
                 if ordered.is_empty() {
@@ -424,7 +460,10 @@ impl Config {
 
         // File rules.
         if let Err(e) = self.file_rules.validate(self) {
-            return Err(self.fail(format!("Config failed validation. File rules failed with: {}", e.message())));
+            return Err(self.fail(format!(
+                "Config failed validation. File rules failed with: {}",
+                e.message()
+            )));
         }
 
         // File transforms.
@@ -455,7 +494,9 @@ impl Config {
                 }
                 if !found_one {
                     if self.context.num_search_paths() == 0 {
-                        err.push_str(" The search_path must not be empty if there are FileTransforms.");
+                        err.push_str(
+                            " The search_path must not be empty if there are FileTransforms.",
+                        );
                     }
                     return Err(self.fail(err));
                 }
@@ -503,17 +544,27 @@ impl Config {
                     bail!("Only config version 2 (or higher) can have BuiltinInTransform.");
                 }
                 let st = b.style.as_str();
-                if maj == 2 && min < 1 && compare(st, "ACES-LMT - ACES 1.3 Reference Gamut Compression") {
+                if maj == 2
+                    && min < 1
+                    && compare(st, "ACES-LMT - ACES 1.3 Reference Gamut Compression")
+                {
                     bail!("Only config version 2.1 (or higher) can have BuiltinTransform style 'ACES-LMT - ACES 1.3 Reference Gamut Compression'.");
                 }
                 if maj == 2
                     && min < 2
                     && style_in(
                         st,
-                        &["ARRI_LOGC4_to_ACES2065-1", "CURVE - CANON_CLOG2_to_LINEAR", "CURVE - CANON_CLOG3_to_LINEAR"],
+                        &[
+                            "ARRI_LOGC4_to_ACES2065-1",
+                            "CURVE - CANON_CLOG2_to_LINEAR",
+                            "CURVE - CANON_CLOG3_to_LINEAR",
+                        ],
                     )
                 {
-                    bail!("Only config version 2.2 (or higher) can have BuiltinTransform style '{}'.", st);
+                    bail!(
+                        "Only config version 2.2 (or higher) can have BuiltinTransform style '{}'.",
+                        st
+                    );
                 }
                 if maj == 2 && min < 3 && compare(st, "DISPLAY - CIE-XYZ-D65_to_DisplayP3") {
                     bail!("Only config version 2.3 (or higher) can have BuiltinTransform style 'DISPLAY - CIE-XYZ-D65_to_DisplayP3'.");
@@ -559,7 +610,10 @@ impl Config {
                     "DISPLAY - CIE-XYZ-D65_to_DisplayP3-HDR",
                 ];
                 if maj == 2 && min < 4 && style_in(st, V24) {
-                    bail!("Only config version 2.4 (or higher) can have BuiltinTransform style '{}'.", st);
+                    bail!(
+                        "Only config version 2.4 (or higher) can have BuiltinTransform style '{}'.",
+                        st
+                    );
                 }
                 const V25: &[&str] = &[
                     "DISPLAY - CIE-XYZ-D65_to_REC.1886-REC.709 - MIRROR NEGS",
@@ -569,10 +623,16 @@ impl Config {
                     "DISPLAY - CIE-XYZ-D65_to_G2.6-P3-D65 - MIRROR NEGS",
                 ];
                 if maj == 2 && min < 5 && style_in(st, V25) {
-                    bail!("Only config version 2.5 (or higher) can have BuiltinTransform style '{}'.", st);
+                    bail!(
+                        "Only config version 2.5 (or higher) can have BuiltinTransform style '{}'.",
+                        st
+                    );
                 }
                 if maj == 2 && min < 6 && compare(st, "APPLE_LOG-APPLEWG_to_ACES2065-1") {
-                    bail!("Only config version 2.6 (or higher) can have BuiltinTransform style '{}'.", st);
+                    bail!(
+                        "Only config version 2.6 (or higher) can have BuiltinTransform style '{}'.",
+                        st
+                    );
                 }
             }
             Transform::Cdl(c) => {
@@ -592,7 +652,9 @@ impl Config {
             }
             Transform::ExponentWithLinear(_) => {
                 if maj < 2 {
-                    bail!("Only config version 2 (or higher) can have ExponentWithLinearTransform.");
+                    bail!(
+                        "Only config version 2 (or higher) can have ExponentWithLinearTransform."
+                    );
                 }
             }
             Transform::ExposureContrast(_) => {
@@ -634,7 +696,10 @@ impl Config {
                 {
                     bail!("Only config version 2.4 (or higher) can have FixedFunctionTransform style '{}'.", s.as_str());
                 }
-                if maj == 2 && min < 5 && matches!(s, S::RgbToHsyLin | S::RgbToHsyLog | S::RgbToHsyVid) {
+                if maj == 2
+                    && min < 5
+                    && matches!(s, S::RgbToHsyLin | S::RgbToHsyLog | S::RgbToHsyVid)
+                {
                     bail!("Only config version 2.5 (or higher) can have FixedFunctionTransform style '{}'.", s.as_str());
                 }
                 if maj == 2 && min < 6 && s == S::AcesRgbToHmj20 {
@@ -717,7 +782,9 @@ impl Config {
                     );
                 }
             }
-            if !self.virtual_display.views.is_empty() || !self.virtual_display.shared_views.is_empty() {
+            if !self.virtual_display.views.is_empty()
+                || !self.virtual_display.shared_views.is_empty()
+            {
                 bail!("Only version 2 (or higher) can have a virtual display.");
             }
         }
@@ -740,7 +807,8 @@ impl Config {
                 );
             }
         }
-        if maj < 2 && (!self.view_transforms.is_empty() || !self.default_view_transform.is_empty()) {
+        if maj < 2 && (!self.view_transforms.is_empty() || !self.default_view_transform.is_empty())
+        {
             bail!("Only version 2 (or higher) can have ViewTransforms.");
         }
         if hex < 0x0205_0000 {

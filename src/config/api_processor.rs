@@ -8,7 +8,12 @@ use crate::transforms::{ColorSpaceTransform, DisplayViewTransform};
 
 /// Validate `transform` then build its processor (port of
 /// `Processor::Impl::setTransform`, which validates the transform first).
-fn create_processor(config: &Config, context: &Context, transform: &Transform, dir: TransformDirection) -> Result<Processor> {
+fn create_processor(
+    config: &Config,
+    context: &Context,
+    transform: &Transform,
+    dir: TransformDirection,
+) -> Result<Processor> {
     transform.validate()?;
     Processor::from_transform(config, context, transform, dir)
 }
@@ -22,13 +27,26 @@ impl Config {
 
     /// Processor converting between two color spaces (or roles) using a
     /// context.
-    pub fn get_processor_with_context_names(&self, context: &Context, src: &str, dst: &str) -> Result<Processor> {
+    pub fn get_processor_with_context_names(
+        &self,
+        context: &Context,
+        src: &str,
+        dst: &str,
+    ) -> Result<Processor> {
         let t = ColorSpaceTransform::new(src, dst);
-        self.get_processor_with_context(context, &Transform::ColorSpace(t), TransformDirection::Forward)
+        self.get_processor_with_context(
+            context,
+            &Transform::ColorSpace(t),
+            TransformDirection::Forward,
+        )
     }
 
     /// Processor converting between two color space objects (by name).
-    pub fn get_processor_color_spaces(&self, src: &ColorSpace, dst: &ColorSpace) -> Result<Processor> {
+    pub fn get_processor_color_spaces(
+        &self,
+        src: &ColorSpace,
+        dst: &ColorSpace,
+    ) -> Result<Processor> {
         self.get_processor_color_spaces_with_context(&self.context, src, dst)
     }
 
@@ -40,16 +58,29 @@ impl Config {
         dst: &ColorSpace,
     ) -> Result<Processor> {
         let t = ColorSpaceTransform::new(src.name(), dst.name());
-        self.get_processor_with_context(context, &Transform::ColorSpace(t), TransformDirection::Forward)
+        self.get_processor_with_context(
+            context,
+            &Transform::ColorSpace(t),
+            TransformDirection::Forward,
+        )
     }
 
     /// Processor for a transform, using the current context.
-    pub fn get_processor_for_transform(&self, transform: &Transform, dir: TransformDirection) -> Result<Processor> {
+    pub fn get_processor_for_transform(
+        &self,
+        transform: &Transform,
+        dir: TransformDirection,
+    ) -> Result<Processor> {
         self.get_processor_with_context(self.current_context(), transform, dir)
     }
 
     /// Processor from a color space to a display / view.
-    pub fn get_display_view_processor(&self, src: &str, display: &str, view: &str) -> Result<Processor> {
+    pub fn get_display_view_processor(
+        &self,
+        src: &str,
+        display: &str,
+        view: &str,
+    ) -> Result<Processor> {
         self.get_display_view_processor_dir(src, display, view, TransformDirection::Forward)
     }
 
@@ -79,7 +110,11 @@ impl Config {
     }
 
     /// Processor of a named transform (by name) in a direction.
-    pub fn get_processor_named_transform(&self, name: &str, dir: TransformDirection) -> Result<Processor> {
+    pub fn get_processor_named_transform(
+        &self,
+        name: &str,
+        dir: TransformDirection,
+    ) -> Result<Processor> {
         self.get_processor_named_transform_with_context(&self.context, name, dir)
     }
 
@@ -98,7 +133,11 @@ impl Config {
     }
 
     /// Processor of a named transform object in a direction.
-    pub fn get_processor_for_named_transform(&self, nt: &NamedTransform, dir: TransformDirection) -> Result<Processor> {
+    pub fn get_processor_for_named_transform(
+        &self,
+        nt: &NamedTransform,
+        dir: TransformDirection,
+    ) -> Result<Processor> {
         self.get_processor_for_named_transform_with_context(&self.context, nt, dir)
     }
 
@@ -114,7 +153,11 @@ impl Config {
     }
 
     /// Processor built without using the processor cache.
-    pub(crate) fn get_processor_without_caching(&self, transform: &Transform, dir: TransformDirection) -> Result<Processor> {
+    pub(crate) fn get_processor_without_caching(
+        &self,
+        transform: &Transform,
+        dir: TransformDirection,
+    ) -> Result<Processor> {
         create_processor(self, &self.context, transform, dir)
     }
 
@@ -137,7 +180,11 @@ impl Config {
 
         let key = format!(
             "{}{:?}{:?}",
-            if need_context_vars { used.cache_id() } else { String::new() },
+            if need_context_vars {
+                used.cache_id()
+            } else {
+                String::new()
+            },
             transform,
             dir
         );
@@ -187,19 +234,27 @@ impl Config {
         dst_config: &Config,
         dst_name: &str,
     ) -> Result<Processor> {
-        match config_utils::get_interchange_roles_for_color_space_conversion(src_config, src_name, dst_config, dst_name)? {
-            (Some((src_ex, dst_ex)), _) => Config::get_processor_from_configs_interchange_with_context(
-                src_context,
-                src_config,
-                src_name,
-                &src_ex,
-                dst_context,
-                dst_config,
-                dst_name,
-                &dst_ex,
-            ),
+        match config_utils::get_interchange_roles_for_color_space_conversion(
+            src_config, src_name, dst_config, dst_name,
+        )? {
+            (Some((src_ex, dst_ex)), _) => {
+                Config::get_processor_from_configs_interchange_with_context(
+                    src_context,
+                    src_config,
+                    src_name,
+                    &src_ex,
+                    dst_context,
+                    dst_config,
+                    dst_name,
+                    &dst_ex,
+                )
+            }
             (None, ty) => {
-                let role = if ty == ReferenceSpaceType::Scene { ROLE_INTERCHANGE_SCENE } else { ROLE_INTERCHANGE_DISPLAY };
+                let role = if ty == ReferenceSpaceType::Scene {
+                    ROLE_INTERCHANGE_SCENE
+                } else {
+                    ROLE_INTERCHANGE_DISPLAY
+                };
                 Err(Error::msg(format!(
                     "The required role '{role}' is missing from the source and/or destination config."
                 )))
@@ -242,17 +297,23 @@ impl Config {
         dst_name: &str,
         dst_interchange: &str,
     ) -> Result<Processor> {
-        let src_cs = src_config
-            .get_color_space(src_name)
-            .ok_or_else(|| Error::msg(format!("Could not find source color space '{src_name}'.")))?;
-        let src_ex = src_config.get_color_space(src_interchange).ok_or_else(|| {
-            Error::msg(format!("Could not find source interchange color space '{src_interchange}'."))
+        let src_cs = src_config.get_color_space(src_name).ok_or_else(|| {
+            Error::msg(format!("Could not find source color space '{src_name}'."))
         })?;
-        let dst_cs = dst_config
-            .get_color_space(dst_name)
-            .ok_or_else(|| Error::msg(format!("Could not find destination color space '{dst_name}'.")))?;
+        let src_ex = src_config.get_color_space(src_interchange).ok_or_else(|| {
+            Error::msg(format!(
+                "Could not find source interchange color space '{src_interchange}'."
+            ))
+        })?;
+        let dst_cs = dst_config.get_color_space(dst_name).ok_or_else(|| {
+            Error::msg(format!(
+                "Could not find destination color space '{dst_name}'."
+            ))
+        })?;
         let dst_ex = dst_config.get_color_space(dst_interchange).ok_or_else(|| {
-            Error::msg(format!("Could not find destination interchange color space '{dst_interchange}'."))
+            Error::msg(format!(
+                "Could not find destination interchange color space '{dst_interchange}'."
+            ))
         })?;
         let p1 = src_config.get_processor_color_spaces_with_context(src_context, src_cs, src_ex)?;
         let p2 = dst_config.get_processor_color_spaces_with_context(dst_context, dst_ex, dst_cs)?;
@@ -298,17 +359,25 @@ impl Config {
         dst_view: &str,
         dir: TransformDirection,
     ) -> Result<Processor> {
-        let src_cs = src_config
-            .get_color_space(src_name)
-            .ok_or_else(|| Error::msg(format!("Could not find source color space '{src_name}'.")))?;
+        let src_cs = src_config.get_color_space(src_name).ok_or_else(|| {
+            Error::msg(format!("Could not find source color space '{src_name}'."))
+        })?;
         let scene = src_cs.reference_space_type() == ReferenceSpaceType::Scene;
-        let role = if scene { ROLE_INTERCHANGE_SCENE } else { ROLE_INTERCHANGE_DISPLAY };
+        let role = if scene {
+            ROLE_INTERCHANGE_SCENE
+        } else {
+            ROLE_INTERCHANGE_DISPLAY
+        };
         let src_ex_name = src_config.lookup_role(role).to_string();
         if src_ex_name.is_empty() {
             bail!("The role '{}' is missing in the source config.", role);
         }
         if src_config.get_color_space(&src_ex_name).is_none() {
-            bail!("The role '{}' refers to color space '{}' that is missing in the source config.", role, src_ex_name);
+            bail!(
+                "The role '{}' refers to color space '{}' that is missing in the source config.",
+                role,
+                src_ex_name
+            );
         }
         let dst_ex_name = dst_config.lookup_role(role).to_string();
         if dst_ex_name.is_empty() {
@@ -377,11 +446,13 @@ impl Config {
         dst_interchange: &str,
         dir: TransformDirection,
     ) -> Result<Processor> {
-        let mut src_cs = src_config
-            .get_color_space(src_name)
-            .ok_or_else(|| Error::msg(format!("Could not find source color space '{src_name}'.")))?;
+        let mut src_cs = src_config.get_color_space(src_name).ok_or_else(|| {
+            Error::msg(format!("Could not find source color space '{src_name}'."))
+        })?;
         let mut src_ex = src_config.get_color_space(src_interchange).ok_or_else(|| {
-            Error::msg(format!("Could not find source interchange color space '{src_interchange}'."))
+            Error::msg(format!(
+                "Could not find source interchange color space '{src_interchange}'."
+            ))
         })?;
         if dir == TransformDirection::Inverse {
             std::mem::swap(&mut src_cs, &mut src_ex);
@@ -390,12 +461,21 @@ impl Config {
         let src_is_data = src_cs.is_data();
         let p1 = src_config.get_processor_color_spaces_with_context(src_context, src_cs, src_ex)?;
         let cs_name = dst_config.display_view_color_space_name(dst_display, dst_view);
-        let display_cs_name = if View::use_display_name(cs_name) { dst_display } else { cs_name };
+        let display_cs_name = if View::use_display_name(cs_name) {
+            dst_display
+        } else {
+            cs_name
+        };
         let display_cs = dst_config.get_color_space(display_cs_name).ok_or_else(|| {
             Error::msg("Can't create the processor for the destination config: display color space not found.")
         })?;
-        let p2 =
-            dst_config.get_display_view_processor_with_context(dst_context, dst_interchange, dst_display, dst_view, dir)?;
+        let p2 = dst_config.get_display_view_processor_with_context(
+            dst_context,
+            dst_interchange,
+            dst_display,
+            dst_view,
+            dir,
+        )?;
         if !src_is_data && !display_cs.is_data() {
             if dir == TransformDirection::Inverse {
                 Ok(concatenate(&p2, &p1))
@@ -414,7 +494,12 @@ impl Config {
         src_name: &str,
         builtin_name: &str,
     ) -> Result<Processor> {
-        config_utils::get_processor_to_builtin_cs(src_config, src_name, builtin_name, TransformDirection::Forward)
+        config_utils::get_processor_to_builtin_cs(
+            src_config,
+            src_name,
+            builtin_name,
+            TransformDirection::Forward,
+        )
     }
 
     /// Processor from a color space of the default builtin config to a color
@@ -424,7 +509,12 @@ impl Config {
         src_config: &Config,
         src_name: &str,
     ) -> Result<Processor> {
-        config_utils::get_processor_to_builtin_cs(src_config, src_name, builtin_name, TransformDirection::Inverse)
+        config_utils::get_processor_to_builtin_cs(
+            src_config,
+            src_name,
+            builtin_name,
+            TransformDirection::Inverse,
+        )
     }
 
     /// Name of the interchange spaces to use to convert between a color space
@@ -450,7 +540,11 @@ impl Config {
     }
 
     /// True if the color space is linear for the given reference space type.
-    pub fn is_color_space_linear(&self, color_space: &str, ref_type: ReferenceSpaceType) -> Result<bool> {
+    pub fn is_color_space_linear(
+        &self,
+        color_space: &str,
+        ref_type: ReferenceSpaceType,
+    ) -> Result<bool> {
         let cs = self.get_color_space(color_space).ok_or_else(|| {
             Error::msg(format!(
                 "Could not test colorspace linearity. Colorspace {color_space} does not exist."
@@ -464,8 +558,10 @@ impl Config {
         }
         let enc = cs.encoding();
         if !enc.is_empty() {
-            return Ok((compare(enc, "scene-linear") && ref_type == ReferenceSpaceType::Scene)
-                || (compare(enc, "display-linear") && ref_type == ReferenceSpaceType::Display));
+            return Ok(
+                (compare(enc, "scene-linear") && ref_type == ReferenceSpaceType::Scene)
+                    || (compare(enc, "display-linear") && ref_type == ReferenceSpaceType::Display),
+            );
         }
         let evaluate = |t: &Transform| -> Result<bool> {
             let img: [[f32; 3]; 8] = [

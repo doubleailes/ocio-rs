@@ -22,10 +22,16 @@ fn config_log_serialization() {
     check_roundtrip(&v1("    from_reference: !<LogTransform> {base: 2}\n"));
     // Log with default base value (not saved in V2) and default direction.
     check_roundtrip(&v2("    from_scene_reference: !<LogTransform> {}\n"));
-    check_roundtrip(&v1("    from_reference: !<LogTransform> {base: 2, direction: inverse}\n"));
-    check_roundtrip(&v2("    from_scene_reference: !<LogTransform> {direction: inverse}\n"));
+    check_roundtrip(&v1(
+        "    from_reference: !<LogTransform> {base: 2, direction: inverse}\n",
+    ));
+    check_roundtrip(&v2(
+        "    from_scene_reference: !<LogTransform> {direction: inverse}\n",
+    ));
     check_roundtrip(&v1("    from_reference: !<LogTransform> {base: 5}\n"));
-    check_roundtrip(&v1("    from_reference: !<LogTransform> {base: 7, direction: inverse}\n"));
+    check_roundtrip(&v1(
+        "    from_reference: !<LogTransform> {base: 7, direction: inverse}\n",
+    ));
 
     for end in [
         "    from_scene_reference: !<LogAffineTransform> {base: 10, log_side_slope: [1.3, 1.4, 1.5], log_side_offset: [0, 0, 0.1], lin_side_slope: [1, 1, 1.1], lin_side_offset: [0.1234567890123, 0.5, 0.1]}\n",
@@ -94,8 +100,9 @@ fn config_unknown_key_error() {
     let g = LogGuard::new();
     Config::create_from_str(&s).unwrap();
     assert!(
-        g.output()
-            .starts_with("[OpenColorIO Warning]: At line 56, unknown key 'dummyKey' in 'ColorSpace'."),
+        g.output().starts_with(
+            "[OpenColorIO Warning]: At line 56, unknown key 'dummyKey' in 'ColorSpace'."
+        ),
         "{}",
         g.output()
     );
@@ -236,12 +243,18 @@ fn config_grading_primary_serialization() {
     );
 
     let cases = [
-        ("{style: log, brightness: {rgb: [0.1, 0], master: 0.1}}", "The RGB value needs to be a 3 doubles"),
+        (
+            "{style: log, brightness: {rgb: [0.1, 0], master: 0.1}}",
+            "The RGB value needs to be a 3 doubles",
+        ),
         (
             "{style: log, brightness: {rgb: [0.1, 0.12345678, 0, 0], master: 0.1}}",
             "The RGB value needs to be a 3 doubles",
         ),
-        ("{style: log, brightness: [0.1, 0.12345678, 0, 0]}", "'brightness' failed: The value needs to be a map"),
+        (
+            "{style: log, brightness: [0.1, 0.12345678, 0, 0]}",
+            "'brightness' failed: The value needs to be a map",
+        ),
         (
             "{style: log, brightness: {rgb: [0.1, 0.12345678, 0]}}",
             "'brightness' failed: Both rgb and master values are required",
@@ -250,14 +263,31 @@ fn config_grading_primary_serialization() {
             "{style: log, brightness: {rgb: [0.1, 0.12345678, 0], master: [0.1, 0.2, 0.3]}}",
             "parsing double failed",
         ),
-        ("{style: log, brightness: {master: 0.1}}", "'brightness' failed: Both rgb and master values are required"),
-        ("{style: log, pivot: 0.1}", "'pivot' failed: The value needs to be a map"),
-        ("{style: log, pivot: {}}", "'pivot' failed: At least one of the pivot values must be provided"),
-        ("{style: log, clamp: 0.1}", "'clamp' failed: The value needs to be a map"),
-        ("{style: log, clamp: {}}", "'clamp' failed: At least one of the clamp values must be provided"),
+        (
+            "{style: log, brightness: {master: 0.1}}",
+            "'brightness' failed: Both rgb and master values are required",
+        ),
+        (
+            "{style: log, pivot: 0.1}",
+            "'pivot' failed: The value needs to be a map",
+        ),
+        (
+            "{style: log, pivot: {}}",
+            "'pivot' failed: At least one of the pivot values must be provided",
+        ),
+        (
+            "{style: log, clamp: 0.1}",
+            "'clamp' failed: The value needs to be a map",
+        ),
+        (
+            "{style: log, clamp: {}}",
+            "'clamp' failed: At least one of the clamp values must be provided",
+        ),
     ];
     for (t, what) in cases {
-        let s = v2(&format!("    from_scene_reference: !<GradingPrimaryTransform> {t}\n"));
+        let s = v2(&format!(
+            "    from_scene_reference: !<GradingPrimaryTransform> {t}\n"
+        ));
         assert_err!(Config::create_from_str(&s), what);
     }
 }
@@ -431,7 +461,10 @@ fn config_grading_tone_serialization() {
             "{style: log, whites: {rgb: [0.1, 0.12345678, 1, 1], master: 0.1, start: 1, width: 1}}",
             "The RGB value needs to be a 3 doubles",
         ),
-        ("{style: log, whites: [0.1, 0.12345678, 0, 0]}", "'whites' failed: The value needs to be a map"),
+        (
+            "{style: log, whites: [0.1, 0.12345678, 0, 0]}",
+            "'whites' failed: The value needs to be a map",
+        ),
         (
             "{style: log, whites: {rgb: [0.1, 1, 1], master: 0.1, width: 1}}",
             "'whites' failed: Rgb, master, start, and width values are required",
@@ -446,7 +479,9 @@ fn config_grading_tone_serialization() {
         ),
     ];
     for (t, what) in cases {
-        let s = v2(&format!("    from_scene_reference: !<GradingToneTransform> {t}\n"));
+        let s = v2(&format!(
+            "    from_scene_reference: !<GradingToneTransform> {t}\n"
+        ));
         assert_err!(Config::create_from_str(&s), what);
     }
 }

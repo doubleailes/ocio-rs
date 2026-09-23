@@ -77,14 +77,20 @@ pub fn find_in_vec_case_ignore(vec: &[String], s: &str) -> Option<usize> {
 /// Strings present in both vectors (case insensitive), keeping the order and
 /// the capitalization of `vec1` (`IntersectStringVecsCaseIgnore`).
 pub fn intersect_case_ignore(vec1: &[String], vec2: &[String]) -> Vec<String> {
-    vec1.iter().filter(|v| vec2.iter().any(|w| compare(v, w))).cloned().collect()
+    vec1.iter()
+        .filter(|v| vec2.iter().any(|w| compare(v, w)))
+        .cloned()
+        .collect()
 }
 
 /// Find the end of a (possibly quoted) name starting at `start`.
 fn find_end_of_name(s: &[u8], start: usize, sep: u8) -> Result<usize> {
     let mut current = start;
     loop {
-        match s[current.min(s.len())..].iter().position(|&c| c == b'"' || c == sep) {
+        match s[current.min(s.len())..]
+            .iter()
+            .position(|&c| c == b'"' || c == sep)
+        {
             None => return Ok(s.len()),
             Some(off) => {
                 let pos = current + off;
@@ -187,14 +193,26 @@ pub fn contains_context_variables(s: &str) -> bool {
 /// (i.e. `printf("%.<precision>g")`).
 pub fn format_g(v: f64, precision: usize) -> String {
     if v.is_nan() {
-        return if v.is_sign_negative() { "-nan".to_string() } else { "nan".to_string() };
+        return if v.is_sign_negative() {
+            "-nan".to_string()
+        } else {
+            "nan".to_string()
+        };
     }
     if v.is_infinite() {
-        return if v < 0.0 { "-inf".to_string() } else { "inf".to_string() };
+        return if v < 0.0 {
+            "-inf".to_string()
+        } else {
+            "inf".to_string()
+        };
     }
     let p = precision.max(1);
     if v == 0.0 {
-        return if v.is_sign_negative() { "-0".to_string() } else { "0".to_string() };
+        return if v.is_sign_negative() {
+            "-0".to_string()
+        } else {
+            "0".to_string()
+        };
     }
     let sci = format!("{:.*e}", p - 1, v);
     let (mant, exp) = match sci.split_once('e') {
@@ -273,8 +291,14 @@ mod tests {
         assert_eq!(split_string_env_style("a:b").unwrap(), vec!["a", "b"]);
         assert_eq!(split_string_env_style("").unwrap(), vec![""]);
         assert_eq!(split_string_env_style("a,").unwrap(), vec!["a", ""]);
-        assert_eq!(split_string_env_style("\"a, b\", c").unwrap(), vec!["a, b", "c"]);
+        assert_eq!(
+            split_string_env_style("\"a, b\", c").unwrap(),
+            vec!["a, b", "c"]
+        );
         assert!(split_string_env_style("\"a, b").is_err());
-        assert_eq!(join_string_env_style(&["a, b".to_string(), "c".to_string()]), "\"a, b\", c");
+        assert_eq!(
+            join_string_env_style(&["a, b".to_string(), "c".to_string()]),
+            "\"a, b\", c"
+        );
     }
 }

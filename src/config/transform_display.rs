@@ -21,13 +21,23 @@ pub fn format_transform(t: &Transform) -> String {
             let mut s = format!("<AllocationTransform direction={}", t.direction.as_str());
             if !t.vars.is_empty() {
                 s.push_str(&format!(", allocation={}, vars=", t.allocation.as_str()));
-                s.push_str(&t.vars.iter().map(|v| fmt_f32(*v as f32)).collect::<Vec<_>>().join(" "));
+                s.push_str(
+                    &t.vars
+                        .iter()
+                        .map(|v| fmt_f32(*v as f32))
+                        .collect::<Vec<_>>()
+                        .join(" "),
+                );
             }
             s.push('>');
             s
         }
         Transform::Builtin(t) => {
-            format!("<BuiltinTransform direction = {}, style = {}>", t.direction.as_str(), t.style)
+            format!(
+                "<BuiltinTransform direction = {}, style = {}>",
+                t.direction.as_str(),
+                t.style
+            )
         }
         Transform::Cdl(t) => format!(
             "<CDLTransform direction={}, slope=[{}], offset=[{}], power=[{}], sat={}, style={}>",
@@ -123,7 +133,11 @@ pub fn format_transform(t: &Transform) -> String {
             s
         }
         Transform::FixedFunction(t) => {
-            let mut s = format!("<FixedFunction direction={}, style={}", t.direction.as_str(), t.style.as_str());
+            let mut s = format!(
+                "<FixedFunction direction={}, style={}",
+                t.direction.as_str(),
+                t.style.as_str()
+            );
             if !t.params.is_empty() {
                 s.push_str(&format!(", params=[{}]", list(&t.params)));
             }
@@ -189,7 +203,10 @@ pub fn format_transform(t: &Transform) -> String {
             s
         }
         Transform::Group(g) => {
-            let mut s = format!("<GroupTransform direction={}, transforms=", g.direction.as_str());
+            let mut s = format!(
+                "<GroupTransform direction={}, transforms=",
+                g.direction.as_str()
+            );
             for c in &g.transforms {
                 s.push_str("\n        ");
                 s.push_str(&format_transform(c));
@@ -225,7 +242,11 @@ pub fn format_transform(t: &Transform) -> String {
             s.push('>');
             s
         }
-        Transform::Log(t) => format!("<LogTransform direction={}, base={}>", t.direction.as_str(), fmt_f64(t.base)),
+        Transform::Log(t) => format!(
+            "<LogTransform direction={}, base={}>",
+            t.direction.as_str(),
+            fmt_f64(t.base)
+        ),
         Transform::Look(t) => {
             let mut s = format!(
                 "<LookTransform direction={}, src={}, dst={}, looks={}",
@@ -279,8 +300,18 @@ pub fn format_transform(t: &Transform) -> String {
             s
         }
         Transform::Matrix(t) => {
-            let m = t.matrix.iter().map(|x| format_g(*x, 16)).collect::<Vec<_>>().join(", ");
-            let o = t.offset.iter().map(|x| format_g(*x, 16)).collect::<Vec<_>>().join(", ");
+            let m = t
+                .matrix
+                .iter()
+                .map(|x| format_g(*x, 16))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let o = t
+                .offset
+                .iter()
+                .map(|x| format_g(*x, 16))
+                .collect::<Vec<_>>()
+                .join(", ");
             format!(
                 "<MatrixTransform direction={}, fileindepth={}, fileoutdepth={}, matrix=[{}], offset=[{}]>",
                 t.direction.as_str(),

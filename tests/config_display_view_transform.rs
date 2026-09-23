@@ -27,13 +27,22 @@ fn display_view_transform_basic() {
 
     let mut t = dt.clone();
     t.src.clear();
-    assert_err!(Transform::from(t).validate(), "DisplayViewTransform: empty source color space name");
+    assert_err!(
+        Transform::from(t).validate(),
+        "DisplayViewTransform: empty source color space name"
+    );
     let mut t = dt.clone();
     t.display.clear();
-    assert_err!(Transform::from(t).validate(), "DisplayViewTransform: empty display name");
+    assert_err!(
+        Transform::from(t).validate(),
+        "DisplayViewTransform: empty display name"
+    );
     let mut t = dt.clone();
     t.view.clear();
-    assert_err!(Transform::from(t).validate(), "DisplayViewTransform: empty view name");
+    assert_err!(
+        Transform::from(t).validate(),
+        "DisplayViewTransform: empty view name"
+    );
     Transform::from(dt.clone()).validate().unwrap();
 
     dt.looks_bypass = true;
@@ -99,7 +108,13 @@ fn display_view_transform_build_ops() {
     let mut cs_source = ColorSpace::default();
     cs_source.set_name("source");
     cs_source.set_transform(
-        Some(MatrixTransform { offset: OFFSET, ..Default::default() }.into()),
+        Some(
+            MatrixTransform {
+                offset: OFFSET,
+                ..Default::default()
+            }
+            .into(),
+        ),
         ColorSpaceDirection::ToReference,
     );
     config.add_color_space(&cs_source).unwrap();
@@ -111,7 +126,9 @@ fn display_view_transform_build_ops() {
         ColorSpaceDirection::FromReference,
     );
     config.add_color_space(&cs).unwrap();
-    config.add_display_view("display", "view", "destination", "").unwrap();
+    config
+        .add_display_view("display", "view", "destination", "")
+        .unwrap();
     config.validate().unwrap();
 
     let mut dt = DisplayViewTransform::new("source", "display", "view");
@@ -124,18 +141,27 @@ fn display_view_transform_build_ops() {
     // Using a scene-referred ViewTransform.
     let mut cs = ColorSpace::new(ReferenceSpaceType::Display);
     cs.set_name("display");
-    cs.set_transform(Some(ExposureContrastTransform::default().into()), ColorSpaceDirection::FromReference);
+    cs.set_transform(
+        Some(ExposureContrastTransform::default().into()),
+        ColorSpaceDirection::FromReference,
+    );
     config.add_color_space(&cs).unwrap();
 
     let mut vt = ViewTransform::new(ReferenceSpaceType::Scene);
     vt.set_name("default_vt");
-    let cdl = CdlTransform { sat: 1.2, ..Default::default() };
+    let cdl = CdlTransform {
+        sat: 1.2,
+        ..Default::default()
+    };
     vt.set_transform(Some(cdl.into()), ViewTransformDirection::FromReference);
     config.add_view_transform(&vt).unwrap();
 
     let mut vt = ViewTransform::new(ReferenceSpaceType::Scene);
     vt.set_name("scene_vt");
-    vt.set_transform(Some(LogTransform::new(4.2).into()), ViewTransformDirection::FromReference);
+    vt.set_transform(
+        Some(LogTransform::new(4.2).into()),
+        ViewTransformDirection::FromReference,
+    );
     config.add_view_transform(&vt).unwrap();
 
     config
@@ -153,7 +179,10 @@ fn display_view_transform_build_ops() {
     // Adding a display-referred ViewTransform.
     let mut vt = ViewTransform::new(ReferenceSpaceType::Display);
     vt.set_name("display_vt");
-    vt.set_transform(Some(LogTransform::new(2.1).into()), ViewTransformDirection::FromReference);
+    vt.set_transform(
+        Some(LogTransform::new(2.1).into()),
+        ViewTransformDirection::FromReference,
+    );
     config.add_view_transform(&vt).unwrap();
     config
         .add_display_view_full("display", "viewt", "display_vt", "display", "", "", "")
@@ -167,9 +196,18 @@ fn display_view_transform_build_ops() {
 
     // Same test using a shared view that uses USE_DISPLAY_NAME.
     config
-        .add_shared_view("shared_view", "display_vt", OCIO_VIEW_USE_DISPLAY_NAME, "", "", "")
+        .add_shared_view(
+            "shared_view",
+            "display_vt",
+            OCIO_VIEW_USE_DISPLAY_NAME,
+            "",
+            "",
+            "",
+        )
         .unwrap();
-    config.add_display_shared_view("display", "shared_view").unwrap();
+    config
+        .add_display_shared_view("display", "shared_view")
+        .unwrap();
     config.validate().unwrap();
     dt.view = "shared_view".into();
     {
@@ -387,7 +425,10 @@ fn display_view_transform_build_ops_with_looks() {
     // Src can't be a named transform.
     dt.src = "nt_forward".into();
     dt.view = "view".into();
-    assert_err!(build(&config, &dt, F), "Cannot find source color space named 'nt_forward'");
+    assert_err!(
+        build(&config, &dt, F),
+        "Cannot find source color space named 'nt_forward'"
+    );
 
     // View color space is a named transform.
     dt.src = "displayCSIn".into();
@@ -431,12 +472,20 @@ fn display_view_transform_build_ops_with_looks() {
     let ops = build(&config, &dt, F).unwrap();
     check_cdl_ops(
         &ops,
-        &[Some(("forward transform for nt_forward", F)), Some(("out cs from ref", F)), None],
+        &[
+            Some(("forward transform for nt_forward", F)),
+            Some(("out cs from ref", F)),
+            None,
+        ],
     );
     let ops = build(&config, &dt, I).unwrap();
     check_cdl_ops(
         &ops,
-        &[None, Some(("out cs to ref", F)), Some(("forward transform for nt_forward", I))],
+        &[
+            None,
+            Some(("out cs to ref", F)),
+            Some(("forward transform for nt_forward", I)),
+        ],
     );
 }
 
@@ -540,7 +589,11 @@ colorspaces:
     to_scene_reference: !<MatrixTransform> {offset: [-0.15, 0.15, 0.15, 0.05]}
 "#;
 
-fn proc_of(config: &Config, dt: &DisplayViewTransform, dir: TransformDirection) -> Result<Processor> {
+fn proc_of(
+    config: &Config,
+    dt: &DisplayViewTransform,
+    dir: TransformDirection,
+) -> Result<Processor> {
     let t: Transform = dt.clone().into();
     config.get_processor_for_transform(&t, dir)
 }
@@ -562,12 +615,16 @@ fn display_view_transform_apply_fwd_inv() {
 
     for (view, n) in [("view", 7), ("viewNoVT", 6)] {
         dt.view = view.into();
-        let proc = proc_of(&config, &dt, Forward).unwrap().optimized(OptimizationFlags::NONE);
+        let proc = proc_of(&config, &dt, Forward)
+            .unwrap()
+            .optimized(OptimizationFlags::NONE);
         assert_eq!(proc.ops().len(), n);
         assert_eq!(proc.create_group_transform().transforms.len(), n);
         let cpu = proc.default_cpu_processor();
 
-        let proc_inv = proc_of(&config, &dt, Inverse).unwrap().optimized(OptimizationFlags::NONE);
+        let proc_inv = proc_of(&config, &dt, Inverse)
+            .unwrap()
+            .optimized(OptimizationFlags::NONE);
         assert_eq!(proc_inv.ops().len(), n);
         assert_eq!(proc_inv.create_group_transform().transforms.len(), n);
         let cpu_inv = proc_inv.default_cpu_processor();
@@ -598,7 +655,15 @@ fn display_view_transform_apply_fwd_inv() {
 
     // Missing look.
     e_config
-        .add_display_view_full("display", "bad_view", "display_vt", "displayCSOut", "missing look", "", "")
+        .add_display_view_full(
+            "display",
+            "bad_view",
+            "display_vt",
+            "displayCSOut",
+            "missing look",
+            "",
+            "",
+        )
         .unwrap();
     dt.view = "bad_view".into();
     assert_err!(
@@ -609,7 +674,15 @@ fn display_view_transform_apply_fwd_inv() {
 
     // Missing viewing rule does not currently throw when getting a processor.
     e_config
-        .add_display_view_full("display", "bad_view", "display_vt", "displayCSOut", "", "missing rule", "desc: foo")
+        .add_display_view_full(
+            "display",
+            "bad_view",
+            "display_vt",
+            "displayCSOut",
+            "",
+            "missing rule",
+            "desc: foo",
+        )
         .unwrap();
     proc_of(&e_config, &dt, Forward).unwrap();
     assert_err!(
@@ -626,11 +699,17 @@ fn display_view_transform_errors() {
     let mut dt = DisplayViewTransform::new("displayCSIn", "display", "view");
 
     dt.display = "".into();
-    assert_err!(proc_of(&config, &dt, Forward), "DisplayViewTransform: empty display name.");
+    assert_err!(
+        proc_of(&config, &dt, Forward),
+        "DisplayViewTransform: empty display name."
+    );
     dt.display = "display".into();
 
     dt.view = "".into();
-    assert_err!(proc_of(&config, &dt, Forward), "DisplayViewTransform: empty view name.");
+    assert_err!(
+        proc_of(&config, &dt, Forward),
+        "DisplayViewTransform: empty view name."
+    );
     dt.view = "view".into();
 
     dt.src = "".into();
@@ -655,7 +734,15 @@ fn display_view_transform_errors() {
 
     let mut e_config = config.create_editable_copy();
     e_config
-        .add_display_view_full("display", "bad_view", "missing vt", "displayCSOut", "", "", "")
+        .add_display_view_full(
+            "display",
+            "bad_view",
+            "missing vt",
+            "displayCSOut",
+            "",
+            "",
+            "",
+        )
         .unwrap();
     dt.view = "bad_view".into();
     assert_err!(
@@ -670,7 +757,15 @@ fn display_view_transform_errors() {
     );
 
     e_config
-        .add_display_view_full("display", "bad_view", "display_vt", "missing cs", "", "", "")
+        .add_display_view_full(
+            "display",
+            "bad_view",
+            "display_vt",
+            "missing cs",
+            "",
+            "",
+            "",
+        )
         .unwrap();
     dt.view = "bad_view".into();
     assert_err!(
@@ -682,7 +777,9 @@ fn display_view_transform_errors() {
         "Config failed display view validation. Display 'display' has a view 'bad_view' that refers to a color space or a named transform, 'missing cs', which is not defined."
     );
 
-    e_config.add_display_view("display", "bad_view", "missing cs", "").unwrap();
+    e_config
+        .add_display_view("display", "bad_view", "missing cs", "")
+        .unwrap();
     assert_err!(
         proc_of(&e_config, &dt, Forward),
         "DisplayViewTransform error. Cannot find color space or named transform with name 'missing cs'."
@@ -768,7 +865,9 @@ colorspaces:
     from_scene_reference: !<FileTransform> {src: $FILE}
 "#;
     let _lock = env_lock();
-    let mut cfg = Config::create_from_str(CONFIG).unwrap().create_editable_copy();
+    let mut cfg = Config::create_from_str(CONFIG)
+        .unwrap()
+        .create_editable_copy();
     cfg.set_search_path(&data_file(""));
     cfg.validate().unwrap();
 

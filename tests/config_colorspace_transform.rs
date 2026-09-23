@@ -3,7 +3,9 @@
 mod config_common;
 
 use config_common::*;
-use ocio::config::{collect_context_variables, BuildColorSpaceOps, ColorSpace, NamedTransform, ViewTransform};
+use ocio::config::{
+    collect_context_variables, BuildColorSpaceOps, ColorSpace, NamedTransform, ViewTransform,
+};
 use ocio::ops::{OpRc, OpVec};
 use ocio::transforms::BuildOps;
 use ocio::*;
@@ -32,15 +34,22 @@ fn colorspace_transform_basic() {
 
     let mut c = cst.clone();
     c.src.clear();
-    assert_err!(Transform::from(c).validate(), "ColorSpaceTransform: empty source color space name");
+    assert_err!(
+        Transform::from(c).validate(),
+        "ColorSpaceTransform: empty source color space name"
+    );
     let mut c = cst.clone();
     c.dst.clear();
-    assert_err!(Transform::from(c).validate(), "ColorSpaceTransform: empty destination color space name");
+    assert_err!(
+        Transform::from(c).validate(),
+        "ColorSpaceTransform: empty destination color space name"
+    );
 }
 
 /// The transform an op converts back to.
 fn op_transform(op: &OpRc) -> Transform {
-    op.to_transform().unwrap_or_else(|| panic!("op {} has no transform", op.name()))
+    op.to_transform()
+        .unwrap_or_else(|| panic!("op {} has no transform", op.name()))
 }
 
 fn check_matrix_op(op: &OpRc, offset: &[f64; 4], dir: TransformDirection) {
@@ -80,7 +89,11 @@ fn build(config: &Config, cst: &ColorSpaceTransform, dir: TransformDirection) ->
 }
 
 fn matrix_offset(offset: [f64; 4]) -> Transform {
-    MatrixTransform { offset, ..Default::default() }.into()
+    MatrixTransform {
+        offset,
+        ..Default::default()
+    }
+    .into()
 }
 
 fn ff(style: FixedFunctionStyle) -> Transform {
@@ -101,17 +114,30 @@ fn build_setup() -> BuildSetup {
     let mut config = Config::create_raw().create_editable_copy();
     let mut cs_scene_to_ref = ColorSpace::new(ReferenceSpaceType::Scene);
     cs_scene_to_ref.set_name("source");
-    cs_scene_to_ref.set_transform(Some(matrix_offset(OFFSET)), ColorSpaceDirection::ToReference);
+    cs_scene_to_ref.set_transform(
+        Some(matrix_offset(OFFSET)),
+        ColorSpaceDirection::ToReference,
+    );
     config.add_color_space(&cs_scene_to_ref).unwrap();
 
     let mut cs_scene_from_ref = ColorSpace::new(ReferenceSpaceType::Scene);
     cs_scene_from_ref.set_name("destination");
-    cs_scene_from_ref.set_transform(Some(ff(FixedFunctionStyle::AcesGlow03)), ColorSpaceDirection::FromReference);
+    cs_scene_from_ref.set_transform(
+        Some(ff(FixedFunctionStyle::AcesGlow03)),
+        ColorSpaceDirection::FromReference,
+    );
     config.add_color_space(&cs_scene_from_ref).unwrap();
 
-    config.add_display_view("display", "view", "destination", "").unwrap();
+    config
+        .add_display_view("display", "view", "destination", "")
+        .unwrap();
     config.validate().unwrap();
-    BuildSetup { config, cs_scene_to_ref, cs_scene_from_ref, cst }
+    BuildSetup {
+        config,
+        cs_scene_to_ref,
+        cs_scene_from_ref,
+        cst,
+    }
 }
 
 #[test]
@@ -133,7 +159,12 @@ fn colorspace_transform_build_colorspace_ops_errors() {
     let mut cs = config.get_color_space("source").unwrap().clone();
     cs.add_alias("aliasToRef");
     config.add_color_space(&cs).unwrap();
-    let ops = build(&config, &ColorSpaceTransform::new("source", "aliasToRef"), TransformDirection::Forward).unwrap();
+    let ops = build(
+        &config,
+        &ColorSpaceTransform::new("source", "aliasToRef"),
+        TransformDirection::Forward,
+    )
+    .unwrap();
     assert_eq!(ops.len(), 0);
 }
 
@@ -141,7 +172,12 @@ fn colorspace_transform_build_colorspace_ops_errors() {
 #[ignore = "needs-merge"]
 fn colorspace_transform_build_colorspace_ops() {
     use TransformDirection::{Forward, Inverse};
-    let BuildSetup { mut config, mut cs_scene_to_ref, mut cs_scene_from_ref, mut cst } = build_setup();
+    let BuildSetup {
+        mut config,
+        mut cs_scene_to_ref,
+        mut cs_scene_from_ref,
+        mut cst,
+    } = build_setup();
 
     {
         let ops = build(&config, &cst, Forward).unwrap();
@@ -166,7 +202,12 @@ fn colorspace_transform_build_colorspace_ops() {
         assert!(ops[3].is_no_op());
     }
     {
-        let ops = build(&config, &ColorSpaceTransform::new("source", "aliasToRef"), Forward).unwrap();
+        let ops = build(
+            &config,
+            &ColorSpaceTransform::new("source", "aliasToRef"),
+            Forward,
+        )
+        .unwrap();
         assert_eq!(ops.len(), 0);
     }
     {
@@ -199,7 +240,14 @@ fn colorspace_transform_build_colorspace_ops() {
 
         assert_eq!(build(&config, &cst, Forward).unwrap().len(), 0);
         let t: Transform = cst.clone().into();
-        assert_eq!(config.get_processor_for_transform(&t, Forward).unwrap().ops().len(), 0);
+        assert_eq!(
+            config
+                .get_processor_for_transform(&t, Forward)
+                .unwrap()
+                .ops()
+                .len(),
+            0
+        );
 
         cst.data_bypass = false;
         assert_eq!(build(&config, &cst, Forward).unwrap().len(), 4);
@@ -239,19 +287,24 @@ fn colorspace_transform_build_colorspace_ops() {
     {
         let ctx = config.current_context().clone();
         let mut ops = OpVec::new();
-        BuildColorSpaceOps::to_reference(&mut ops, &config, &ctx, &cs_scene_from_ref, false).unwrap();
+        BuildColorSpaceOps::to_reference(&mut ops, &config, &ctx, &cs_scene_from_ref, false)
+            .unwrap();
         assert_eq!(ops.len(), 2);
         check_ff_op(&ops[1], FixedFunctionStyle::AcesGlow03, Inverse);
 
         let mut ops = OpVec::new();
-        BuildColorSpaceOps::from_reference(&mut ops, &config, &ctx, &cs_scene_from_ref, true).unwrap();
+        BuildColorSpaceOps::from_reference(&mut ops, &config, &ctx, &cs_scene_from_ref, true)
+            .unwrap();
         assert_eq!(ops.len(), 2);
         check_ff_op(&ops[0], FixedFunctionStyle::AcesGlow03, Forward);
     }
     {
         let ctx = config.current_context().clone();
         let mut cs_scene_both = cs_scene_from_ref.clone();
-        cs_scene_both.set_transform(Some(ff(FixedFunctionStyle::AcesGlow10)), ColorSpaceDirection::ToReference);
+        cs_scene_both.set_transform(
+            Some(ff(FixedFunctionStyle::AcesGlow10)),
+            ColorSpaceDirection::ToReference,
+        );
         cs_scene_both.set_is_data(true);
 
         let mut ops = OpVec::new();
@@ -271,16 +324,25 @@ fn colorspace_transform_build_colorspace_ops() {
     // Replace the 2 color spaces by display-referred color spaces.
     let mut cs_display_to_ref = ColorSpace::new(ReferenceSpaceType::Display);
     cs_display_to_ref.set_name("source");
-    cs_display_to_ref.set_transform(Some(matrix_offset(OFFSET)), ColorSpaceDirection::ToReference);
+    cs_display_to_ref.set_transform(
+        Some(matrix_offset(OFFSET)),
+        ColorSpaceDirection::ToReference,
+    );
     config.add_color_space(&cs_display_to_ref).unwrap();
     let mut cs_display_from_ref = ColorSpace::new(ReferenceSpaceType::Display);
     cs_display_from_ref.set_name("destination");
-    cs_display_from_ref.set_transform(Some(ff(FixedFunctionStyle::AcesGlow10)), ColorSpaceDirection::FromReference);
+    cs_display_from_ref.set_transform(
+        Some(ff(FixedFunctionStyle::AcesGlow10)),
+        ColorSpaceDirection::FromReference,
+    );
     config.add_color_space(&cs_display_from_ref).unwrap();
 
     let mut vt = ViewTransform::new(ReferenceSpaceType::Scene);
     vt.set_name("view_transform");
-    vt.set_transform(Some(matrix_offset(OFFSET)), ViewTransformDirection::FromReference);
+    vt.set_transform(
+        Some(matrix_offset(OFFSET)),
+        ViewTransformDirection::FromReference,
+    );
     config.add_view_transform(&vt).unwrap();
 
     assert_eq!(config.num_color_spaces(), 3);
@@ -299,9 +361,14 @@ fn reference_setup() -> Config {
     let mut config = Config::create_raw().create_editable_copy();
     let mut cs = ColorSpace::new(ReferenceSpaceType::Scene);
     cs.set_name("scene");
-    cs.set_transform(Some(ff(FixedFunctionStyle::AcesGlow03)), ColorSpaceDirection::FromReference);
+    cs.set_transform(
+        Some(ff(FixedFunctionStyle::AcesGlow03)),
+        ColorSpaceDirection::FromReference,
+    );
     config.add_color_space(&cs).unwrap();
-    config.add_display_view("display", "view", "scene", "").unwrap();
+    config
+        .add_display_view("display", "view", "scene", "")
+        .unwrap();
     config.validate().unwrap();
     config
 }
@@ -309,7 +376,10 @@ fn reference_setup() -> Config {
 fn add_scene_view_transform(config: &mut Config) -> ViewTransform {
     let mut vt = ViewTransform::new(ReferenceSpaceType::Scene);
     vt.set_name("view_transform");
-    vt.set_transform(Some(matrix_offset(OFFSET)), ViewTransformDirection::FromReference);
+    vt.set_transform(
+        Some(matrix_offset(OFFSET)),
+        ViewTransformDirection::FromReference,
+    );
     config.add_view_transform(&vt).unwrap();
     config.validate().unwrap();
     vt
@@ -363,7 +433,10 @@ fn colorspace_transform_build_colorspace_ops_with_reference_conversion() {
 
     let mut cs = ColorSpace::new(ReferenceSpaceType::Display);
     cs.set_name("display");
-    cs.set_transform(Some(LogTransform::default().into()), ColorSpaceDirection::FromReference);
+    cs.set_transform(
+        Some(LogTransform::default().into()),
+        ColorSpaceDirection::FromReference,
+    );
     config.add_color_space(&cs).unwrap();
     config.validate().unwrap();
 
@@ -387,7 +460,10 @@ fn colorspace_transform_build_colorspace_ops_with_reference_conversion() {
         assert!(ops[4].is_no_op());
     }
 
-    vt.set_transform(Some(ExponentTransform::default().into()), ViewTransformDirection::ToReference);
+    vt.set_transform(
+        Some(ExponentTransform::default().into()),
+        ViewTransformDirection::ToReference,
+    );
     config.add_view_transform(&vt).unwrap();
     {
         let ops = build(&config, &cst, Inverse).unwrap();
@@ -462,7 +538,10 @@ fn colorspace_transform_context_variables() {
     assert!(found);
     assert_eq!(used.num_string_vars(), 1);
     assert_eq!(used.string_var_name_by_index(0), Some("ENV1"));
-    assert_eq!(used.string_var_by_index(0), Some("exposure_contrast_linear.ctf"));
+    assert_eq!(
+        used.string_var_by_index(0),
+        Some("exposure_contrast_linear.ctf")
+    );
 
     // Case 5 - Context variable indirectly used via a NamedTransform.
     let mut nt = NamedTransform::new();
@@ -474,5 +553,8 @@ fn colorspace_transform_context_variables() {
     assert!(found);
     assert_eq!(used.num_string_vars(), 1);
     assert_eq!(used.string_var_name_by_index(0), Some("ENV1"));
-    assert_eq!(used.string_var_by_index(0), Some("exposure_contrast_linear.ctf"));
+    assert_eq!(
+        used.string_var_by_index(0),
+        Some("exposure_contrast_linear.ctf")
+    );
 }

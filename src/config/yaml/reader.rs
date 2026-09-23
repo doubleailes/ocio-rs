@@ -19,7 +19,12 @@ use std::collections::HashSet;
 // Error helpers
 
 fn throw_error(node: &Node, msg: &str) -> Error {
-    Error::msg(format!("At line {}, '{}' parsing failed: {}", node.line + 1, node.tag, msg))
+    Error::msg(format!(
+        "At line {}, '{}' parsing failed: {}",
+        node.line + 1,
+        node.tag,
+        msg
+    ))
 }
 
 fn key_name(key: &Node) -> String {
@@ -132,14 +137,20 @@ fn entries(node: &Node) -> Result<Vec<(String, &Node, &Node)>> {
 
 fn load_custom_keys<'a>(node: &'a Node, section: &str) -> Result<Vec<(&'a Node, &'a Node)>> {
     if !node.is_map() {
-        return Err(throw_error(node, &format!("Expected a YAML map in the {section} section.")));
+        return Err(throw_error(
+            node,
+            &format!("Expected a YAML map in the {section} section."),
+        ));
     }
     Ok(node.map_entries().iter().map(|(k, v)| (k, v)).collect())
 }
 
 fn load_interchange(node: &Node, mut set: impl FnMut(&str, &str) -> Result<()>) -> Result<()> {
     if !node.is_map() {
-        return Err(throw_error(node, "The 'interchange' content needs to be a map."));
+        return Err(throw_error(
+            node,
+            "The 'interchange' content needs to be a map.",
+        ));
     }
     for (k, v) in load_custom_keys(node, "interchange")? {
         let key = k.as_string()?;
@@ -196,7 +207,10 @@ fn load_view(node: &Node) -> Result<View> {
         ));
     }
     if v.colorspace.is_empty() {
-        return Err(throw_error(node, &format!("View '{}' does not specify colorspace.", v.name)));
+        return Err(throw_error(
+            node,
+            &format!("View '{}' does not specify colorspace.", v.name),
+        ));
     }
     Ok(v)
 }
@@ -450,7 +464,10 @@ fn is_experimental_ff(s: FixedFunctionStyle) -> bool {
     use FixedFunctionStyle as S;
     matches!(
         s,
-        S::AcesOutputTransform20 | S::AcesRgbToJmh20 | S::AcesTonescaleCompress20 | S::AcesGamutCompress20
+        S::AcesOutputTransform20
+            | S::AcesRgbToJmh20
+            | S::AcesTonescaleCompress20
+            | S::AcesGamutCompress20
     )
 }
 
@@ -489,7 +506,10 @@ fn load_fixed_function(node: &Node) -> Result<Transform> {
 
 fn load_rgbm(parent: &Node, node: &Node, rgbm: &mut GradingRgbm) -> Result<()> {
     if !node.is_map() {
-        return Err(throw_value_error_key(parent, "The value needs to be a map."));
+        return Err(throw_value_error_key(
+            parent,
+            "The value needs to be a map.",
+        ));
     }
     let (mut rgb_ok, mut master_ok) = (false, false);
     for (key, k, val) in entries(node)? {
@@ -512,7 +532,10 @@ fn load_rgbm(parent: &Node, node: &Node, rgbm: &mut GradingRgbm) -> Result<()> {
         }
     }
     if !rgb_ok || !master_ok {
-        return Err(throw_value_error_key(parent, "Both rgb and master values are required."));
+        return Err(throw_value_error_key(
+            parent,
+            "Both rgb and master values are required.",
+        ));
     }
     Ok(())
 }
@@ -524,7 +547,10 @@ struct Loaded<T> {
 
 impl<T: Copy> Loaded<T> {
     fn new(v: T) -> Self {
-        Self { value: v, loaded: false }
+        Self {
+            value: v,
+            loaded: false,
+        }
     }
 }
 
@@ -536,7 +562,10 @@ fn load_pivot(
     white: &mut Loaded<f64>,
 ) -> Result<()> {
     if !node.is_map() {
-        return Err(throw_value_error_key(parent, "The value needs to be a map."));
+        return Err(throw_value_error_key(
+            parent,
+            "The value needs to be a map.",
+        ));
     }
     for (key, k, v) in entries(node)? {
         match key.as_str() {
@@ -556,14 +585,25 @@ fn load_pivot(
         }
     }
     if !val.loaded && !black.loaded && !white.loaded {
-        return Err(throw_value_error_key(parent, "At least one of the pivot values must be provided."));
+        return Err(throw_value_error_key(
+            parent,
+            "At least one of the pivot values must be provided.",
+        ));
     }
     Ok(())
 }
 
-fn load_clamp(parent: &Node, node: &Node, black: &mut Loaded<f64>, white: &mut Loaded<f64>) -> Result<()> {
+fn load_clamp(
+    parent: &Node,
+    node: &Node,
+    black: &mut Loaded<f64>,
+    white: &mut Loaded<f64>,
+) -> Result<()> {
     if !node.is_map() {
-        return Err(throw_value_error_key(parent, "The value needs to be a map."));
+        return Err(throw_value_error_key(
+            parent,
+            "The value needs to be a map.",
+        ));
     }
     for (key, k, v) in entries(node)? {
         match key.as_str() {
@@ -579,7 +619,10 @@ fn load_clamp(parent: &Node, node: &Node, black: &mut Loaded<f64>, white: &mut L
         }
     }
     if !black.loaded && !white.loaded {
-        return Err(throw_value_error_key(parent, "At least one of the clamp values must be provided."));
+        return Err(throw_value_error_key(
+            parent,
+            "At least one of the clamp values must be provided.",
+        ));
     }
     Ok(())
 }
@@ -676,7 +719,10 @@ fn load_grading_primary(node: &Node) -> Result<Transform> {
 
 fn load_curve(parent: &Node, node: &Node, curve: &mut GradingBSplineCurve) -> Result<()> {
     if !node.is_map() {
-        return Err(throw_value_error_key(parent, "The value needs to be a map."));
+        return Err(throw_value_error_key(
+            parent,
+            "The value needs to be a map.",
+        ));
     }
     let mut cp_ok = false;
     for (key, k, val) in entries(node)? {
@@ -684,7 +730,11 @@ fn load_curve(parent: &Node, node: &Node, curve: &mut GradingBSplineCurve) -> Re
             "control_points" => {
                 let v = load_f32_vec(val)?;
                 if v.len() % 2 != 0 {
-                    return Err(throw_value_error(&node.tag, k, "An even number of float values is required."));
+                    return Err(throw_value_error(
+                        &node.tag,
+                        k,
+                        "An even number of float values is required.",
+                    ));
                 }
                 let n = v.len() / 2;
                 curve.set_num_control_points(n);
@@ -754,7 +804,9 @@ fn load_grading_rgb_curve(node: &Node) -> Result<Transform> {
     Ok(Transform::GradingRgbCurve(t))
 }
 
-const HUE_CURVE_NAMES: [&str; 8] = ["hue_hue", "hue_sat", "hue_lum", "lum_sat", "sat_sat", "lum_lum", "sat_lum", "hue_fx"];
+const HUE_CURVE_NAMES: [&str; 8] = [
+    "hue_hue", "hue_sat", "hue_lum", "lum_sat", "sat_sat", "lum_lum", "sat_lum", "hue_fx",
+];
 
 fn load_grading_hue_curve(node: &Node) -> Result<Transform> {
     check_duplicates(node)?;
@@ -773,7 +825,11 @@ fn load_grading_hue_curve(node: &Node) -> Result<Transform> {
             "direction" => t.direction = load_direction(val)?,
             "hsy_transform" => {
                 if load_string(val)? != "none" {
-                    return Err(throw_value_error(&node.tag, k, "Unknown hsy_transform value."));
+                    return Err(throw_value_error(
+                        &node.tag,
+                        k,
+                        "Unknown hsy_transform value.",
+                    ));
                 }
                 t.rgb_to_hsy = HsyTransformStyle::None;
             }
@@ -790,9 +846,18 @@ fn load_grading_hue_curve(node: &Node) -> Result<Transform> {
     Ok(Transform::GradingHueCurve(t))
 }
 
-fn load_rgbmsw(parent: &Node, node: &Node, v: &mut GradingRgbmsw, center: bool, pivot: bool) -> Result<()> {
+fn load_rgbmsw(
+    parent: &Node,
+    node: &Node,
+    v: &mut GradingRgbmsw,
+    center: bool,
+    pivot: bool,
+) -> Result<()> {
     if !node.is_map() {
-        return Err(throw_value_error_key(parent, "The value needs to be a map."));
+        return Err(throw_value_error_key(
+            parent,
+            "The value needs to be a map.",
+        ));
     }
     let (mut rgb_ok, mut master_ok, mut start_ok, mut width_ok) = (false, false, false, false);
     let start_key = if center { "center" } else { "start" };
@@ -917,7 +982,9 @@ fn load_base(node: &Node, what: &str, space: &str) -> Result<f64> {
     if nb == 0 {
         load_f64(node)
     } else {
-        Err(Error::msg(format!("{what} parse error, base must be a {space}single double. Found {nb}.")))
+        Err(Error::msg(format!(
+            "{what} parse error, base must be a {space}single double. Found {nb}."
+        )))
     }
 }
 
@@ -961,7 +1028,9 @@ fn load_log_camera(node: &Node) -> Result<Transform> {
         }
     }
     if !lin_break_found {
-        return Err(Error::msg("LogCameraTransform parse error: lin_side_break values are missing."));
+        return Err(Error::msg(
+            "LogCameraTransform parse error: lin_side_break values are missing.",
+        ));
     }
     Ok(Transform::LogCamera(t))
 }
@@ -1081,7 +1150,10 @@ pub fn load_transform(node: &Node) -> Result<Transform> {
         "LookTransform" => load_look_transform(node),
         "MatrixTransform" => load_matrix(node),
         "RangeTransform" => load_range(node),
-        other => Err(throw_error(node, &format!("Unsupported transform type !<{other}> in OCIO profile. "))),
+        other => Err(throw_error(
+            node,
+            &format!("Unsupported transform type !<{other}> in OCIO profile. "),
+        )),
     }
 }
 
@@ -1093,7 +1165,10 @@ fn load_color_space(node: &Node, cs: &mut ColorSpace, major: u32) -> Result<()> 
         return Ok(());
     }
     if !node.is_map() {
-        return Err(throw_error(node, "The '!<ColorSpace>' content needs to be a map."));
+        return Err(throw_error(
+            node,
+            "The '!<ColorSpace>' content needs to be a map.",
+        ));
     }
     check_duplicates(node)?;
     let display = cs.reference_space_type() == ReferenceSpaceType::Display;
@@ -1136,7 +1211,10 @@ fn load_color_space(node: &Node, cs: &mut ColorSpace, major: u32) -> Result<()> 
             }
             "to_display_reference" => {
                 if !display {
-                    return Err(throw_error(node, "'to_display_reference' cannot be used for a non-display color space."));
+                    return Err(throw_error(
+                        node,
+                        "'to_display_reference' cannot be used for a non-display color space.",
+                    ));
                 }
                 cs.set_transform(Some(load_transform(val)?), ColorSpaceDirection::ToReference);
             }
@@ -1147,7 +1225,10 @@ fn load_color_space(node: &Node, cs: &mut ColorSpace, major: u32) -> Result<()> 
                         "'from_reference' or 'from_scene_reference' cannot be used for a display color space.",
                     ));
                 }
-                cs.set_transform(Some(load_transform(val)?), ColorSpaceDirection::FromReference);
+                cs.set_transform(
+                    Some(load_transform(val)?),
+                    ColorSpaceDirection::FromReference,
+                );
             }
             "from_display_reference" => {
                 if !display {
@@ -1156,7 +1237,10 @@ fn load_color_space(node: &Node, cs: &mut ColorSpace, major: u32) -> Result<()> 
                         "'from_display_reference' cannot be used for a non-display color space.",
                     ));
                 }
-                cs.set_transform(Some(load_transform(val)?), ColorSpaceDirection::FromReference);
+                cs.set_transform(
+                    Some(load_transform(val)?),
+                    ColorSpaceDirection::FromReference,
+                );
             }
             _ => log_unknown_key(node, k),
         }
@@ -1185,7 +1269,10 @@ fn load_look(node: &Node, look: &mut Look) -> Result<()> {
 
 fn peek_view_transform_reference_space(node: &Node) -> Result<ReferenceSpaceType> {
     if !node.is_map() {
-        return Err(throw_error(node, "The '!<ViewTransform>' content needs to be a map."));
+        return Err(throw_error(
+            node,
+            "The '!<ViewTransform>' content needs to be a map.",
+        ));
     }
     let (mut scene, mut display) = (false, false);
     for (key, _, _) in entries(node)? {
@@ -1196,14 +1283,21 @@ fn peek_view_transform_reference_space(node: &Node) -> Result<ReferenceSpaceType
         }
     }
     if !scene && !display {
-        return Err(throw_error(node, "The '!<ViewTransform>' needs to refer to a transform."));
+        return Err(throw_error(
+            node,
+            "The '!<ViewTransform>' needs to refer to a transform.",
+        ));
     } else if scene && display {
         return Err(throw_error(
             node,
             "The '!<ViewTransform>' cannot have both to/from_reference and to/from_display_reference transforms.",
         ));
     }
-    Ok(if display { ReferenceSpaceType::Display } else { ReferenceSpaceType::Scene })
+    Ok(if display {
+        ReferenceSpaceType::Display
+    } else {
+        ReferenceSpaceType::Scene
+    })
 }
 
 fn load_view_transform(node: &Node, vt: &mut ViewTransform) -> Result<()> {
@@ -1211,7 +1305,10 @@ fn load_view_transform(node: &Node, vt: &mut ViewTransform) -> Result<()> {
         return Ok(());
     }
     if !node.is_map() {
-        return Err(throw_error(node, "The '!<ViewTransform>' content needs to be a map."));
+        return Err(throw_error(
+            node,
+            "The '!<ViewTransform>' content needs to be a map.",
+        ));
     }
     check_duplicates(node)?;
     for (key, k, val) in entries(node)? {
@@ -1225,12 +1322,14 @@ fn load_view_transform(node: &Node, vt: &mut ViewTransform) -> Result<()> {
                     vt.add_category(&c);
                 }
             }
-            "to_scene_reference" | "to_display_reference" => {
-                vt.set_transform(Some(load_transform(val)?), ViewTransformDirection::ToReference)
-            }
-            "from_scene_reference" | "from_display_reference" => {
-                vt.set_transform(Some(load_transform(val)?), ViewTransformDirection::FromReference)
-            }
+            "to_scene_reference" | "to_display_reference" => vt.set_transform(
+                Some(load_transform(val)?),
+                ViewTransformDirection::ToReference,
+            ),
+            "from_scene_reference" | "from_display_reference" => vt.set_transform(
+                Some(load_transform(val)?),
+                ViewTransformDirection::FromReference,
+            ),
             _ => log_unknown_key(node, k),
         }
     }
@@ -1242,7 +1341,10 @@ fn load_named_transform(node: &Node, nt: &mut NamedTransform) -> Result<()> {
         return Ok(());
     }
     if !node.is_map() {
-        return Err(throw_error(node, "The '!<NamedTransform>' content needs to be a map."));
+        return Err(throw_error(
+            node,
+            "The '!<NamedTransform>' content needs to be a map.",
+        ));
     }
     check_duplicates(node)?;
     for (key, k, val) in entries(node)? {
@@ -1261,8 +1363,12 @@ fn load_named_transform(node: &Node, nt: &mut NamedTransform) -> Result<()> {
                 }
             }
             "encoding" => nt.set_encoding(&load_string(val)?),
-            "transform" => nt.set_transform(Some(load_transform(val)?), TransformDirection::Forward),
-            "inverse_transform" => nt.set_transform(Some(load_transform(val)?), TransformDirection::Inverse),
+            "transform" => {
+                nt.set_transform(Some(load_transform(val)?), TransformDirection::Forward)
+            }
+            "inverse_transform" => {
+                nt.set_transform(Some(load_transform(val)?), TransformDirection::Inverse)
+            }
             _ => log_unknown_key(node, k),
         }
     }
@@ -1274,8 +1380,13 @@ fn load_file_rule(node: &Node, fr: &mut FileRules, default_found: &mut bool) -> 
         return Ok(());
     }
     check_duplicates(node)?;
-    let (mut name, mut colorspace, mut pattern, mut extension, mut regex) =
-        (String::new(), String::new(), String::new(), String::new(), String::new());
+    let (mut name, mut colorspace, mut pattern, mut extension, mut regex) = (
+        String::new(),
+        String::new(),
+        String::new(),
+        String::new(),
+        String::new(),
+    );
     let mut key_vals: Vec<(&Node, &Node)> = Vec::new();
     for (key, k, val) in entries(node)? {
         match key.as_str() {
@@ -1317,7 +1428,9 @@ fn load_file_rule(node: &Node, fr: &mut FileRules, default_found: &mut bool) -> 
                 )));
             }
             if colorspace.is_empty() {
-                return Err(Error::msg(format!("File rule '{name}' cannot have an empty color space name.")));
+                return Err(Error::msg(format!(
+                    "File rule '{name}' cannot have an empty color space name."
+                )));
             }
             if regex.is_empty() {
                 fr.insert_rule(pos, &name, &colorspace, &pattern, &extension)?;
@@ -1380,7 +1493,11 @@ fn load_viewing_rule(node: &Node, vr: &mut ViewingRules) -> Result<()> {
 }
 
 fn parse_version(s: &str) -> Option<(u32, u32)> {
-    let parts: Vec<&str> = if s.is_empty() { vec![""] } else { s.split('.').collect() };
+    let parts: Vec<&str> = if s.is_empty() {
+        vec![""]
+    } else {
+        s.split('.').collect()
+    };
     // std::stoi: optional leading white spaces, sign and digits, rest ignored.
     fn stoi(p: &str) -> Option<i64> {
         let t = p.trim_start();
@@ -1417,7 +1534,11 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
         Some(v) => v,
         None => {
             let f = filename.filter(|f| !f.is_empty()).unwrap_or("<null>");
-            let v = if version.is_empty() { "<null>" } else { version.as_str() };
+            let v = if version.is_empty() {
+                "<null>"
+            } else {
+                version.as_str()
+            };
             return Err(throw_error(
                 node,
                 &format!("The specified OCIO configuration file {f} does not appear to have a valid version {v}."),
@@ -1482,7 +1603,9 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
                     return Err(throw_value_error(
                         &node.tag,
                         k,
-                        &format!("'family_separator' value must be a single character. Found '{s}'."),
+                        &format!(
+                            "'family_separator' value must be a single character. Found '{s}'."
+                        ),
                     ));
                 }
                 config.set_family_separator(chars[0])?;
@@ -1516,12 +1639,18 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
                     return Err(throw_error(k, "Config v1 can't use 'file_rules'"));
                 }
                 if !val.is_seq() {
-                    return Err(throw_error(val, "The 'file_rules' field needs to be a (- !<Rule>) list."));
+                    return Err(throw_error(
+                        val,
+                        "The 'file_rules' field needs to be a (- !<Rule>) list.",
+                    ));
                 }
                 for item in val.seq_items() {
                     if item.tag == "Rule" {
                         if default_rule_found {
-                            return Err(throw_error(val, "The 'file_rules' Default rule has to be the last rule."));
+                            return Err(throw_error(
+                                val,
+                                "The 'file_rules' Default rule has to be the last rule.",
+                            ));
                         }
                         load_file_rule(item, &mut file_rules, &mut default_rule_found)?;
                     } else {
@@ -1532,13 +1661,19 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
                     }
                 }
                 if !default_rule_found {
-                    return Err(throw_error(k, "The 'file_rules' does not contain a Default <Rule>."));
+                    return Err(throw_error(
+                        k,
+                        "The 'file_rules' does not contain a Default <Rule>.",
+                    ));
                 }
                 file_rules_found = true;
             }
             "viewing_rules" => {
                 if !val.is_seq() {
-                    return Err(throw_error(val, "The 'viewing_rules' field needs to be a (- !<Rule>) list."));
+                    return Err(throw_error(
+                        val,
+                        "The 'viewing_rules' field needs to be a (- !<Rule>) list.",
+                    ));
                 }
                 let mut vr = ViewingRules::new();
                 for item in val.seq_items() {
@@ -1555,11 +1690,22 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
             }
             "shared_views" => {
                 if !val.is_seq() {
-                    return Err(throw_value_error(&node.tag, k, "The view list is a sequence."));
+                    return Err(throw_value_error(
+                        &node.tag,
+                        k,
+                        "The view list is a sequence.",
+                    ));
                 }
                 for item in val.seq_items() {
                     let v = load_view(item)?;
-                    config.add_shared_view(&v.name, &v.view_transform, &v.colorspace, &v.looks, &v.rule, &v.description)?;
+                    config.add_shared_view(
+                        &v.name,
+                        &v.view_transform,
+                        &v.colorspace,
+                        &v.looks,
+                        &v.rule,
+                        &v.description,
+                    )?;
                 }
             }
             "displays" => {
@@ -1573,7 +1719,11 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
                 for (dk, dv) in val.map_entries() {
                     let display = dk.as_string()?;
                     if !dv.is_seq() {
-                        return Err(throw_value_error(&node.tag, k, "The view list is a sequence."));
+                        return Err(throw_value_error(
+                            &node.tag,
+                            k,
+                            "The view list is a sequence.",
+                        ));
                     }
                     for item in dv.seq_items() {
                         if item.tag == "View" {
@@ -1597,7 +1747,11 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
             }
             "virtual_display" => {
                 if !val.is_seq() {
-                    return Err(throw_value_error(&node.tag, k, "The view list is a sequence."));
+                    return Err(throw_value_error(
+                        &node.tag,
+                        k,
+                        "The view list is a sequence.",
+                    ));
                 }
                 for item in val.seq_items() {
                     if item.tag == "View" {
@@ -1615,7 +1769,10 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
                             config.add_virtual_display_shared_view(&sv)?;
                         }
                     } else {
-                        log_warning(&format!("Unknown element found in virtual_display:{}.", item.tag));
+                        log_warning(&format!(
+                            "Unknown element found in virtual_display:{}.",
+                            item.tag
+                        ));
                     }
                 }
             }
@@ -1643,7 +1800,11 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
                 }
                 for item in val.seq_items() {
                     if item.tag == "ColorSpace" {
-                        let rst = if display { ReferenceSpaceType::Display } else { ReferenceSpaceType::Scene };
+                        let rst = if display {
+                            ReferenceSpaceType::Display
+                        } else {
+                            ReferenceSpaceType::Scene
+                        };
                         let mut cs = ColorSpace::new(rst);
                         load_color_space(item, &mut cs, config.major_version())?;
                         let n = config.num_color_spaces();
@@ -1651,7 +1812,10 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
                             if config.color_space_name_by_index(i) == cs.name() {
                                 return Err(throw_error(
                                     val,
-                                    &format!("Colorspace with name '{}' already defined.", cs.name()),
+                                    &format!(
+                                        "Colorspace with name '{}' already defined.",
+                                        cs.name()
+                                    ),
                                 ));
                             }
                         }
@@ -1666,7 +1830,10 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
             }
             "looks" => {
                 if !val.is_seq() {
-                    return Err(throw_error(val, "'looks' field needs to be a (- !<Look>) list."));
+                    return Err(throw_error(
+                        val,
+                        "'looks' field needs to be a (- !<Look>) list.",
+                    ));
                 }
                 for item in val.seq_items() {
                     if item.tag == "Look" {
@@ -1683,7 +1850,10 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
             }
             "view_transforms" => {
                 if !val.is_seq() {
-                    return Err(throw_error(val, "'view_transforms' field needs to be a (- !<ViewTransform>) list."));
+                    return Err(throw_error(
+                        val,
+                        "'view_transforms' field needs to be a (- !<ViewTransform>) list.",
+                    ));
                 }
                 for item in val.seq_items() {
                     if item.tag == "ViewTransform" {
@@ -1702,7 +1872,10 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
             "default_view_transform" => config.set_default_view_transform_name(&load_string(val)?),
             "named_transforms" => {
                 if !val.is_seq() {
-                    return Err(throw_error(val, "'named_transforms' field needs to be a (- !<NamedTransform>) list."));
+                    return Err(throw_error(
+                        val,
+                        "'named_transforms' field needs to be a (- !<NamedTransform>) list.",
+                    ));
                 }
                 for item in val.seq_items() {
                     if item.tag == "NamedTransform" {
@@ -1749,7 +1922,10 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
     } else {
         if let Some(default_cs) = config.get_color_space(ROLE_DEFAULT) {
             let default_rule = file_rules.num_entries() - 1;
-            let rule_cs = file_rules.color_space(default_rule).unwrap_or("").to_string();
+            let rule_cs = file_rules
+                .color_space(default_rule)
+                .unwrap_or("")
+                .to_string();
             if rule_cs != ROLE_DEFAULT && rule_cs != default_cs.name() {
                 log_warning(&format!(
                     "file_rules: defines a default rule using color-space '{}' that does not match the default role '{}'.",

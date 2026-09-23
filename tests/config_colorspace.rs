@@ -33,8 +33,10 @@ fn colorspace_basic() {
     cs.set_equality_group("EQGRP");
     cs.set_encoding("ENC");
     cs.set_interop_id("interop").unwrap();
-    cs.set_interchange_attribute("amf_transform_ids", "AMF").unwrap();
-    cs.set_interchange_attribute("icc_profile_name", "ICC").unwrap();
+    cs.set_interchange_attribute("amf_transform_ids", "AMF")
+        .unwrap();
+    cs.set_interchange_attribute("icc_profile_name", "ICC")
+        .unwrap();
 
     cs.set_name("");
     cs.set_description("");
@@ -42,16 +44,24 @@ fn colorspace_basic() {
     cs.set_equality_group("");
     cs.set_encoding("");
     cs.set_interop_id("").unwrap();
-    cs.set_interchange_attribute("amf_transform_ids", "").unwrap();
-    cs.set_interchange_attribute("icc_profile_name", "").unwrap();
+    cs.set_interchange_attribute("amf_transform_ids", "")
+        .unwrap();
+    cs.set_interchange_attribute("icc_profile_name", "")
+        .unwrap();
     assert!(cs.name().is_empty());
     assert!(cs.description().is_empty());
     assert!(cs.family().is_empty());
     assert!(cs.equality_group().is_empty());
     assert!(cs.encoding().is_empty());
     assert!(cs.interop_id().is_empty());
-    assert!(cs.interchange_attribute("amf_transform_ids").unwrap().is_empty());
-    assert!(cs.interchange_attribute("icc_profile_name").unwrap().is_empty());
+    assert!(cs
+        .interchange_attribute("amf_transform_ids")
+        .unwrap()
+        .is_empty());
+    assert!(cs
+        .interchange_attribute("icc_profile_name")
+        .unwrap()
+        .is_empty());
 
     cs.set_name("name");
     assert_eq!(cs.name(), "name");
@@ -74,13 +84,18 @@ fn colorspace_basic() {
     assert_eq!(cs.allocation_vars(), &[1.0, 2.0]);
     cs.set_interop_id("interop_id").unwrap();
     assert_eq!(cs.interop_id(), "interop_id");
-    cs.set_interchange_attribute("amf_transform_ids", "amf_transform_id1\namf_transform_id2").unwrap();
+    cs.set_interchange_attribute("amf_transform_ids", "amf_transform_id1\namf_transform_id2")
+        .unwrap();
     assert_eq!(
         cs.interchange_attribute("amf_transform_ids").unwrap(),
         "amf_transform_id1\namf_transform_id2"
     );
-    cs.set_interchange_attribute("icc_profile_name", "icc_profile_name").unwrap();
-    assert_eq!(cs.interchange_attribute("icc_profile_name").unwrap(), "icc_profile_name");
+    cs.set_interchange_attribute("icc_profile_name", "icc_profile_name")
+        .unwrap();
+    assert_eq!(
+        cs.interchange_attribute("icc_profile_name").unwrap(),
+        "icc_profile_name"
+    );
 
     assert_eq!(cs.to_string().len(), 306);
 }
@@ -208,11 +223,16 @@ fn config_color_space_serialize_raw() {
     let config = Config::create_from_str(&cfg_string).unwrap();
     config.validate().unwrap();
     assert_eq!(config.num_color_spaces(), 1);
-    let cs = config.get_color_space(config.color_space_name_by_index(0)).unwrap();
+    let cs = config
+        .get_color_space(config.color_space_name_by_index(0))
+        .unwrap();
     assert_eq!(cs.allocation(), Allocation::Uniform);
     assert_eq!(cs.allocation_num_vars(), 0);
     assert_eq!(cs.bit_depth(), BitDepth::F32);
-    assert_eq!(cs.description(), "A raw color space. Conversions to and from this space are no-ops.");
+    assert_eq!(
+        cs.description(),
+        "A raw color space. Conversions to and from this space are no-ops."
+    );
     assert_eq!(cs.encoding(), "");
     assert_eq!(cs.equality_group(), "");
     assert_eq!(cs.family(), "raw");
@@ -258,7 +278,9 @@ fn config_color_space_serialize_all_params() {
     let config = Config::create_from_str(&cfg_string).unwrap();
     config.validate().unwrap();
     assert_eq!(config.num_color_spaces(), 2);
-    let cs = config.get_color_space(config.color_space_name_by_index(1)).unwrap();
+    let cs = config
+        .get_color_space(config.color_space_name_by_index(1))
+        .unwrap();
     assert_eq!(cs.allocation(), Allocation::Lg2);
     assert_eq!(cs.allocation_vars(), &[0.1f32, 0.9, 0.15]);
     assert_eq!(cs.bit_depth(), BitDepth::F16);
@@ -307,9 +329,13 @@ fn config_color_space_serialize_description_newlines() {
     let config = Config::create_from_str(&cfg_string).unwrap();
     config.validate().unwrap();
     assert_eq!(config.num_color_spaces(), 2);
-    let cs = config.get_color_space(config.color_space_name_by_index(0)).unwrap();
+    let cs = config
+        .get_color_space(config.color_space_name_by_index(0))
+        .unwrap();
     assert_eq!(cs.description(), "Some text.");
-    let cs = config.get_color_space(config.color_space_name_by_index(1)).unwrap();
+    let cs = config
+        .get_color_space(config.color_space_name_by_index(1))
+        .unwrap();
     assert_eq!(cs.description(), "One line.\n\nOther line.");
     assert_eq!(config.serialize().unwrap(), cfg_string);
 
@@ -323,7 +349,9 @@ fn config_color_space_serialize_description_newlines() {
     config_edit.add_color_space(&cs_edit).unwrap();
     assert_eq!(config_edit.serialize().unwrap(), cfg_string);
 
-    let cs = config.get_color_space(config.color_space_name_by_index(0)).unwrap();
+    let cs = config
+        .get_color_space(config.color_space_name_by_index(0))
+        .unwrap();
     assert_eq!(cs.description(), "Some text.");
     let mut cs_edit = cs.clone();
     cs_edit.set_description("Some text.\n\n\n");
@@ -372,7 +400,13 @@ fn config_color_space_serialize_description_styles() {
     let config = Config::create_from_str(&cfg_string).unwrap();
     config.validate().unwrap();
     assert_eq!(config.num_color_spaces(), 8);
-    let desc = |i: usize| config.get_color_space(config.color_space_name_by_index(i)).unwrap().description().to_string();
+    let desc = |i: usize| {
+        config
+            .get_color_space(config.color_space_name_by_index(i))
+            .unwrap()
+            .description()
+            .to_string()
+    };
     assert_eq!(desc(0), "\"Some text.\"");
     assert_eq!(desc(1), "Multiple lines\n\nOther line.");
     assert_eq!(desc(2), "Test \\n backslash+n.");
@@ -541,7 +575,11 @@ fn config_color_space_interop_id_and_interchange() {
         "Config failed validation. The color space 'raw' has non-empty interchange attributes and config version is less than 2.5."
     );
 
-    let start25 = START.replacen("ocio_profile_version: 2\n", "ocio_profile_version: 2.5\n", 1);
+    let start25 = START.replacen(
+        "ocio_profile_version: 2\n",
+        "ocio_profile_version: 2.5\n",
+        1,
+    );
     let end_amf = r#"
 colorspaces:
   - !<ColorSpace>
@@ -556,7 +594,14 @@ colorspaces:
     allocation: uniform
 "#;
     let config = Config::create_from_str(&format!("{start25}{end_amf}")).unwrap();
-    assert_eq!(config.get_color_space("raw").unwrap().interchange_attributes().len(), 1);
+    assert_eq!(
+        config
+            .get_color_space("raw")
+            .unwrap()
+            .interchange_attributes()
+            .len(),
+        1
+    );
 
     let end_unknown = r#"
 colorspaces:
@@ -573,8 +618,18 @@ colorspaces:
 "#;
     let guard = LogGuard::new();
     let config = Config::create_from_str(&format!("{start25}{end_unknown}")).unwrap();
-    assert_eq!(guard.output(), "[OpenColorIO Warning]: Unknown key in interchange: 'my-attrib'.\n");
-    assert_eq!(config.get_color_space("raw").unwrap().interchange_attributes().len(), 0);
+    assert_eq!(
+        guard.output(),
+        "[OpenColorIO Warning]: Unknown key in interchange: 'my-attrib'.\n"
+    );
+    assert_eq!(
+        config
+            .get_color_space("raw")
+            .unwrap()
+            .interchange_attributes()
+            .len(),
+        0
+    );
 }
 
 #[test]
@@ -632,12 +687,21 @@ colorspaces:
 "#;
     let config = Config::create_from_str(text).unwrap();
     config.validate().unwrap();
-    assert_eq!(config.get_color_space("aces2065-1").unwrap().name(), "colorspace");
-    assert_eq!(config.get_color_space("ACES - ACES2065-1").unwrap().name(), "colorspace");
+    assert_eq!(
+        config.get_color_space("aces2065-1").unwrap().name(),
+        "colorspace"
+    );
+    assert_eq!(
+        config.get_color_space("ACES - ACES2065-1").unwrap().name(),
+        "colorspace"
+    );
     assert!(config.get_color_space("alias no valid").is_none());
 
     assert_eq!(config.canonical_name("aces"), "colorspace");
-    assert_eq!(config.canonical_name("ACES AP0, scene-linear"), "colorspace");
+    assert_eq!(
+        config.canonical_name("ACES AP0, scene-linear"),
+        "colorspace"
+    );
     assert_eq!(config.canonical_name("colorspace"), "colorspace");
     assert_eq!(config.canonical_name("default"), "raw");
     assert_eq!(config.canonical_name("DEFault"), "raw");
@@ -648,14 +712,26 @@ colorspaces:
     assert_eq!(config.index_for_color_space("aces2065-1"), Some(1));
     assert_eq!(config.index_for_color_space("not an alias"), None);
 
-    assert_eq!(config.get_color_space("testAlias").unwrap().name(), "colorspace");
+    assert_eq!(
+        config.get_color_space("testAlias").unwrap().name(),
+        "colorspace"
+    );
 
-    assert_eq!(config.color_space_from_filepath("test_aces_test"), "colorspace");
-    assert_eq!(config.color_space_from_filepath("skdj_ColorspaceAlias_dfjdk"), "raw");
+    assert_eq!(
+        config.color_space_from_filepath("test_aces_test"),
+        "colorspace"
+    );
+    assert_eq!(
+        config.color_space_from_filepath("skdj_ColorspaceAlias_dfjdk"),
+        "raw"
+    );
 
     let mut cfg = config.clone();
     cfg.set_inactive_color_spaces("colorspace");
-    assert_eq!(cfg.color_space_from_filepath("test_aces_test"), "colorspace");
+    assert_eq!(
+        cfg.color_space_from_filepath("test_aces_test"),
+        "colorspace"
+    );
 }
 
 #[test]
@@ -685,8 +761,17 @@ fn colorspace_interop_id() {
         cs.set_interop_id(":cs_name"),
         "If ':' is used, both the namespace and the color space parts must be non-empty."
     );
-    for bad in ["café_scene", "UPPERCASE", "{curly_bracket}", "\\backslash", " space "] {
-        assert_err!(cs.set_interop_id(bad), "Only lowercase a-z, 0-9 and . - _ ~ / * # % ^ + ( ) [ ] | are allowed.");
+    for bad in [
+        "café_scene",
+        "UPPERCASE",
+        "{curly_bracket}",
+        "\\backslash",
+        " space ",
+    ] {
+        assert_err!(
+            cs.set_interop_id(bad),
+            "Only lowercase a-z, 0-9 and . - _ ~ / * # % ^ + ( ) [ ] | are allowed."
+        );
     }
 }
 
@@ -701,7 +786,10 @@ fn colorspace_interop_id_serialization() {
     assert!(yaml.contains("interop_id"));
     assert!(yaml.contains("lin_rec709_scene"));
     let de = Config::create_from_str(&yaml).unwrap();
-    assert_eq!(de.get_color_space("test_colorspace").unwrap().interop_id(), "lin_rec709_scene");
+    assert_eq!(
+        de.get_color_space("test_colorspace").unwrap().interop_id(),
+        "lin_rec709_scene"
+    );
 
     let mut copy = cfg.clone();
     copy.set_version(2, 0).unwrap();
@@ -722,28 +810,50 @@ fn colorspace_amf_transform_ids() {
     let mut cs = ColorSpace::default();
     assert_eq!(cs.interchange_attribute("amf_transform_ids").unwrap(), "");
     let single = "urn:ampas:aces:transformId:v1.5:ACEScsc.Academy.ACEScc_to_ACES.a1.0.3";
-    cs.set_interchange_attribute("amf_transform_ids", single).unwrap();
-    assert_eq!(cs.interchange_attribute("amf_transform_ids").unwrap(), single);
-    cs.set_interchange_attribute("amf_transform_ids", "").unwrap();
+    cs.set_interchange_attribute("amf_transform_ids", single)
+        .unwrap();
+    assert_eq!(
+        cs.interchange_attribute("amf_transform_ids").unwrap(),
+        single
+    );
+    cs.set_interchange_attribute("amf_transform_ids", "")
+        .unwrap();
     assert_eq!(cs.interchange_attribute("amf_transform_ids").unwrap(), "");
     let multiple = "urn:ampas:aces:transformId:v1.5:ACEScsc.Academy.ACEScc_to_ACES.a1.0.3\n\
                     urn:ampas:aces:transformId:v1.5:ACEScsc.Academy.ACES_to_ACEScc.a1.0.3";
-    cs.set_interchange_attribute("amf_transform_ids", multiple).unwrap();
-    assert_eq!(cs.interchange_attribute("amf_transform_ids").unwrap(), multiple);
-    cs.set_interchange_attribute("amf_transform_ids", single).unwrap();
+    cs.set_interchange_attribute("amf_transform_ids", multiple)
+        .unwrap();
+    assert_eq!(
+        cs.interchange_attribute("amf_transform_ids").unwrap(),
+        multiple
+    );
+    cs.set_interchange_attribute("amf_transform_ids", single)
+        .unwrap();
     let copy = cs.clone();
-    assert_eq!(copy.interchange_attribute("amf_transform_ids").unwrap(), single);
+    assert_eq!(
+        copy.interchange_attribute("amf_transform_ids").unwrap(),
+        single
+    );
 }
 
 #[test]
 fn colorspace_icc_profile_name() {
     let mut cs = ColorSpace::default();
     assert_eq!(cs.interchange_attribute("icc_profile_name").unwrap(), "");
-    cs.set_interchange_attribute("icc_profile_name", "sRGB IEC61966-2.1").unwrap();
-    assert_eq!(cs.interchange_attribute("icc_profile_name").unwrap(), "sRGB IEC61966-2.1");
-    cs.set_interchange_attribute("icc_profile_name", "Adobe RGB (1998)").unwrap();
-    assert_eq!(cs.interchange_attribute("icc_profile_name").unwrap(), "Adobe RGB (1998)");
-    cs.set_interchange_attribute("icc_profile_name", "").unwrap();
+    cs.set_interchange_attribute("icc_profile_name", "sRGB IEC61966-2.1")
+        .unwrap();
+    assert_eq!(
+        cs.interchange_attribute("icc_profile_name").unwrap(),
+        "sRGB IEC61966-2.1"
+    );
+    cs.set_interchange_attribute("icc_profile_name", "Adobe RGB (1998)")
+        .unwrap();
+    assert_eq!(
+        cs.interchange_attribute("icc_profile_name").unwrap(),
+        "Adobe RGB (1998)"
+    );
+    cs.set_interchange_attribute("icc_profile_name", "")
+        .unwrap();
     assert_eq!(cs.interchange_attribute("icc_profile_name").unwrap(), "");
 }
 
@@ -752,20 +862,28 @@ fn colorspace_icc_profile_name_serialization() {
     let mut cfg = Config::create();
     let mut cs = ColorSpace::default();
     cs.set_name("test_colorspace");
-    cs.set_interchange_attribute("icc_profile_name", "sRGB IEC61966-2.1").unwrap();
+    cs.set_interchange_attribute("icc_profile_name", "sRGB IEC61966-2.1")
+        .unwrap();
     cfg.add_color_space(&cs).unwrap();
     let yaml = cfg.serialize().unwrap();
     assert!(yaml.contains("icc_profile_name"));
     assert!(yaml.contains("sRGB IEC61966-2.1"));
     let de = Config::create_from_str(&yaml).unwrap();
     assert_eq!(
-        de.get_color_space("test_colorspace").unwrap().interchange_attribute("icc_profile_name").unwrap(),
+        de.get_color_space("test_colorspace")
+            .unwrap()
+            .interchange_attribute("icc_profile_name")
+            .unwrap(),
         "sRGB IEC61966-2.1"
     );
     let mut copy = cfg.clone();
     copy.set_version(2, 4).unwrap();
-    assert_err!(copy.serialize(), "has non-empty interchange attributes and config version is less than 2.5.");
-    cs.set_interchange_attribute("icc_profile_name", "").unwrap();
+    assert_err!(
+        copy.serialize(),
+        "has non-empty interchange attributes and config version is less than 2.5."
+    );
+    cs.set_interchange_attribute("icc_profile_name", "")
+        .unwrap();
     cfg.add_color_space(&cs).unwrap();
     assert!(!cfg.serialize().unwrap().contains("icc_profile_name"));
 }
@@ -773,10 +891,19 @@ fn colorspace_icc_profile_name_serialization() {
 #[test]
 fn colorspace_unknown_interchange_attrib() {
     let mut cs = ColorSpace::default();
-    assert_err!(cs.interchange_attribute("unknown_attrib"), "Unknown attribute name");
+    assert_err!(
+        cs.interchange_attribute("unknown_attrib"),
+        "Unknown attribute name"
+    );
     assert_err!(cs.interchange_attribute(""), "Unknown attribute name");
-    assert_err!(cs.set_interchange_attribute("unknown_attribute1", "unknown"), "Unknown attribute name");
-    assert_err!(cs.set_interchange_attribute("unknown_attribute2", ""), "Unknown attribute name");
+    assert_err!(
+        cs.set_interchange_attribute("unknown_attribute1", "unknown"),
+        "Unknown attribute name"
+    );
+    assert_err!(
+        cs.set_interchange_attribute("unknown_attribute2", ""),
+        "Unknown attribute name"
+    );
     assert_eq!(cs.interchange_attributes().len(), 0);
 }
 

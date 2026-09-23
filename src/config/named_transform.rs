@@ -133,22 +133,35 @@ impl NamedTransform {
         if let Some(t) = other {
             return Ok(t.inverted());
         }
-        Err(Error::msg("Named transform: Unspecified TransformDirection."))
+        Err(Error::msg(
+            "Named transform: Unspecified TransformDirection.",
+        ))
     }
 }
 
 /// Transform for a conversion involving named transforms (`GetTransform`).
-pub fn get_named_transforms_transform(src: Option<&NamedTransform>, dst: Option<&NamedTransform>) -> Result<Transform> {
+pub fn get_named_transforms_transform(
+    src: Option<&NamedTransform>,
+    dst: Option<&NamedTransform>,
+) -> Result<Transform> {
     match (src, dst) {
         (Some(s), Some(d)) => {
             let mut g = GroupTransform::new();
-            g.transforms.push(NamedTransform::get_transform(s, TransformDirection::Forward)?);
-            g.transforms.push(NamedTransform::get_transform(d, TransformDirection::Inverse)?);
+            g.transforms.push(NamedTransform::get_transform(
+                s,
+                TransformDirection::Forward,
+            )?);
+            g.transforms.push(NamedTransform::get_transform(
+                d,
+                TransformDirection::Inverse,
+            )?);
             Ok(Transform::Group(g))
         }
         (Some(s), None) => NamedTransform::get_transform(s, TransformDirection::Forward),
         (None, Some(d)) => NamedTransform::get_transform(d, TransformDirection::Inverse),
-        (None, None) => Err(Error::msg("GetTransform: one of the parameters has to be not null.")),
+        (None, None) => Err(Error::msg(
+            "GetTransform: one of the parameters has to be not null.",
+        )),
     }
 }
 

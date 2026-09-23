@@ -15,11 +15,20 @@ impl LookToken {
     /// Parse `"+name"`, `"-name"` or `"name"`.
     pub fn parse(s: &str) -> Self {
         if let Some(r) = s.strip_prefix('+') {
-            Self { name: r.trim_start_matches('+').to_string(), dir: TransformDirection::Forward }
+            Self {
+                name: r.trim_start_matches('+').to_string(),
+                dir: TransformDirection::Forward,
+            }
         } else if let Some(r) = s.strip_prefix('-') {
-            Self { name: r.trim_start_matches('-').to_string(), dir: TransformDirection::Inverse }
+            Self {
+                name: r.trim_start_matches('-').to_string(),
+                dir: TransformDirection::Inverse,
+            }
         } else {
-            Self { name: s.to_string(), dir: TransformDirection::Forward }
+            Self {
+                name: s.to_string(),
+                dir: TransformDirection::Forward,
+            }
         }
     }
 
@@ -37,7 +46,11 @@ pub type LookTokens = Vec<LookToken>;
 
 /// Serialize tokens separated by `", "`.
 pub fn serialize_tokens(tokens: &[LookToken]) -> String {
-    tokens.iter().map(|t| t.serialize()).collect::<Vec<_>>().join(", ")
+    tokens
+        .iter()
+        .map(|t| t.serialize())
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// The options of a look list: each `|` separated option is a list of looks,
@@ -60,7 +73,10 @@ impl LookParseResult {
             return &self.options;
         }
         for option in split(stripped, '|') {
-            let tokens = split_string_env_style_lossy(&option).iter().map(|s| LookToken::parse(s)).collect();
+            let tokens = split_string_env_style_lossy(&option)
+                .iter()
+                .map(|s| LookToken::parse(s))
+                .collect();
             self.options.push(tokens);
         }
         &self.options
@@ -118,8 +134,16 @@ mod tests {
         check(&mut r, "+cc,-di", &[&[("cc", F), ("di", I)]]);
         check(&mut r, "  +cc ,  -di", &[&[("cc", F), ("di", I)]]);
         check(&mut r, "  +cc :  -di", &[&[("cc", F), ("di", I)]]);
-        check(&mut r, "+cc, -di |-cc", &[&[("cc", F), ("di", I)], &[("cc", I)]]);
-        check(&mut r, "+cc, -di |-cc|   ", &[&[("cc", F), ("di", I)], &[("cc", I)], &[("", F)]]);
+        check(
+            &mut r,
+            "+cc, -di |-cc",
+            &[&[("cc", F), ("di", I)], &[("cc", I)]],
+        );
+        check(
+            &mut r,
+            "+cc, -di |-cc|   ",
+            &[&[("cc", F), ("di", I)], &[("cc", I)], &[("", F)]],
+        );
     }
 
     #[test]
@@ -130,10 +154,34 @@ mod tests {
         let o = r.options();
         assert_eq!(o.len(), 3);
         assert_eq!(o[0].len(), 2);
-        assert_eq!(o[0][1], LookToken { name: "cc".into(), dir: I });
-        assert_eq!(o[0][0], LookToken { name: "di".into(), dir: F });
-        assert_eq!(o[1][0], LookToken { name: "cc".into(), dir: F });
-        assert_eq!(o[2][0], LookToken { name: "".into(), dir: I });
+        assert_eq!(
+            o[0][1],
+            LookToken {
+                name: "cc".into(),
+                dir: I
+            }
+        );
+        assert_eq!(
+            o[0][0],
+            LookToken {
+                name: "di".into(),
+                dir: F
+            }
+        );
+        assert_eq!(
+            o[1][0],
+            LookToken {
+                name: "cc".into(),
+                dir: F
+            }
+        );
+        assert_eq!(
+            o[2][0],
+            LookToken {
+                name: "".into(),
+                dir: I
+            }
+        );
         assert_eq!(serialize_tokens(&o[0]), "di, -cc");
     }
 }

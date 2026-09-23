@@ -58,7 +58,9 @@ fn config_fixed_function_serialization() {
         "Only config version 2.1 (or higher) can have FixedFunctionTransform style 'ACES_GAMUT_COMP_13'."
     );
     assert_err!(
-        Config::create_from_str(&v2(&group("        - !<FixedFunctionTransform> {direction: inverse}\n"))),
+        Config::create_from_str(&v2(&group(
+            "        - !<FixedFunctionTransform> {direction: inverse}\n"
+        ))),
         "'FixedFunctionTransform' parsing failed: style value is missing."
     );
 
@@ -93,7 +95,12 @@ fn config_fixed_function_serialization() {
         let config = Config::create_from_str(&s).unwrap();
         config.validate().unwrap();
         let mut expected = String::new();
-        for style in ["ACES2_OutputTransform", "ACES2_RGB_TO_JMh", "ACES2_TonescaleCompress", "ACES2_GamutCompress"] {
+        for style in [
+            "ACES2_OutputTransform",
+            "ACES2_RGB_TO_JMh",
+            "ACES2_TonescaleCompress",
+            "ACES2_GamutCompress",
+        ] {
             for _ in 0..2 {
                 expected.push_str(&format!(
                     "[OpenColorIO Warning]: FixedFunction style is experimental and may be removed in a future release: '{style}'.\n"
@@ -122,7 +129,12 @@ fn config_fixed_function_serialization() {
         Config::create_from_str(&format!("{}{hmj}", profile_start_v(2, 6))).unwrap();
     }
 
-    for style in ["ACES2_OutputTransform", "ACES2_RGB_TO_JMh", "ACES2_TonescaleCompress", "ACES2_GamutCompress"] {
+    for style in [
+        "ACES2_OutputTransform",
+        "ACES2_RGB_TO_JMh",
+        "ACES2_TonescaleCompress",
+        "ACES2_GamutCompress",
+    ] {
         let end = group(&format!(
             "        - !<FixedFunctionTransform> {{style: {style}, params: [100, 0.64, 0.33, 0.3, 0.6, 0.15, 0.06, 0.3127, 0.329]}}\n"
         ));
@@ -256,7 +268,9 @@ fn config_exposure_contrast_serialization() {
     assert_eq!(ec(2), (false, false, true));
 
     assert_err!(
-        Config::create_from_str(&v2(&group("        - !<ExposureContrastTransform> {style: wrong}\n"))),
+        Config::create_from_str(&v2(&group(
+            "        - !<ExposureContrastTransform> {style: wrong}\n"
+        ))),
         "Unknown exposure contrast style"
     );
 }

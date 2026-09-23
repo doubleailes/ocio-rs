@@ -230,15 +230,24 @@ impl Emitter {
     }
 
     fn cur_group_flow_type(&self) -> FlowType {
-        self.groups.last().map(|g| g.flow).unwrap_or(FlowType::NoType)
+        self.groups
+            .last()
+            .map(|g| g.flow)
+            .unwrap_or(FlowType::NoType)
     }
 
     fn cur_group_node_type(&self) -> NodeType {
-        self.groups.last().map(|g| g.node_type()).unwrap_or(NodeType::NoType)
+        self.groups
+            .last()
+            .map(|g| g.node_type())
+            .unwrap_or(NodeType::NoType)
     }
 
     fn cur_group_child_count(&self) -> usize {
-        self.groups.last().map(|g| g.child_count).unwrap_or(self.doc_count)
+        self.groups
+            .last()
+            .map(|g| g.child_count)
+            .unwrap_or(self.doc_count)
     }
 
     fn cur_group_indent(&self) -> usize {
@@ -300,8 +309,19 @@ impl Emitter {
         let last = self.groups.last().map(|g| g.indent).unwrap_or(0);
         self.cur_indent += last;
         let modified = std::mem::take(&mut self.modified);
-        let flow = if self.get_flow_type(ty) == Fmt::Block { FlowType::Block } else { FlowType::Flow };
-        self.groups.push(Group { ty, flow, indent: self.indent, child_count: 0, long_key: false, modified });
+        let flow = if self.get_flow_type(ty) == Fmt::Block {
+            FlowType::Block
+        } else {
+            FlowType::Flow
+        };
+        self.groups.push(Group {
+            ty,
+            flow,
+            indent: self.indent,
+            child_count: 0,
+            long_key: false,
+            modified,
+        });
     }
 
     fn ended_group(&mut self) {
@@ -373,7 +393,10 @@ impl Emitter {
                 self.write(",");
             }
         }
-        if matches!(child, NodeType::Property | NodeType::Scalar | NodeType::FlowSeq | NodeType::FlowMap) {
+        if matches!(
+            child,
+            NodeType::Property | NodeType::Scalar | NodeType::FlowSeq | NodeType::FlowMap
+        ) {
             let req = self.has_begun_content() || self.cur_group_child_count() > 0;
             self.space_or_indent_to(req, last_indent);
         }
@@ -424,7 +447,10 @@ impl Emitter {
     }
 
     fn flow_map_value_space(&mut self, child: NodeType, last_indent: usize) {
-        if matches!(child, NodeType::Property | NodeType::Scalar | NodeType::FlowSeq | NodeType::FlowMap) {
+        if matches!(
+            child,
+            NodeType::Property | NodeType::Scalar | NodeType::FlowSeq | NodeType::FlowMap
+        ) {
             let req = self.has_begun_content() || self.cur_group_child_count() > 0;
             self.space_or_indent_to(req, last_indent);
         }
@@ -479,7 +505,10 @@ impl Emitter {
             if self.map_key_fmt == Fmt::LongKey {
                 self.set_long_key();
             }
-            if matches!(child, NodeType::BlockSeq | NodeType::BlockMap | NodeType::Property) {
+            if matches!(
+                child,
+                NodeType::BlockSeq | NodeType::BlockMap | NodeType::Property
+            ) {
                 self.set_long_key();
             }
             if self.cur_group_long_key() {
@@ -553,7 +582,10 @@ impl Emitter {
         if !self.has_begun_node() && child_count > 0 {
             self.write("\n");
         }
-        if matches!(child, NodeType::Property | NodeType::Scalar | NodeType::FlowSeq | NodeType::FlowMap) {
+        if matches!(
+            child,
+            NodeType::Property | NodeType::Scalar | NodeType::FlowSeq | NodeType::FlowMap
+        ) {
             self.space_or_indent_to(self.has_begun_content(), cur_indent);
         }
     }
@@ -617,7 +649,9 @@ impl Emitter {
         if self.cur_group_flow_type() == FlowType::Flow {
             let ci = self.cur_indent;
             self.indent_to(ci);
-            if original == FlowType::Block || (self.cur_group_child_count() == 0 && !self.has_begun_node()) {
+            if original == FlowType::Block
+                || (self.cur_group_child_count() == 0 && !self.has_begun_node())
+            {
                 self.write(&open.to_string());
             }
             self.write(&close.to_string());
@@ -899,7 +933,9 @@ fn end_scalar() -> Re {
 }
 
 fn end_scalar_in_flow() -> Re {
-    Re::Match(b':').then(blank_or_break().or(Re::Empty).or(any_of(",]}"))).or(any_of(",?[]{}"))
+    Re::Match(b':')
+        .then(blank_or_break().or(Re::Empty).or(any_of(",]}")))
+        .or(any_of(",?[]{}"))
 }
 
 fn is_null_string(s: &str) -> bool {
@@ -911,14 +947,22 @@ fn is_valid_plain_scalar(s: &str, flow: FlowType) -> bool {
         return false;
     }
     let bytes = s.as_bytes();
-    let start = if flow == FlowType::Flow { plain_scalar_in_flow() } else { plain_scalar() };
+    let start = if flow == FlowType::Flow {
+        plain_scalar_in_flow()
+    } else {
+        plain_scalar()
+    };
     if !start.matches(bytes, 0) {
         return false;
     }
     if s.ends_with(' ') {
         return false;
     }
-    let end = if flow == FlowType::Flow { end_scalar_in_flow() } else { end_scalar() };
+    let end = if flow == FlowType::Flow {
+        end_scalar_in_flow()
+    } else {
+        end_scalar()
+    };
     let disallowed = end
         .or(blank_or_break().then(Re::Match(b'#')))
         .or(not_printable())
@@ -1009,9 +1053,14 @@ mod tests {
         e.manip(Manip::Block).manip(Manip::BeginMap);
         e.key("ocio_profile_version").string("2.2");
         e.manip(Manip::Newline).manip(Manip::Newline);
-        e.key("environment").manip(Manip::BeginMap).manip(Manip::EndMap).manip(Manip::Newline);
+        e.key("environment")
+            .manip(Manip::BeginMap)
+            .manip(Manip::EndMap)
+            .manip(Manip::Newline);
         e.key("search_path").string("");
-        e.key("luma").manip(Manip::Flow).double_seq(&[0.2126, 0.7152, 0.0722]);
+        e.key("luma")
+            .manip(Manip::Flow)
+            .double_seq(&[0.2126, 0.7152, 0.0722]);
         e.manip(Manip::Newline).manip(Manip::Newline);
         e.key("roles").manip(Manip::BeginMap);
         e.key("default").string("raw");
@@ -1019,11 +1068,17 @@ mod tests {
         e.key("colorspaces").manip(Manip::BeginSeq);
         e.verbatim_tag("ColorSpace").manip(Manip::BeginMap);
         e.key("name").string("raw");
-        e.key("description").manip(Manip::Literal).string("line1\nline2");
+        e.key("description")
+            .manip(Manip::Literal)
+            .string("line1\nline2");
         e.key("isdata").boolean(true);
-        e.key("from_scene_reference").verbatim_tag("GroupTransform").manip(Manip::BeginMap);
+        e.key("from_scene_reference")
+            .verbatim_tag("GroupTransform")
+            .manip(Manip::BeginMap);
         e.key("children").manip(Manip::BeginSeq);
-        e.verbatim_tag("FileTransform").manip(Manip::Flow).manip(Manip::BeginMap);
+        e.verbatim_tag("FileTransform")
+            .manip(Manip::Flow)
+            .manip(Manip::BeginMap);
         e.key("src").string("");
         e.key("interpolation").string("best");
         e.manip(Manip::EndMap);

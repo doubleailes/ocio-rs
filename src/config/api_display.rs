@@ -27,7 +27,11 @@ impl Config {
             search_shared = contain(&d.shared_views, view);
             disp = Some(d);
         }
-        let views = if search_shared { &self.shared_views } else { &disp?.views };
+        let views = if search_shared {
+            &self.shared_views
+        } else {
+            &disp?.views
+        };
         find_view(views, view).map(|i| &views[i])
     }
 
@@ -51,10 +55,14 @@ impl Config {
         active
     }
 
-    fn filtered_views(&self, views: &[&View], image_cs: &str) -> Result<(Vec<String>, Vec<String>)> {
-        let cs = self
-            .get_color_space(image_cs)
-            .ok_or_else(|| Error::msg(format!("Could not find source color space '{image_cs}'.")))?;
+    fn filtered_views(
+        &self,
+        views: &[&View],
+        image_cs: &str,
+    ) -> Result<(Vec<String>, Vec<String>)> {
+        let cs = self.get_color_space(image_cs).ok_or_else(|| {
+            Error::msg(format!("Could not find source color space '{image_cs}'."))
+        })?;
         let encoding = cs.encoding().to_string();
         let names: Vec<String> = views.iter().map(|v| v.name.clone()).collect();
         let active = self.active_views_of(&names);
@@ -97,7 +105,11 @@ impl Config {
     }
 
     fn display_cache(&self) -> Vec<String> {
-        compute_displays(&self.displays, &self.active_displays, &self.active_displays_env_override)
+        compute_displays(
+            &self.displays,
+            &self.active_displays,
+            &self.active_displays_env_override,
+        )
     }
 
     // -----------------------------------------------------------------------
@@ -148,7 +160,15 @@ impl Config {
                 "Shared view could not be added to config, color space name has to be a non-empty name.",
             ));
         }
-        add_view(&mut self.shared_views, view, view_transform, color_space, looks, rule, description);
+        add_view(
+            &mut self.shared_views,
+            view,
+            view_transform,
+            color_space,
+            looks,
+            rule,
+            description,
+        );
         self.reset_cache_ids();
         Ok(())
     }
@@ -238,7 +258,10 @@ impl Config {
         let views = self.view_ptrs(&self.displays[i].1);
         let names: Vec<String> = views.iter().map(|v| v.name.clone()).collect();
         let active = self.active_views_of(&names);
-        match active.get(index).and_then(|a| find_in_vec_case_ignore(&names, a)) {
+        match active
+            .get(index)
+            .and_then(|a| find_in_vec_case_ignore(&names, a))
+        {
             Some(idx) if idx < views.len() => views[idx].name.clone(),
             _ => String::new(),
         }
@@ -259,7 +282,12 @@ impl Config {
     }
 
     /// View at `index` of the display usable with an image in `color_space`.
-    pub fn view_for_color_space(&self, display: &str, color_space: &str, index: usize) -> Result<String> {
+    pub fn view_for_color_space(
+        &self,
+        display: &str,
+        color_space: &str,
+        index: usize,
+    ) -> Result<String> {
         if display.is_empty() || color_space.is_empty() {
             return Ok(String::new());
         }
@@ -292,38 +320,54 @@ impl Config {
         !cs1.is_empty()
             && !cs2.is_empty()
             && compare(cs1, cs2)
-            && compare(first.display_view_looks(display, view), second.display_view_looks(display, view))
+            && compare(
+                first.display_view_looks(display, view),
+                second.display_view_looks(display, view),
+            )
             && compare(
                 first.display_view_transform_name(display, view),
                 second.display_view_transform_name(display, view),
             )
-            && compare(first.display_view_rule(display, view), second.display_view_rule(display, view))
+            && compare(
+                first.display_view_rule(display, view),
+                second.display_view_rule(display, view),
+            )
     }
 
     /// View transform of the (display, view); an empty display means a
     /// config shared view.
     pub fn display_view_transform_name(&self, display: &str, view: &str) -> &str {
-        self.find_view_def(display, view).map(|v| v.view_transform.as_str()).unwrap_or("")
+        self.find_view_def(display, view)
+            .map(|v| v.view_transform.as_str())
+            .unwrap_or("")
     }
 
     /// Color space of the (display, view).
     pub fn display_view_color_space_name(&self, display: &str, view: &str) -> &str {
-        self.find_view_def(display, view).map(|v| v.colorspace.as_str()).unwrap_or("")
+        self.find_view_def(display, view)
+            .map(|v| v.colorspace.as_str())
+            .unwrap_or("")
     }
 
     /// Looks of the (display, view).
     pub fn display_view_looks(&self, display: &str, view: &str) -> &str {
-        self.find_view_def(display, view).map(|v| v.looks.as_str()).unwrap_or("")
+        self.find_view_def(display, view)
+            .map(|v| v.looks.as_str())
+            .unwrap_or("")
     }
 
     /// Viewing rule of the (display, view).
     pub fn display_view_rule(&self, display: &str, view: &str) -> &str {
-        self.find_view_def(display, view).map(|v| v.rule.as_str()).unwrap_or("")
+        self.find_view_def(display, view)
+            .map(|v| v.rule.as_str())
+            .unwrap_or("")
     }
 
     /// Description of the (display, view).
     pub fn display_view_description(&self, display: &str, view: &str) -> &str {
-        self.find_view_def(display, view).map(|v| v.description.as_str()).unwrap_or("")
+        self.find_view_def(display, view)
+            .map(|v| v.description.as_str())
+            .unwrap_or("")
     }
 
     /// True if the (display, view) exists (active or not).
@@ -339,12 +383,15 @@ impl Config {
             ));
         }
         if shared_view.is_empty() {
-            return Err(Error::msg("Shared view could not be added to display: non-empty view name is needed."));
+            return Err(Error::msg(
+                "Shared view could not be added to display: non-empty view name is needed.",
+            ));
         }
         let i = match find_display(&self.displays, display) {
             Some(i) => i,
             None => {
-                self.displays.push((display.to_string(), Display::default()));
+                self.displays
+                    .push((display.to_string(), Display::default()));
                 self.displays.len() - 1
             }
         };
@@ -365,7 +412,13 @@ impl Config {
     }
 
     /// Add (or replace) a view of a display using a color space.
-    pub fn add_display_view(&mut self, display: &str, view: &str, color_space: &str, looks: &str) -> Result<()> {
+    pub fn add_display_view(
+        &mut self,
+        display: &str,
+        view: &str,
+        color_space: &str,
+        looks: &str,
+    ) -> Result<()> {
         self.add_display_view_full(display, view, "", color_space, looks, "", "")
     }
 
@@ -387,7 +440,9 @@ impl Config {
             ));
         }
         if view.is_empty() {
-            return Err(Error::msg("View could not be added to display in config: a non-empty view name is needed."));
+            return Err(Error::msg(
+                "View could not be added to display in config: a non-empty view name is needed.",
+            ));
         }
         if color_space.is_empty() {
             return Err(Error::msg(
@@ -397,7 +452,14 @@ impl Config {
         match find_display(&self.displays, display) {
             None => {
                 let d = Display {
-                    views: vec![View::new(view, view_transform, color_space, looks, rule, description)],
+                    views: vec![View::new(
+                        view,
+                        view_transform,
+                        color_space,
+                        looks,
+                        rule,
+                        description,
+                    )],
                     ..Default::default()
                 };
                 self.displays.push((display.to_string(), d));
@@ -409,7 +471,15 @@ impl Config {
                         "There is already a shared view named '{view}' in the display '{display}'."
                     )));
                 }
-                add_view(&mut d.views, view, view_transform, color_space, looks, rule, description);
+                add_view(
+                    &mut d.views,
+                    view,
+                    view_transform,
+                    color_space,
+                    looks,
+                    rule,
+                    description,
+                );
             }
         }
         self.reset_cache_ids();
@@ -420,13 +490,19 @@ impl Config {
     /// is removed when it has no more views.
     pub fn remove_display_view(&mut self, display: &str, view: &str) -> Result<()> {
         if display.is_empty() {
-            return Err(Error::msg("Can't remove a view from a display with an empty display name."));
+            return Err(Error::msg(
+                "Can't remove a view from a display with an empty display name.",
+            ));
         }
         if view.is_empty() {
-            return Err(Error::msg("Can't remove a view from a display with an empty view name."));
+            return Err(Error::msg(
+                "Can't remove a view from a display with an empty view name.",
+            ));
         }
         let i = find_display(&self.displays, display).ok_or_else(|| {
-            Error::msg(format!("Could not find a display named '{display}' to be removed from config."))
+            Error::msg(format!(
+                "Could not find a display named '{display}' to be removed from config."
+            ))
         })?;
         let d = &mut self.displays[i].1;
         if !remove(&mut d.shared_views, view) {
@@ -462,7 +538,12 @@ impl Config {
     }
 
     pub fn is_virtual_view_shared(&self, view: &str) -> bool {
-        !view.is_empty() && self.virtual_display.shared_views.iter().any(|s| !s.is_empty() && compare(s, view))
+        !view.is_empty()
+            && self
+                .virtual_display
+                .shared_views
+                .iter()
+                .any(|s| !s.is_empty() && compare(s, view))
     }
 
     /// Add a view to the virtual display.
@@ -490,7 +571,14 @@ impl Config {
                 "View could not be added to virtual_display in config: View '{view}' already exists."
             )));
         }
-        self.virtual_display.views.push(View::new(view, view_transform, color_space, looks, rule, description));
+        self.virtual_display.views.push(View::new(
+            view,
+            view_transform,
+            color_space,
+            looks,
+            rule,
+            description,
+        ));
         self.reset_cache_ids();
         Ok(())
     }
@@ -507,7 +595,9 @@ impl Config {
                 "Shared view could not be added to virtual_display: There is already a shared view named '{shared_view}'."
             )));
         }
-        self.virtual_display.shared_views.push(shared_view.to_string());
+        self.virtual_display
+            .shared_views
+            .push(shared_view.to_string());
         self.reset_cache_ids();
         Ok(())
     }
@@ -522,8 +612,18 @@ impl Config {
     /// View of the virtual display (`""` if out of range).
     pub fn virtual_display_view(&self, ty: ViewType, index: usize) -> &str {
         match ty {
-            ViewType::DisplayDefined => self.virtual_display.views.get(index).map(|v| v.name.as_str()).unwrap_or(""),
-            ViewType::Shared => self.virtual_display.shared_views.get(index).map(|s| s.as_str()).unwrap_or(""),
+            ViewType::DisplayDefined => self
+                .virtual_display
+                .views
+                .get(index)
+                .map(|v| v.name.as_str())
+                .unwrap_or(""),
+            ViewType::Shared => self
+                .virtual_display
+                .shared_views
+                .get(index)
+                .map(|s| s.as_str())
+                .unwrap_or(""),
         }
     }
 
@@ -534,12 +634,18 @@ impl Config {
         !cs1.is_empty()
             && !cs2.is_empty()
             && compare(cs1, cs2)
-            && compare(first.virtual_display_view_looks(view), second.virtual_display_view_looks(view))
+            && compare(
+                first.virtual_display_view_looks(view),
+                second.virtual_display_view_looks(view),
+            )
             && compare(
                 first.virtual_display_view_transform_name(view),
                 second.virtual_display_view_transform_name(view),
             )
-            && compare(first.virtual_display_view_rule(view), second.virtual_display_view_rule(view))
+            && compare(
+                first.virtual_display_view_rule(view),
+                second.virtual_display_view_rule(view),
+            )
     }
 
     fn virtual_view(&self, view: &str) -> Option<&View> {
@@ -550,24 +656,39 @@ impl Config {
     }
 
     pub fn virtual_display_view_transform_name(&self, view: &str) -> &str {
-        self.virtual_view(view).map(|v| v.view_transform.as_str()).unwrap_or("")
+        self.virtual_view(view)
+            .map(|v| v.view_transform.as_str())
+            .unwrap_or("")
     }
     pub fn virtual_display_view_color_space_name(&self, view: &str) -> &str {
-        self.virtual_view(view).map(|v| v.colorspace.as_str()).unwrap_or("")
+        self.virtual_view(view)
+            .map(|v| v.colorspace.as_str())
+            .unwrap_or("")
     }
     pub fn virtual_display_view_looks(&self, view: &str) -> &str {
-        self.virtual_view(view).map(|v| v.looks.as_str()).unwrap_or("")
+        self.virtual_view(view)
+            .map(|v| v.looks.as_str())
+            .unwrap_or("")
     }
     pub fn virtual_display_view_rule(&self, view: &str) -> &str {
-        self.virtual_view(view).map(|v| v.rule.as_str()).unwrap_or("")
+        self.virtual_view(view)
+            .map(|v| v.rule.as_str())
+            .unwrap_or("")
     }
     pub fn virtual_display_view_description(&self, view: &str) -> &str {
-        self.virtual_view(view).map(|v| v.description.as_str()).unwrap_or("")
+        self.virtual_view(view)
+            .map(|v| v.description.as_str())
+            .unwrap_or("")
     }
 
     /// Remove a view (or shared view) from the virtual display.
     pub fn remove_virtual_display_view(&mut self, view: &str) {
-        if let Some(i) = self.virtual_display.views.iter().position(|v| compare(&v.name, view)) {
+        if let Some(i) = self
+            .virtual_display
+            .views
+            .iter()
+            .position(|v| compare(&v.name, view))
+        {
             self.virtual_display.views.remove(i);
             self.reset_cache_ids();
             return;
@@ -584,7 +705,12 @@ impl Config {
         self.reset_cache_ids();
     }
 
-    fn instantiate_display(&mut self, monitor_name: &str, description: &str, icc_path: &str) -> Result<usize> {
+    fn instantiate_display(
+        &mut self,
+        monitor_name: &str,
+        description: &str,
+        icc_path: &str,
+    ) -> Result<usize> {
         if icc_path.is_empty() {
             return Err(Error::msg("The ICC Profile filepath cannot be null."));
         }
@@ -602,11 +728,14 @@ impl Config {
         }
         cs_name = cs_name.replace(['$', '%'], "_");
         if self.virtual_display.views.is_empty() && self.virtual_display.shared_views.is_empty() {
-            return Err(Error::msg("The virtual display information to instantiate a display is missing."));
+            return Err(Error::msg(
+                "The virtual display information to instantiate a display is missing.",
+            ));
         }
         let abs_index = match find_display(&self.displays, &cs_name) {
             None => {
-                self.displays.push((cs_name.clone(), self.virtual_display.clone()));
+                self.displays
+                    .push((cs_name.clone(), self.virtual_display.clone()));
                 self.displays.len() - 1
             }
             Some(i) => {
@@ -618,7 +747,9 @@ impl Config {
         cs.set_name(&cs_name);
         cs.set_description(&format!("Profile description: {description}"));
         cs.set_transform(
-            Some(Transform::File(crate::transforms::FileTransform::new(icc_path))),
+            Some(Transform::File(crate::transforms::FileTransform::new(
+                icc_path,
+            ))),
             ColorSpaceDirection::FromReference,
         );
         cs.set_encoding("sdr-video");
@@ -710,7 +841,9 @@ impl Config {
 
     pub fn add_active_display(&mut self, display: &str) -> Result<()> {
         if display.is_empty() {
-            return Err(Error::msg("Active display could not be added to config, display name was empty"));
+            return Err(Error::msg(
+                "Active display could not be added to config, display name was empty",
+            ));
         }
         if self.active_displays.iter().any(|d| d == display) {
             return Ok(());
@@ -722,7 +855,9 @@ impl Config {
 
     pub fn remove_active_display(&mut self, display: &str) -> Result<()> {
         if display.is_empty() {
-            return Err(Error::msg("Active display could not be removed from config, display name was empty."));
+            return Err(Error::msg(
+                "Active display could not be removed from config, display name was empty.",
+            ));
         }
         match self.active_displays.iter().position(|d| d == display) {
             Some(i) => {
@@ -769,7 +904,9 @@ impl Config {
 
     pub fn add_active_view(&mut self, view: &str) -> Result<()> {
         if view.is_empty() {
-            return Err(Error::msg("Active view could not be added to config, view name was empty."));
+            return Err(Error::msg(
+                "Active view could not be added to config, view name was empty.",
+            ));
         }
         if self.active_views.iter().any(|d| d == view) {
             return Ok(());
@@ -781,7 +918,9 @@ impl Config {
 
     pub fn remove_active_view(&mut self, view: &str) -> Result<()> {
         if view.is_empty() {
-            return Err(Error::msg("Active view could not be removed from config, view name was empty."));
+            return Err(Error::msg(
+                "Active view could not be removed from config, view name was empty.",
+            ));
         }
         match self.active_views.iter().position(|d| d == view) {
             Some(i) => {
@@ -824,7 +963,10 @@ impl Config {
     }
 
     pub fn is_display_temporary(&self, index: usize) -> bool {
-        self.displays.get(index).map(|d| d.1.temporary).unwrap_or(false)
+        self.displays
+            .get(index)
+            .map(|d| d.1.temporary)
+            .unwrap_or(false)
     }
 
     pub fn set_display_temporary(&mut self, index: usize, temporary: bool) {
@@ -852,13 +994,27 @@ impl Config {
     /// View by type and index (`""` if out of range).
     pub fn view_by_type(&self, ty: ViewType, display: &str, index: usize) -> &str {
         if display.is_empty() {
-            return self.shared_views.get(index).map(|v| v.name.as_str()).unwrap_or("");
+            return self
+                .shared_views
+                .get(index)
+                .map(|v| v.name.as_str())
+                .unwrap_or("");
         }
         match find_display(&self.displays, display) {
             None => "",
             Some(i) => match ty {
-                ViewType::Shared => self.displays[i].1.shared_views.get(index).map(|s| s.as_str()).unwrap_or(""),
-                ViewType::DisplayDefined => self.displays[i].1.views.get(index).map(|v| v.name.as_str()).unwrap_or(""),
+                ViewType::Shared => self.displays[i]
+                    .1
+                    .shared_views
+                    .get(index)
+                    .map(|s| s.as_str())
+                    .unwrap_or(""),
+                ViewType::DisplayDefined => self.displays[i]
+                    .1
+                    .views
+                    .get(index)
+                    .map(|v| v.name.as_str())
+                    .unwrap_or(""),
             },
         }
     }

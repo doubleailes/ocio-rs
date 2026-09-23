@@ -21,7 +21,10 @@ fn look_transform_basic() {
 
     assert_err!(Transform::from(look.clone()).validate(), "empty source");
     look.src = "src".into();
-    assert_err!(Transform::from(look.clone()).validate(), "empty destination");
+    assert_err!(
+        Transform::from(look.clone()).validate(),
+        "empty destination"
+    );
     look.dst = "dst".into();
     Transform::from(look.clone()).validate().unwrap();
 
@@ -234,7 +237,11 @@ fn look_transform_build_look_options_ops() {
     let config = Config::create_from_str(LOOK_OPTIONS_CONFIG).unwrap();
     config.validate().unwrap();
 
-    let mut lt = LookTransform::new("source", "destination", "look1 | look2, look3 | look3, look4");
+    let mut lt = LookTransform::new(
+        "source",
+        "destination",
+        "look1 | look2, look3 | look3, look4",
+    );
 
     let ops = build(&config, &lt, Forward).unwrap();
     assert_eq!(ops.len(), 16);
@@ -320,7 +327,9 @@ colorspaces:
     from_reference: !<FileTransform> {src: $FILE2}
 "#;
     let _lock = env_lock();
-    let mut cfg = Config::create_from_str(CONFIG).unwrap().create_editable_copy();
+    let mut cfg = Config::create_from_str(CONFIG)
+        .unwrap()
+        .create_editable_copy();
     cfg.set_search_path(&data_file(""));
     cfg.validate().unwrap();
 
@@ -372,7 +381,10 @@ colorspaces:
 
     let (found, used) = collect("look3, -look2, +look4");
     assert!(found);
-    assert_eq!(vars(&used), [pair("FILE1", "cdl_test1.cc"), pair("FILE2", "cdl_test1.cc")]);
+    assert_eq!(
+        vars(&used),
+        [pair("FILE1", "cdl_test1.cc"), pair("FILE2", "cdl_test1.cc")]
+    );
 }
 
 const INVERSE_LOOK_CONFIG: &str = r#"

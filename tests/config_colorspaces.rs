@@ -177,12 +177,18 @@ fn name(c: &Config, r: Ref, v: Vis, i: usize) -> String {
 }
 
 fn active_names(c: &Config) -> Vec<String> {
-    (0..c.num_color_spaces()).map(|i| c.color_space_name_by_index(i).to_string()).collect()
+    (0..c.num_color_spaces())
+        .map(|i| c.color_space_name_by_index(i).to_string())
+        .collect()
 }
 
 #[track_caller]
 fn check_counts(c: &Config, all: [usize; 3], scene: [usize; 3], display: [usize; 3]) {
-    for (r, e) in [(Ref::All, all), (Ref::Scene, scene), (Ref::Display, display)] {
+    for (r, e) in [
+        (Ref::All, all),
+        (Ref::Scene, scene),
+        (Ref::Display, display),
+    ] {
         assert_eq!(n(c, r, Vis::Inactive), e[0], "{r:?} inactive");
         assert_eq!(n(c, r, Vis::Active), e[1], "{r:?} active");
         assert_eq!(n(c, r, Vis::All), e[2], "{r:?} all");
@@ -204,12 +210,17 @@ fn config_inactive_color_space() {
 
     // Step 1 - No inactive color spaces.
     check_counts(&config, [0, 5, 5], [0, 5, 5], [0, 0, 0]);
-    let all: Vec<String> = (0..6).map(|i| name(&config, Ref::All, Vis::All, i)).collect();
+    let all: Vec<String> = (0..6)
+        .map(|i| name(&config, Ref::All, Vis::All, i))
+        .collect();
     assert_eq!(all, ["raw", "lnh", "cs1", "cs2", "cs3", ""]);
     assert_eq!(active_names(&config), ["raw", "lnh", "cs1", "cs2", "cs3"]);
     assert_eq!(config.color_space_name_by_index(5), "");
     assert_eq!(config.color_spaces("").num_color_spaces(), 5);
-    assert_eq!(config.get_color_space("scene_linear").unwrap().name(), "lnh");
+    assert_eq!(
+        config.get_color_space("scene_linear").unwrap().name(),
+        "lnh"
+    );
     assert_eq!(config.index_for_color_space("scene_linear"), Some(1));
     assert_eq!(config.index_for_color_space("lnh"), Some(1));
 
@@ -217,7 +228,9 @@ fn config_inactive_color_space() {
     config.set_inactive_color_spaces("lnh, cs1");
     assert_eq!(config.inactive_color_spaces(), "lnh, cs1");
     check_counts(&config, [2, 3, 5], [2, 3, 5], [0, 0, 0]);
-    let all: Vec<String> = (0..5).map(|i| name(&config, Ref::All, Vis::All, i)).collect();
+    let all: Vec<String> = (0..5)
+        .map(|i| name(&config, Ref::All, Vis::All, i))
+        .collect();
     assert_eq!(all, ["raw", "lnh", "cs1", "cs2", "cs3"]);
     assert_eq!(active_names(&config), ["raw", "cs2", "cs3"]);
     assert_eq!(config.color_spaces("").num_color_spaces(), 3);
@@ -226,7 +239,10 @@ fn config_inactive_color_space() {
     assert_eq!(config.get_color_space("cs2").unwrap().name(), "cs2");
     assert_eq!(config.get_color_space("cs1").unwrap().name(), "cs1");
     assert_eq!(config.get_color_space("default").unwrap().name(), "raw");
-    assert_eq!(config.get_color_space("scene_linear").unwrap().name(), "lnh");
+    assert_eq!(
+        config.get_color_space("scene_linear").unwrap().name(),
+        "lnh"
+    );
     assert_eq!(config.index_for_color_space("scene_linear"), None);
     assert_eq!(config.index_for_color_space("lnh"), None);
     assert_eq!(config.color_space_name_by_index(3), "");
@@ -286,9 +302,13 @@ fn config_inactive_color_space_processors() {
     let _g = EnvGuard::set(OCIO_INACTIVE_COLORSPACES_ENVVAR, None);
     let mut config = inactive_config("");
     config.set_inactive_color_spaces("lnh, cs1");
-    let dst = config.display_view_color_space_name("sRGB", "Lnh").to_string();
+    let dst = config
+        .display_view_color_space_name("sRGB", "Lnh")
+        .to_string();
     let lt: Transform = LookTransform::new("raw", &dst, "beauty").into();
-    config.get_processor_for_transform(&lt, TransformDirection::Forward).unwrap();
+    config
+        .get_processor_for_transform(&lt, TransformDirection::Forward)
+        .unwrap();
     config.get_processor("lnh", "cs1").unwrap();
     config.get_processor("raw", "cs1").unwrap();
     config.get_processor("lnh", "cs2").unwrap();
@@ -299,7 +319,8 @@ fn config_inactive_color_space_processors() {
 #[ignore = "needs-merge"]
 fn config_is_inactive() {
     let _lock = env_lock();
-    let config = Config::create_from_builtin_config("studio-config-v1.0.0_aces-v1.3_ocio-v2.1").unwrap();
+    let config =
+        Config::create_from_builtin_config("studio-config-v1.0.0_aces-v1.3_ocio-v2.1").unwrap();
     config.validate().unwrap();
     assert!(!config.is_inactive_color_space(""));
     assert!(!config.is_inactive_color_space("fake-colorspace-name"));
@@ -372,7 +393,9 @@ fn config_inactive_color_space_read_write() {
         assert_eq!(config.serialize().unwrap(), s);
     }
     {
-        let s = format!("{INACTIVE_START}inactive_colorspaces: [cs1\t\n   \n,   \ncs2]\n{INACTIVE_END}");
+        let s = format!(
+            "{INACTIVE_START}inactive_colorspaces: [cs1\t\n   \n,   \ncs2]\n{INACTIVE_END}"
+        );
         let config = Config::create_from_str(&s).unwrap();
         config.validate().unwrap();
         assert_eq!(n(&config, Ref::All, Vis::All), 5);
@@ -387,7 +410,10 @@ fn config_inactive_color_space_read_write() {
         let config = Config::create_from_str(&s).unwrap();
         config.validate().unwrap();
         assert_eq!(config.num_color_spaces(), 5);
-        assert_eq!(config.serialize().unwrap(), format!("{INACTIVE_START}{INACTIVE_END}"));
+        assert_eq!(
+            config.serialize().unwrap(),
+            format!("{INACTIVE_START}{INACTIVE_END}")
+        );
     }
     {
         let s = format!("{INACTIVE_START}inactive_colorspaces: [unknown]\n{INACTIVE_END}");

@@ -21,7 +21,14 @@ pub struct View {
 
 impl View {
     /// Build a view.
-    pub fn new(name: &str, view_transform: &str, colorspace: &str, looks: &str, rule: &str, description: &str) -> Self {
+    pub fn new(
+        name: &str,
+        view_transform: &str,
+        colorspace: &str,
+        looks: &str,
+        rule: &str,
+        description: &str,
+    ) -> Self {
         Self {
             name: name.to_string(),
             view_transform: view_transform.to_string(),
@@ -58,9 +65,20 @@ pub fn add_view(
     rule: &str,
     description: &str,
 ) {
-    let cs = if View::use_display_name(display_color_space) { OCIO_VIEW_USE_DISPLAY_NAME } else { display_color_space };
+    let cs = if View::use_display_name(display_color_space) {
+        OCIO_VIEW_USE_DISPLAY_NAME
+    } else {
+        display_color_space
+    };
     match find_view(views, name) {
-        None => views.push(View::new(name, view_transform, cs, looks, rule, description)),
+        None => views.push(View::new(
+            name,
+            view_transform,
+            cs,
+            looks,
+            rule,
+            description,
+        )),
         Some(i) => {
             let v = &mut views[i];
             v.view_transform = view_transform.to_string();
@@ -92,7 +110,11 @@ pub fn find_display(displays: &DisplayMap, name: &str) -> Option<usize> {
 }
 
 /// Compute the list of active displays (`ComputeDisplays`).
-pub fn compute_displays(displays: &DisplayMap, active: &[String], active_env_override: &[String]) -> Vec<String> {
+pub fn compute_displays(
+    displays: &DisplayMap,
+    active: &[String],
+    active_env_override: &[String],
+) -> Vec<String> {
     let master: Vec<String> = displays.iter().map(|(n, _)| n.clone()).collect();
     if !active_env_override.is_empty() {
         let r = intersect_case_ignore(active_env_override, &master);

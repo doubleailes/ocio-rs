@@ -30,13 +30,13 @@ pub mod viewing_rules;
 pub mod yaml;
 
 pub use colorspace::{ColorSpace, ColorSpaceSet};
+pub use context_vars::collect_context_variables;
 pub use display::View;
 pub use file_rules::{FileRules, DEFAULT_RULE_NAME, FILE_PATH_SEARCH_RULE_NAME};
 pub use look::Look;
 pub use look_parse::{LookParseResult, LookToken};
 pub use named_transform::NamedTransform;
 pub use transforms::{get_looks_result_color_space, AllocationNoOp, BuildColorSpaceOps};
-pub use context_vars::collect_context_variables;
 pub use view_transform::ViewTransform;
 pub use viewing_rules::ViewingRules;
 
@@ -52,8 +52,9 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 use std::sync::Mutex;
 use utils::{
-    compare, contain, contains_context_variable_token, contains_context_variables, find_in_vec_case_ignore,
-    intersect_case_ignore, join_string_env_style, split_string_env_style, trim,
+    compare, contain, contains_context_variable_token, contains_context_variables,
+    find_in_vec_case_ignore, intersect_case_ignore, join_string_env_style, split_string_env_style,
+    trim,
 };
 
 /// First supported major version.
@@ -176,7 +177,11 @@ pub struct Config {
 
 impl Clone for Config {
     fn clone(&self) -> Self {
-        let validation = self.validation.lock().map(|v| v.clone()).unwrap_or((Validation::Unknown, String::new()));
+        let validation = self
+            .validation
+            .lock()
+            .map(|v| v.clone())
+            .unwrap_or((Validation::Unknown, String::new()));
         let (ids, no_context) = self
             .cache_ids
             .lock()
@@ -319,10 +324,14 @@ impl Config {
             active_views_env_override = utils::split_string_env_style_lossy(&v);
         }
         let inactive_env = trim(&getenv(OCIO_INACTIVE_COLORSPACES_ENVVAR)).to_string();
-        let virtual_display = Display { temporary: true, ..Default::default() };
+        let virtual_display = Display {
+            temporary: true,
+            ..Default::default()
+        };
         Config {
             major_version: LAST_SUPPORTED_MAJOR_VERSION,
-            minor_version: LAST_SUPPORTED_MINOR_VERSION[(LAST_SUPPORTED_MAJOR_VERSION - 1) as usize],
+            minor_version: LAST_SUPPORTED_MINOR_VERSION
+                [(LAST_SUPPORTED_MAJOR_VERSION - 1) as usize],
             env: BTreeMap::new(),
             context: Context::new(),
             name: String::new(),
@@ -390,12 +399,19 @@ impl Config {
         }
         if let Some(pos) = path.find(OCIO_BUILTIN_URI_PREFIX) {
             let rest = &path[pos + OCIO_BUILTIN_URI_PREFIX.len()..];
-            if rest.chars().next().map(|c| !c.is_whitespace()).unwrap_or(false) {
+            if rest
+                .chars()
+                .next()
+                .map(|c| !c.is_whitespace())
+                .unwrap_or(false)
+            {
                 return Config::create_from_builtin_config(path);
             }
         }
         if !std::path::Path::new(path).exists() {
-            return Err(Error::missing_file(format!("'{path}' file does not exist.")));
+            return Err(Error::missing_file(format!(
+                "'{path}' file does not exist."
+            )));
         }
         let data = std::fs::read(path)
             .map_err(|_| Error::msg(format!("Error could not read '{path}' OCIO profile.")))?;
@@ -430,7 +446,9 @@ impl Config {
         let short = builtin[OCIO_BUILTIN_URI_PREFIX.len()..].to_string();
         match crate::builtins::configs::get_builtin_config(&short) {
             Some(text) => Config::create_from_str(text),
-            None => Err(Error::msg(format!("Could not find '{short}' in the built-in configurations."))),
+            None => Err(Error::msg(format!(
+                "Could not find '{short}' in the built-in configurations."
+            ))),
         }
     }
 
@@ -500,8 +518,9 @@ impl Config {
                 self.minor_version = 0;
             }
             let _ = self.set_major_version(LAST_SUPPORTED_MAJOR_VERSION);
-            let _ = self
-                .set_minor_version(LAST_SUPPORTED_MINOR_VERSION[(LAST_SUPPORTED_MAJOR_VERSION - 1) as usize]);
+            let _ = self.set_minor_version(
+                LAST_SUPPORTED_MINOR_VERSION[(LAST_SUPPORTED_MAJOR_VERSION - 1) as usize],
+            );
         }
     }
 
@@ -563,7 +582,10 @@ impl Config {
 
     /// The processor cache flags.
     pub fn processor_cache_flags(&self) -> ProcessorCacheFlags {
-        self.cache_flags.lock().map(|f| *f).unwrap_or(ProcessorCacheFlags::DEFAULT)
+        self.cache_flags
+            .lock()
+            .map(|f| *f)
+            .unwrap_or(ProcessorCacheFlags::DEFAULT)
     }
 
     /// Set the processor cache flags.
@@ -582,7 +604,8 @@ impl Config {
 
     fn processor_cache_enabled(&self) -> bool {
         !self.env_disable_processor_cache
-            && (self.processor_cache_flags().0 & ProcessorCacheFlags::ENABLED.0) == ProcessorCacheFlags::ENABLED.0
+            && (self.processor_cache_flags().0 & ProcessorCacheFlags::ENABLED.0)
+                == ProcessorCacheFlags::ENABLED.0
     }
 
     /// Cache id of the config using the current context.
@@ -599,7 +622,11 @@ impl Config {
             }
         }
         let no_context = {
-            let cached = self.cache_ids.lock().map(|c| c.no_context.clone()).unwrap_or_default();
+            let cached = self
+                .cache_ids
+                .lock()
+                .map(|c| c.no_context.clone())
+                .unwrap_or_default();
             if cached.is_empty() {
                 let s = yaml::write(self).unwrap_or_default();
                 format!("{:x}", md5::compute(s.as_bytes()))
@@ -622,7 +649,9 @@ impl Config {
                 s.push('=');
                 match ctx.resolve_file_location(f) {
                     Ok(p) => {
-                        let h = std::fs::read(&p).map(|d| format!("{:x}", md5::compute(&d))).unwrap_or_default();
+                        let h = std::fs::read(&p)
+                            .map(|d| format!("{:x}", md5::compute(&d)))
+                            .unwrap_or_default();
                         s.push_str(&h);
                         s.push(' ');
                     }

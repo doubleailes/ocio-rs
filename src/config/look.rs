@@ -83,7 +83,11 @@ impl Look {
 
 impl fmt::Display for Look {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<Look name={}, processSpace={}", self.name, self.process_space)?;
+        write!(
+            f,
+            "<Look name={}, processSpace={}",
+            self.name, self.process_space
+        )?;
         if !self.description.is_empty() {
             write!(f, ", description={}", self.description)?;
         }
@@ -94,7 +98,11 @@ impl fmt::Display for Look {
             write!(f, ",\n    transform=\n        {}", format_transform(t))?;
         }
         if let Some(t) = &self.inverse_transform {
-            write!(f, ",\n    inverseTransform=\n        {}", format_transform(t))?;
+            write!(
+                f,
+                ",\n    inverseTransform=\n        {}",
+                format_transform(t)
+            )?;
         }
         write!(f, ">")
     }

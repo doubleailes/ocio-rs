@@ -37,7 +37,12 @@ pub struct Node {
 impl Node {
     /// An undefined / null node without mark (e.g. an empty document).
     pub fn undefined() -> Self {
-        Node { kind: Kind::Null, tag: String::new(), line: -1, col: -1 }
+        Node {
+            kind: Kind::Null,
+            tag: String::new(),
+            line: -1,
+            col: -1,
+        }
     }
 
     pub fn is_null(&self) -> bool {
@@ -127,7 +132,9 @@ impl Node {
             let first_upper = s
                 .chars()
                 .next()
-                .map(|c| !c.is_ascii_lowercase() && s.chars().skip(1).all(|c| !c.is_ascii_uppercase()))
+                .map(|c| {
+                    !c.is_ascii_lowercase() && s.chars().skip(1).all(|c| !c.is_ascii_uppercase())
+                })
                 .unwrap_or(true);
             all_lower || all_upper || first_upper
         };
@@ -346,14 +353,29 @@ impl MarkedEventReceiver for Builder<'_> {
                 let plain = style == TScalarStyle::Plain;
                 let kind = if plain
                     && tag_str.is_none()
-                    && (value.is_empty() || value == "~" || value == "null" || value == "Null" || value == "NULL")
+                    && (value.is_empty()
+                        || value == "~"
+                        || value == "null"
+                        || value == "Null"
+                        || value == "NULL")
                 {
                     Kind::Null
                 } else {
                     Kind::Scalar(value)
                 };
-                let t = tag_str.unwrap_or_else(|| if plain { "?".to_string() } else { "!".to_string() });
-                let node = Node { kind, tag: t, line, col };
+                let t = tag_str.unwrap_or_else(|| {
+                    if plain {
+                        "?".to_string()
+                    } else {
+                        "!".to_string()
+                    }
+                });
+                let node = Node {
+                    kind,
+                    tag: t,
+                    line,
+                    col,
+                };
                 if anchor > 0 {
                     self.anchors.insert(anchor, node.clone());
                 }
@@ -362,7 +384,15 @@ impl MarkedEventReceiver for Builder<'_> {
             Event::SequenceStart(anchor, tag) => {
                 let (line, col) = self.mark(&tag, &marker);
                 let t = tag_to_string(&tag).unwrap_or_else(|| "?".to_string());
-                self.stack.push(Frame::Seq(Node { kind: Kind::Seq(Vec::new()), tag: t, line, col }, anchor));
+                self.stack.push(Frame::Seq(
+                    Node {
+                        kind: Kind::Seq(Vec::new()),
+                        tag: t,
+                        line,
+                        col,
+                    },
+                    anchor,
+                ));
             }
             Event::SequenceEnd => {
                 if let Some(Frame::Seq(n, anchor)) = self.stack.pop() {
@@ -376,7 +406,12 @@ impl MarkedEventReceiver for Builder<'_> {
                 let (line, col) = self.mark(&tag, &marker);
                 let t = tag_to_string(&tag).unwrap_or_else(|| "?".to_string());
                 self.stack.push(Frame::Map(
-                    Node { kind: Kind::Map(Vec::new()), tag: t, line, col },
+                    Node {
+                        kind: Kind::Map(Vec::new()),
+                        tag: t,
+                        line,
+                        col,
+                    },
                     Vec::new(),
                     None,
                     anchor,
@@ -392,7 +427,11 @@ impl MarkedEventReceiver for Builder<'_> {
                 }
             }
             Event::Alias(id) => {
-                let node = self.anchors.get(&id).cloned().unwrap_or_else(Node::undefined);
+                let node = self
+                    .anchors
+                    .get(&id)
+                    .cloned()
+                    .unwrap_or_else(Node::undefined);
                 self.push_value(node);
             }
             Event::DocumentEnd => {
@@ -408,7 +447,10 @@ impl MarkedEventReceiver for Builder<'_> {
 /// Parse the first document of a YAML stream.
 pub fn load(text: &str) -> Result<Node> {
     match load_impl(text) {
-        Err(e) if e.to_string().contains("invalid indentation in flow construct") => {
+        Err(e)
+            if e.to_string()
+                .contains("invalid indentation in flow construct") =>
+        {
             // yaml-cpp accepts flow collections whose continuation lines are
             // not indented (e.g. "key: [a,\nb]"); yaml-rust2 does not. As the
             // indentation has no meaning inside a flow collection, indent the
@@ -486,11 +528,23 @@ fn load_impl(text: &str) -> Result<Node> {
             line_starts.push(i + 1);
         }
     }
-    let mut b = Builder { chars: &chars, line_starts, stack: Vec::new(), root: None, anchors: HashMap::new(), done: false };
+    let mut b = Builder {
+        chars: &chars,
+        line_starts,
+        stack: Vec::new(),
+        root: None,
+        anchors: HashMap::new(),
+        done: false,
+    };
     let mut parser = Parser::new_from_str(text);
     parser.load(&mut b, false).map_err(|e| {
         let m = e.marker();
-        Error::msg(format!("yaml-cpp: error at line {}, column {}: {}", m.line(), m.col() + 1, e.info()))
+        Error::msg(format!(
+            "yaml-cpp: error at line {}, column {}: {}",
+            m.line(),
+            m.col() + 1,
+            e.info()
+        ))
     })?;
     Ok(b.root.unwrap_or_else(Node::undefined))
 }
@@ -519,7 +573,11 @@ mod tests {
         assert!(n.get("d").unwrap().is_null());
         assert_eq!(n.get("e").unwrap().as_string().unwrap(), "");
         assert_eq!(n.get("e").unwrap().tag, "!");
-        let keys: Vec<_> = n.map_entries().iter().map(|(k, _)| k.as_string().unwrap()).collect();
+        let keys: Vec<_> = n
+            .map_entries()
+            .iter()
+            .map(|(k, _)| k.as_string().unwrap())
+            .collect();
         assert_eq!(keys, vec!["a", "b", "c", "d", "e"]);
         assert_eq!(n.map_entries()[1].0.line, 1);
     }

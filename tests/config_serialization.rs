@@ -30,7 +30,10 @@ fn v1(end: &str) -> String {
 
 /// The part of a v2 profile before the file rules (i.e. without them).
 fn v2_no_rules(end: &str) -> String {
-    format!("{PROFILE_V2}{SIMPLE_PROFILE_A}{}{end}", simple_profile_b_v2())
+    format!(
+        "{PROFILE_V2}{SIMPLE_PROFILE_A}{}{end}",
+        simple_profile_b_v2()
+    )
 }
 
 #[test]
@@ -92,7 +95,10 @@ fn config_range_serialization_validation() {
         "    from_scene_reference: !<RangeTransform> {min_in_value: 0, min_out_value: 0, style: noClamp}\n",
     ))
     .unwrap();
-    assert_err!(config.validate(), "non clamping range must have min and max values defined");
+    assert_err!(
+        config.validate(),
+        "non clamping range must have min and max values defined"
+    );
 
     for end in [
         "    from_scene_reference: !<RangeTransform> {min_in_value: 0, max_out_value: 1}\n",
@@ -107,11 +113,17 @@ fn config_range_serialization_validation() {
 
 #[test]
 fn config_exponent_serialization() {
-    check_roundtrip(&v1("    from_reference: !<ExponentTransform> {value: [1.101, 1.202, 1.303, 1.404]}\n"));
+    check_roundtrip(&v1(
+        "    from_reference: !<ExponentTransform> {value: [1.101, 1.202, 1.303, 1.404]}\n",
+    ));
     // If R==G==B and A==1, and the version is > 1, the compact syntax is used.
-    check_roundtrip(&v2("    from_scene_reference: !<ExponentTransform> {value: 1.101}\n"));
+    check_roundtrip(&v2(
+        "    from_scene_reference: !<ExponentTransform> {value: 1.101}\n",
+    ));
     // If version==1, then write all values for compatibility with the v1 library.
-    check_roundtrip(&v1("    from_reference: !<ExponentTransform> {value: [1.101, 1.101, 1.101, 1]}\n"));
+    check_roundtrip(&v1(
+        "    from_reference: !<ExponentTransform> {value: [1.101, 1.101, 1.101, 1]}\n",
+    ));
     check_roundtrip(&v1(
         "    from_reference: !<ExponentTransform> {value: [1.101, 1.202, 1.303, 1.404], direction: inverse}\n",
     ));
@@ -124,7 +136,9 @@ fn config_exponent_serialization() {
 
     // Errors.
     assert_err!(
-        Config::create_from_str(&v1("    from_reference: !<ExponentTransform> {value: [1.1, 1.2, 1.3]}\n")),
+        Config::create_from_str(&v1(
+            "    from_reference: !<ExponentTransform> {value: [1.1, 1.2, 1.3]}\n"
+        )),
         "'value' values must be 4 floats. Found '3'"
     );
     assert_err!(
@@ -184,7 +198,10 @@ fn config_exponent_vs_config_version() {
     let apply = |s: &str| {
         let config = Config::create_from_str(s).unwrap();
         config.validate().unwrap();
-        let cpu = config.get_processor("raw", "lnh").unwrap().default_cpu_processor();
+        let cpu = config
+            .get_processor("raw", "lnh")
+            .unwrap()
+            .default_cpu_processor();
         let mut img = [-0.5f32, 0.0, 1.0, 1.0];
         cpu.apply_rgba(&mut img);
         img

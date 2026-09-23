@@ -129,7 +129,11 @@ impl fmt::Display for ViewTransform {
             ReferenceSpaceType::Scene => "scene",
             ReferenceSpaceType::Display => "display",
         };
-        write!(f, "<ViewTransform name={}, family={}, referenceSpaceType={}", self.name, self.family, rst)?;
+        write!(
+            f,
+            "<ViewTransform name={}, family={}, referenceSpaceType={}",
+            self.name, self.family, rst
+        )?;
         if !self.description.is_empty() {
             write!(f, ", description={}", self.description)?;
         }
@@ -137,10 +141,20 @@ impl fmt::Display for ViewTransform {
             write!(f, ", {k}={v}")?;
         }
         if let Some(t) = &self.to_reference {
-            write!(f, ",\n    {} --> Reference\n        {}", self.name, format_transform(t))?;
+            write!(
+                f,
+                ",\n    {} --> Reference\n        {}",
+                self.name,
+                format_transform(t)
+            )?;
         }
         if let Some(t) = &self.from_reference {
-            write!(f, ",\n    Reference --> {}\n        {}", self.name, format_transform(t))?;
+            write!(
+                f,
+                ",\n    Reference --> {}\n        {}",
+                self.name,
+                format_transform(t)
+            )?;
         }
         write!(f, ">")
     }

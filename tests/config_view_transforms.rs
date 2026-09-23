@@ -158,8 +158,10 @@ fn config_get_processor_from_two_configs() {
     let p = Config::get_processor_from_configs(&config1, "test1", &config2, "test2").unwrap();
     assert_eq!(kinds(&p), ["matrix", "exponent", "range", "matrix"]);
 
-    let p = Config::get_processor_from_configs_interchange(&config1, "test1", "aces1", &config2, "test2", "aces2")
-        .unwrap();
+    let p = Config::get_processor_from_configs_interchange(
+        &config1, "test1", "aces1", &config2, "test2", "aces2",
+    )
+    .unwrap();
     assert_eq!(kinds(&p).len(), 4);
     let p = Config::get_processor_from_configs_interchange(
         &config1,
@@ -222,12 +224,26 @@ fn config_get_processor_from_two_configs() {
     .unwrap();
     assert_eq!(kinds(&p), ["log", "exponent", "range", "matrix"]);
 
-    let p = Config::get_processor_from_configs_display_view(&config2, "test2", &config1, "displayname", "view2", Forward)
-        .unwrap();
+    let p = Config::get_processor_from_configs_display_view(
+        &config2,
+        "test2",
+        &config1,
+        "displayname",
+        "view2",
+        Forward,
+    )
+    .unwrap();
     assert_eq!(kinds(&p), ["matrix", "range", "exponent", "range", "ff"]);
 
-    let p = Config::get_processor_from_configs_display_view(&config2, "test2", &config1, "displayname", "view3", Forward)
-        .unwrap();
+    let p = Config::get_processor_from_configs_display_view(
+        &config2,
+        "test2",
+        &config1,
+        "displayname",
+        "view3",
+        Forward,
+    )
+    .unwrap();
     assert_eq!(kinds(&p).len(), 0);
 }
 
@@ -284,7 +300,10 @@ display_colorspaces:
     allocation: uniform
     to_display_reference: !<ExponentTransform> {value: 2.4}
 "#;
-    check_roundtrip(&format!("{}{dcs}{SIMPLE_PROFILE_CS_V2}", profile_v2_dcs_start()));
+    check_roundtrip(&format!(
+        "{}{dcs}{SIMPLE_PROFILE_CS_V2}",
+        profile_v2_dcs_start()
+    ));
 }
 
 #[test]
@@ -312,7 +331,10 @@ fn config_config_v1() {
     config.validate().unwrap();
     assert_eq!(config.num_view_transforms(), 0);
     assert_eq!(
-        config.num_color_spaces_filtered(SearchReferenceSpaceType::Display, ColorSpaceVisibility::All),
+        config.num_color_spaces_filtered(
+            SearchReferenceSpaceType::Display,
+            ColorSpaceVisibility::All
+        ),
         0
     );
 }
@@ -325,23 +347,41 @@ fn config_view_transforms() {
 
     let mut edit = config.create_editable_copy();
     let mut vt = ViewTransform::new(ReferenceSpaceType::Display);
-    assert_err!(edit.add_view_transform(&vt), "Cannot add view transform with an empty name");
+    assert_err!(
+        edit.add_view_transform(&vt),
+        "Cannot add view transform with an empty name"
+    );
     vt.set_name("display");
-    assert_err!(edit.add_view_transform(&vt), "Cannot add view transform 'display' with no transform");
-    vt.set_transform(Some(MatrixTransform::default().into()), ViewTransformDirection::FromReference);
+    assert_err!(
+        edit.add_view_transform(&vt),
+        "Cannot add view transform 'display' with no transform"
+    );
+    vt.set_transform(
+        Some(MatrixTransform::default().into()),
+        ViewTransformDirection::FromReference,
+    );
     edit.add_view_transform(&vt).unwrap();
     assert_eq!(edit.num_view_transforms(), 1);
-    assert_err!(edit.validate(), "at least one must use the scene reference space");
+    assert_err!(
+        edit.validate(),
+        "at least one must use the scene reference space"
+    );
     assert!(edit.default_scene_to_display_view_transform().is_none());
 
     let mut vt = ViewTransform::new(ReferenceSpaceType::Scene);
     vt.set_name("scene");
-    vt.set_transform(Some(MatrixTransform::default().into()), ViewTransformDirection::FromReference);
+    vt.set_transform(
+        Some(MatrixTransform::default().into()),
+        ViewTransformDirection::FromReference,
+    );
     edit.add_view_transform(&vt).unwrap();
     assert_eq!(edit.num_view_transforms(), 2);
     edit.validate().unwrap();
 
-    let scene_vt = edit.default_scene_to_display_view_transform().unwrap().clone();
+    let scene_vt = edit
+        .default_scene_to_display_view_transform()
+        .unwrap()
+        .clone();
     assert_eq!(edit.view_transform_name_by_index(0), "display");
     assert_eq!(edit.view_transform_name_by_index(1), "scene");
     assert_eq!(edit.view_transform_name_by_index(42), "");
@@ -371,10 +411,16 @@ fn config_view_transforms() {
     reloaded.validate().unwrap();
 
     // Setting a view transform with the same name replaces the earlier one.
-    vt.set_transform(Some(LogTransform::default().into()), ViewTransformDirection::FromReference);
+    vt.set_transform(
+        Some(LogTransform::default().into()),
+        ViewTransformDirection::FromReference,
+    );
     edit.add_view_transform(&vt).unwrap();
     assert_eq!(edit.num_view_transforms(), 3);
-    let t = edit.view_transform("scene").unwrap().transform(ViewTransformDirection::FromReference);
+    let t = edit
+        .view_transform("scene")
+        .unwrap()
+        .transform(ViewTransformDirection::FromReference);
     assert!(matches!(t, Some(Transform::Log(_))));
 
     assert_eq!(reloaded.num_view_transforms(), 3);
@@ -403,16 +449,24 @@ fn config_display_view() {
 
     let mut vt = ViewTransform::new(ReferenceSpaceType::Display);
     vt.set_name("display");
-    vt.set_transform(Some(MatrixTransform::default().into()), ViewTransformDirection::FromReference);
+    vt.set_transform(
+        Some(MatrixTransform::default().into()),
+        ViewTransformDirection::FromReference,
+    );
     config.add_view_transform(&vt).unwrap();
     let mut vt = ViewTransform::new(ReferenceSpaceType::Scene);
     vt.set_name("view_transform");
-    vt.set_transform(Some(MatrixTransform::default().into()), ViewTransformDirection::FromReference);
+    vt.set_transform(
+        Some(MatrixTransform::default().into()),
+        ViewTransformDirection::FromReference,
+    );
     config.add_view_transform(&vt).unwrap();
     config.set_default_view_transform_name("view_transform");
 
     assert!(!config.has_view("display", "view1"));
-    config.add_display_view("display", "view1", "scs", "").unwrap();
+    config
+        .add_display_view("display", "view1", "scs", "")
+        .unwrap();
     assert!(config.has_view("display", "view1"));
     config.validate().unwrap();
 
@@ -420,7 +474,10 @@ fn config_display_view() {
     config
         .add_display_view_full("display", "view2", "view_transform", "scs", "", "", "")
         .unwrap();
-    assert_err!(config.validate(), "color space, 'scs', that is not a display-referred");
+    assert_err!(
+        config.validate(),
+        "color space, 'scs', that is not a display-referred"
+    );
     assert!(config.has_view("display", "view2"));
     config
         .add_display_view_full("display", "view2", "view_transform", "dcs", "", "", "")
@@ -499,11 +556,20 @@ colorspaces:
     let v2 = read.view("display", 1);
     assert_eq!(v2, "view2");
     assert_eq!(read.display_view_color_space_name("display", &v2), "dcs");
-    assert_eq!(read.display_view_transform_name("display", &v2), "view_transform");
+    assert_eq!(
+        read.display_view_transform_name("display", &v2),
+        "view_transform"
+    );
     assert_eq!(read.default_view_transform_name(), "view_transform");
 
-    assert_err!(config.add_display_view("", "view1", "scs", ""), "a non-empty display name is needed");
-    assert_err!(config.add_display_view("display", "", "scs", ""), "a non-empty view name is needed");
+    assert_err!(
+        config.add_display_view("", "view1", "scs", ""),
+        "a non-empty display name is needed"
+    );
+    assert_err!(
+        config.add_display_view("display", "", "scs", ""),
+        "a non-empty view name is needed"
+    );
     assert_err!(
         config.add_display_view("display", "view3", "", ""),
         "a non-empty color space name is needed"
@@ -572,7 +638,11 @@ colorspaces:
 fn config_transform_with_roles() {
     let config = Config::create_from_str(TRANSFORM_WITH_ROLES).unwrap();
     config.validate().unwrap();
-    let bypass = |name: &str| match config.get_color_space(name).unwrap().transform(ColorSpaceDirection::ToReference) {
+    let bypass = |name: &str| match config
+        .get_color_space(name)
+        .unwrap()
+        .transform(ColorSpaceDirection::ToReference)
+    {
         Some(Transform::ColorSpace(t)) => t.data_bypass,
         t => panic!("unexpected {t:?}"),
     };
@@ -589,7 +659,9 @@ fn config_transform_with_roles_processors() {
     config.get_processor("cs1", "cs2").unwrap();
     for src in ["raw", "cs1", "cs2"] {
         let dt: Transform = DisplayViewTransform::new(src, "Disp1", "View1").into();
-        config.get_processor_for_transform(&dt, TransformDirection::Forward).unwrap();
+        config
+            .get_processor_for_transform(&dt, TransformDirection::Forward)
+            .unwrap();
     }
 }
 

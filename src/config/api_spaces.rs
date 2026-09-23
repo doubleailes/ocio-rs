@@ -27,13 +27,20 @@ impl Config {
     }
 
     /// Number of color spaces matching the reference type and visibility.
-    pub fn num_color_spaces_filtered(&self, search: SearchReferenceSpaceType, visibility: ColorSpaceVisibility) -> usize {
+    pub fn num_color_spaces_filtered(
+        &self,
+        search: SearchReferenceSpaceType,
+        visibility: ColorSpaceVisibility,
+    ) -> usize {
         match visibility {
             ColorSpaceVisibility::All => {
                 if search == SearchReferenceSpaceType::All {
                     return self.all_color_spaces.num_color_spaces();
                 }
-                self.all_color_spaces.iter().filter(|cs| match_reference_type(search, cs.reference_space_type())).count()
+                self.all_color_spaces
+                    .iter()
+                    .filter(|cs| match_reference_type(search, cs.reference_space_type()))
+                    .count()
             }
             ColorSpaceVisibility::Active | ColorSpaceVisibility::Inactive => {
                 let names = if visibility == ColorSpaceVisibility::Active {
@@ -67,7 +74,10 @@ impl Config {
         match visibility {
             ColorSpaceVisibility::All => {
                 if search == SearchReferenceSpaceType::All {
-                    return self.all_color_spaces.color_space_name_by_index(index).unwrap_or("");
+                    return self
+                        .all_color_spaces
+                        .color_space_name_by_index(index)
+                        .unwrap_or("");
                 }
                 self.all_color_spaces
                     .iter()
@@ -103,14 +113,20 @@ impl Config {
 
     /// Name of the active color space at `index` (`""` if out of range).
     pub fn color_space_name_by_index(&self, index: usize) -> &str {
-        self.color_space_name_by_index_filtered(SearchReferenceSpaceType::All, ColorSpaceVisibility::Active, index)
+        self.color_space_name_by_index_filtered(
+            SearchReferenceSpaceType::All,
+            ColorSpaceVisibility::Active,
+            index,
+        )
     }
 
     /// Index of a color space (name, alias or role) among the active color
     /// spaces.
     pub fn index_for_color_space(&self, name: &str) -> Option<usize> {
         let cs = self.get_color_space(name)?;
-        self.active_color_space_names.iter().position(|n| n == cs.name())
+        self.active_color_space_names
+            .iter()
+            .position(|n| n == cs.name())
     }
 
     /// Color space by name, alias or role (searching all color spaces).
@@ -217,7 +233,11 @@ impl Config {
         if self.roles.values().any(|cs| compare(cs, name)) {
             return true;
         }
-        if self.shared_views.iter().any(|v| compare(&v.colorspace, name)) {
+        if self
+            .shared_views
+            .iter()
+            .any(|v| compare(&v.colorspace, name))
+        {
             return true;
         }
         for (disp, d) in &self.displays {
@@ -229,7 +249,10 @@ impl Config {
             for sv in &d.shared_views {
                 if let Some(i) = find_view(&self.shared_views, sv) {
                     let v = &self.shared_views[i];
-                    if !v.view_transform.is_empty() && v.use_display_name_for_colorspace() && compare(disp, name) {
+                    if !v.view_transform.is_empty()
+                        && v.use_display_name_for_colorspace()
+                        && compare(disp, name)
+                    {
                         return true;
                     }
                 }
@@ -302,14 +325,25 @@ impl Config {
         self.active_color_space_names = self
             .all_color_spaces
             .iter()
-            .filter(|cs| !self.inactive_color_space_names.iter().any(|n| n == cs.name()))
+            .filter(|cs| {
+                !self
+                    .inactive_color_space_names
+                    .iter()
+                    .any(|n| n == cs.name())
+            })
             .map(|cs| cs.name().to_string())
             .collect();
-        self.inactive_named_transform_names = self.build_inactive_names_list(InactiveType::NamedTransform);
+        self.inactive_named_transform_names =
+            self.build_inactive_names_list(InactiveType::NamedTransform);
         self.active_named_transform_names = self
             .all_named_transforms
             .iter()
-            .filter(|nt| !self.inactive_named_transform_names.iter().any(|n| n == nt.name()))
+            .filter(|nt| {
+                !self
+                    .inactive_named_transform_names
+                    .iter()
+                    .any(|n| n == nt.name())
+            })
             .map(|nt| nt.name().to_string())
             .collect();
     }
@@ -318,7 +352,10 @@ impl Config {
     // Roles
 
     pub(crate) fn lookup_role(&self, role: &str) -> &str {
-        self.roles.get(&lower(role)).map(|s| s.as_str()).unwrap_or("")
+        self.roles
+            .get(&lower(role))
+            .map(|s| s.as_str())
+            .unwrap_or("")
     }
 
     /// Set (or unset with `None`) a role.
@@ -365,12 +402,20 @@ impl Config {
 
     /// Role name at `index` (`""` if out of range).
     pub fn role_name(&self, index: usize) -> &str {
-        self.roles.keys().nth(index).map(|s| s.as_str()).unwrap_or("")
+        self.roles
+            .keys()
+            .nth(index)
+            .map(|s| s.as_str())
+            .unwrap_or("")
     }
 
     /// Color space of the role at `index` (`""` if out of range).
     pub fn role_color_space_by_index(&self, index: usize) -> &str {
-        self.roles.values().nth(index).map(|s| s.as_str()).unwrap_or("")
+        self.roles
+            .values()
+            .nth(index)
+            .map(|s| s.as_str())
+            .unwrap_or("")
     }
 
     /// Color space of a role (`""` if not a role).
@@ -445,7 +490,10 @@ impl Config {
 
     /// View transform name at `index` (`""` if out of range).
     pub fn view_transform_name_by_index(&self, index: usize) -> &str {
-        self.view_transforms.get(index).map(|v| v.name()).unwrap_or("")
+        self.view_transforms
+            .get(index)
+            .map(|v| v.name())
+            .unwrap_or("")
     }
 
     /// Add a copy of a view transform (replacing the one with the same name).
@@ -455,12 +503,20 @@ impl Config {
             return Err(Error::msg("Cannot add view transform with an empty name."));
         }
         if vt.transform(ViewTransformDirection::ToReference).is_none()
-            && vt.transform(ViewTransformDirection::FromReference).is_none()
+            && vt
+                .transform(ViewTransformDirection::FromReference)
+                .is_none()
         {
-            return Err(Error::msg(format!("Cannot add view transform '{name}' with no transform.")));
+            return Err(Error::msg(format!(
+                "Cannot add view transform '{name}' with no transform."
+            )));
         }
         let n = lower(name);
-        match self.view_transforms.iter().position(|v| lower(v.name()) == n) {
+        match self
+            .view_transforms
+            .iter()
+            .position(|v| lower(v.name()) == n)
+        {
             Some(i) => self.view_transforms[i] = vt.clone(),
             None => self.view_transforms.push(vt.clone()),
         }
@@ -477,7 +533,9 @@ impl Config {
                 }
             }
         }
-        self.view_transforms.iter().find(|v| v.reference_space_type() == ReferenceSpaceType::Scene)
+        self.view_transforms
+            .iter()
+            .find(|v| v.reference_space_type() == ReferenceSpaceType::Scene)
     }
 
     pub fn default_view_transform_name(&self) -> &str {
@@ -517,15 +575,27 @@ impl Config {
     }
 
     /// Named transform name at `index` for the given visibility.
-    pub fn named_transform_name_by_index_filtered(&self, visibility: NamedTransformVisibility, index: usize) -> &str {
+    pub fn named_transform_name_by_index_filtered(
+        &self,
+        visibility: NamedTransformVisibility,
+        index: usize,
+    ) -> &str {
         match visibility {
-            NamedTransformVisibility::All => self.all_named_transforms.get(index).map(|n| n.name()).unwrap_or(""),
-            NamedTransformVisibility::Active => {
-                self.active_named_transform_names.get(index).map(|s| s.as_str()).unwrap_or("")
-            }
-            NamedTransformVisibility::Inactive => {
-                self.inactive_named_transform_names.get(index).map(|s| s.as_str()).unwrap_or("")
-            }
+            NamedTransformVisibility::All => self
+                .all_named_transforms
+                .get(index)
+                .map(|n| n.name())
+                .unwrap_or(""),
+            NamedTransformVisibility::Active => self
+                .active_named_transform_names
+                .get(index)
+                .map(|s| s.as_str())
+                .unwrap_or(""),
+            NamedTransformVisibility::Inactive => self
+                .inactive_named_transform_names
+                .get(index)
+                .map(|s| s.as_str())
+                .unwrap_or(""),
         }
     }
 
@@ -542,12 +612,15 @@ impl Config {
     /// Index of a named transform among the active ones.
     pub fn index_for_named_transform(&self, name: &str) -> Option<usize> {
         let nt = self.get_named_transform(name)?;
-        self.active_named_transform_names.iter().position(|n| n == nt.name())
+        self.active_named_transform_names
+            .iter()
+            .position(|n| n == nt.name())
     }
 
     /// Named transform by name or alias (all named transforms).
     pub fn get_named_transform(&self, name: &str) -> Option<&NamedTransform> {
-        self.named_transform_index(name).map(|i| &self.all_named_transforms[i])
+        self.named_transform_index(name)
+            .map(|i| &self.all_named_transforms[i])
     }
 
     /// Add a copy of a named transform (replacing the one with the same name).
@@ -556,8 +629,12 @@ impl Config {
         if name.is_empty() {
             return Err(Error::msg("Named transform must have a non-empty name."));
         }
-        if nt.transform(TransformDirection::Forward).is_none() && nt.transform(TransformDirection::Inverse).is_none() {
-            return Err(Error::msg("Named transform must define at least one transform."));
+        if nt.transform(TransformDirection::Forward).is_none()
+            && nt.transform(TransformDirection::Inverse).is_none()
+        {
+            return Err(Error::msg(
+                "Named transform must define at least one transform.",
+            ));
         }
         if self.has_role(&name) {
             return Err(Error::msg(format!(
@@ -631,7 +708,11 @@ impl Config {
         if n.is_empty() {
             return;
         }
-        if let Some(i) = self.all_named_transforms.iter().position(|nt| lower(nt.name()) == n) {
+        if let Some(i) = self
+            .all_named_transforms
+            .iter()
+            .position(|nt| lower(nt.name()) == n)
+        {
             self.all_named_transforms.remove(i);
             // Note: as in OCIO, the caches are not refreshed here.
             return;
@@ -672,20 +753,27 @@ impl Config {
 
     /// True if only the default rule matches the path.
     pub fn filepath_only_matches_default_rule(&self, path: &str) -> bool {
-        self.file_rules.filepath_only_matches_default_rule(self, path)
+        self.file_rules
+            .filepath_only_matches_default_rule(self, path)
     }
 
     /// Deprecated v1 behavior: right-most color space name found in the
     /// string (falls back to the default role if strict parsing is off).
     pub fn parse_color_space_from_string(&self, s: &str) -> &str {
         if let Some(idx) = file_rules::parse_color_space_from_string(self, s) {
-            return self.all_color_spaces.color_space_name_by_index(idx).unwrap_or("");
+            return self
+                .all_color_spaces
+                .color_space_name_by_index(idx)
+                .unwrap_or("");
         }
         if !self.strict_parsing {
             let csname = self.lookup_role(ROLE_DEFAULT);
             if !csname.is_empty() {
                 if let Some(i) = self.all_color_spaces.color_space_index(csname) {
-                    return self.all_color_spaces.color_space_name_by_index(i).unwrap_or("");
+                    return self
+                        .all_color_spaces
+                        .color_space_name_by_index(i)
+                        .unwrap_or("");
                 }
             }
         }

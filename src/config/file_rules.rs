@@ -33,7 +33,9 @@ fn sanitize_regular_expression(r: &str) -> String {
 }
 
 fn invalid_regex(glob: &str, what: &str) -> Error {
-    Error::msg(format!("File rules: invalid regular expression '{glob}' with '{what}'."))
+    Error::msg(format!(
+        "File rules: invalid regular expression '{glob}' with '{what}'."
+    ))
 }
 
 fn convert_to_regular_expression(glob_pattern: &str, ignore_case: bool) -> Result<String> {
@@ -150,9 +152,11 @@ fn validate_regular_expression(regex: &str) -> Result<()> {
     if regex.is_empty() {
         return Err(Error::msg("File rules: regex is empty."));
     }
-    compile_full_match(regex)
-        .map(|_| ())
-        .map_err(|e| Error::msg(format!("File rules: invalid regular expression '{regex}': '{e}'.")))
+    compile_full_match(regex).map(|_| ()).map_err(|e| {
+        Error::msg(format!(
+            "File rules: invalid regular expression '{regex}': '{e}'."
+        ))
+    })
 }
 
 fn validate_glob(pattern: &str, extension: &str) -> Result<()> {
@@ -254,7 +258,9 @@ impl FileRule {
             }
         } else {
             if extension.is_empty() {
-                return Err(Error::msg("File rules: The file extension pattern is empty."));
+                return Err(Error::msg(
+                    "File rules: The file extension pattern is empty.",
+                ));
             }
             validate_glob(&self.pattern, extension)?;
             self.extension = extension.to_string();
@@ -311,7 +317,11 @@ impl FileRule {
             RuleType::Default => Some(self.color_space.clone()),
             RuleType::ParseFilepath => parse_color_space_from_string(config, path).map(|idx| {
                 config
-                    .color_space_name_by_index_filtered(SearchReferenceSpaceType::All, ColorSpaceVisibility::All, idx)
+                    .color_space_name_by_index_filtered(
+                        SearchReferenceSpaceType::All,
+                        ColorSpaceVisibility::All,
+                        idx,
+                    )
                     .to_string()
             }),
             RuleType::Regex => match compile_full_match(&self.regex) {
@@ -370,7 +380,9 @@ impl FileRules {
             )));
         }
         if !allow_default && idx + 1 == n {
-            return Err(Error::msg(format!("File rules: rule index '{idx}' is the default rule.")));
+            return Err(Error::msg(format!(
+                "File rules: rule index '{idx}' is the default rule."
+            )));
         }
         Ok(())
     }
@@ -380,7 +392,9 @@ impl FileRules {
             return Err(Error::msg("File rules: rule should have a non-empty name."));
         }
         if self.rules.iter().any(|r| compare(name, &r.name)) {
-            return Err(Error::msg(format!("File rules: A rule named '{name}' already exists.")));
+            return Err(Error::msg(format!(
+                "File rules: A rule named '{name}' already exists."
+            )));
         }
         self.validate_position(idx, true)?;
         if compare(name, DEFAULT_RULE_NAME) {
@@ -459,7 +473,10 @@ impl FileRules {
         self.validate_position(idx, true)?;
         let r = &self.rules[idx];
         r.custom_keys.name(key).map_err(|e| {
-            Error::msg(format!("File rules: the custom key access for file rule '{}' failed: {}", r.name, e))
+            Error::msg(format!(
+                "File rules: the custom key access for file rule '{}' failed: {}",
+                r.name, e
+            ))
         })
     }
 
@@ -467,7 +484,10 @@ impl FileRules {
         self.validate_position(idx, true)?;
         let r = &self.rules[idx];
         r.custom_keys.value(key).map_err(|e| {
-            Error::msg(format!("File rules: the custom key access for file rule '{}' failed: {}", r.name, e))
+            Error::msg(format!(
+                "File rules: the custom key access for file rule '{}' failed: {}",
+                r.name, e
+            ))
         })
     }
 
@@ -481,7 +501,14 @@ impl FileRules {
     }
 
     /// Insert a glob rule (pattern + extension) at `idx`.
-    pub fn insert_rule(&mut self, idx: usize, name: &str, color_space: &str, pattern: &str, extension: &str) -> Result<()> {
+    pub fn insert_rule(
+        &mut self,
+        idx: usize,
+        name: &str,
+        color_space: &str,
+        pattern: &str,
+        extension: &str,
+    ) -> Result<()> {
         let name = trim(name).to_string();
         self.validate_new_rule(idx, &name)?;
         let mut r = FileRule::new(&name)?;
@@ -493,7 +520,13 @@ impl FileRules {
     }
 
     /// Insert a regex rule at `idx`.
-    pub fn insert_rule_regex(&mut self, idx: usize, name: &str, color_space: &str, regex: &str) -> Result<()> {
+    pub fn insert_rule_regex(
+        &mut self,
+        idx: usize,
+        name: &str,
+        color_space: &str,
+        regex: &str,
+    ) -> Result<()> {
         let name = trim(name).to_string();
         self.validate_new_rule(idx, &name)?;
         let mut r = FileRule::new(&name)?;
@@ -547,7 +580,9 @@ impl FileRules {
 
     /// True if only the default rule using the default role exists.
     pub fn is_default(&self) -> bool {
-        self.rules.len() == 1 && self.rules[0].custom_keys.is_empty() && compare(&self.rules[0].color_space, ROLE_DEFAULT)
+        self.rules.len() == 1
+            && self.rules[0].custom_keys.is_empty()
+            && compare(&self.rules[0].color_space, ROLE_DEFAULT)
     }
 
     /// Color space and index of the first rule matching the path.
@@ -557,7 +592,13 @@ impl FileRules {
                 return (cs, i);
             }
         }
-        (self.rules.last().map(|r| r.color_space.clone()).unwrap_or_default(), self.rules.len() - 1)
+        (
+            self.rules
+                .last()
+                .map(|r| r.color_space.clone())
+                .unwrap_or_default(),
+            self.rules.len() - 1,
+        )
     }
 
     /// True if only the default rule matches the path.
@@ -595,7 +636,11 @@ impl fmt::Display for FileRules {
                 write!(f, ", extension={}", r.extension())?;
             }
             if !r.custom_keys.is_empty() {
-                let keys: Vec<String> = r.custom_keys.iter().map(|(k, v)| format!("({k}, {v})")).collect();
+                let keys: Vec<String> = r
+                    .custom_keys
+                    .iter()
+                    .map(|(k, v)| format!("({k}, {v})"))
+                    .collect();
                 write!(f, ", customKeys=[{}]", keys.join(", "))?;
             }
             write!(f, ">")?;
@@ -622,10 +667,14 @@ pub fn parse_color_space_from_string(config: &Config, s: &str) -> Option<usize> 
             right_most_index = Some(index);
         }
     };
-    let n = config.num_color_spaces_filtered(SearchReferenceSpaceType::All, ColorSpaceVisibility::All);
+    let n =
+        config.num_color_spaces_filtered(SearchReferenceSpaceType::All, ColorSpaceVisibility::All);
     for i in 0..n {
-        let csname =
-            lower(config.color_space_name_by_index_filtered(SearchReferenceSpaceType::All, ColorSpaceVisibility::All, i));
+        let csname = lower(config.color_space_name_by_index_filtered(
+            SearchReferenceSpaceType::All,
+            ColorSpaceVisibility::All,
+            i,
+        ));
         if let Some(pos) = full.rfind(&csname) {
             adjust(&csname, i, pos);
         }
@@ -657,12 +706,21 @@ pub fn update_file_rules_from_v1_to_v2(config: &Config, rules: &mut FileRules) -
             return rules.set_color_space(1, cs.name());
         }
     }
-    let n = config.num_color_spaces_filtered(SearchReferenceSpaceType::Scene, ColorSpaceVisibility::All);
+    let n = config
+        .num_color_spaces_filtered(SearchReferenceSpaceType::Scene, ColorSpaceVisibility::All);
     for i in 0..n {
         let name = config
-            .color_space_name_by_index_filtered(SearchReferenceSpaceType::Scene, ColorSpaceVisibility::All, i)
+            .color_space_name_by_index_filtered(
+                SearchReferenceSpaceType::Scene,
+                ColorSpaceVisibility::All,
+                i,
+            )
             .to_string();
-        if config.get_color_space(&name).map(|c| c.is_data()).unwrap_or(false) {
+        if config
+            .get_color_space(&name)
+            .map(|c| c.is_data())
+            .unwrap_or(false)
+        {
             return rules.set_color_space(1, &name);
         }
     }
@@ -674,7 +732,11 @@ pub fn update_file_rules_from_v1_to_v2(config: &Config, rules: &mut FileRules) -
             "The default rule creation falls back to the first color space because no suitable color space exists.",
         );
         let name = config
-            .color_space_name_by_index_filtered(SearchReferenceSpaceType::Scene, ColorSpaceVisibility::All, 0)
+            .color_space_name_by_index_filtered(
+                SearchReferenceSpaceType::Scene,
+                ColorSpaceVisibility::All,
+                0,
+            )
             .to_string();
         rules.set_color_space(1, &name)
     }
