@@ -21,3 +21,6 @@ yaml-rust2 = "0.10"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
+
+[workspace]
+members = [".", "tools"]
