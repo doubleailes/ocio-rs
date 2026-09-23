@@ -3,10 +3,9 @@
 use crate::builtins::color_matrix_helpers::{
     build_conversion_matrix, AdaptationMethod, Primaries, ACES_AP0,
 };
-use crate::builtins::op_helpers::{add_fixed_function, add_matrix, TransformVec};
+use crate::builtins::op_helpers::{add_matrix, create_lut, TransformVec};
 use crate::builtins::registry::BuiltinTransformRegistry;
-use crate::types::FixedFunctionStyle;
-use crate::types::TransformDirection::{Forward as FWD, Inverse as INV};
+use crate::types::TransformDirection::Forward as FWD;
 
 /// Canon Cinema Gamut primaries.
 pub const CANON_CGAMUT: Primaries = Primaries::new(
@@ -16,46 +15,32 @@ pub const CANON_CGAMUT: Primaries = Primaries::new(
     (0.3127, 0.3290),
 );
 
-/// Canon Log 2 to linear (inverse double-log curve).
+/// Canon Log 2 to linear (a 4096 entries LUT, as OCIO builds it with
+/// `OCIO_LUT_SUPPORT`).
 pub(crate) fn clog2_to_linear(ops: &mut TransformVec) {
-    let params = [
-        10.0,             // log base
-        0.0,              // break point 1
-        0.0,              // break point 2 (no linear segment)
-        -0.24136077,      // log segment 1 log-side slope
-        0.092864125,      // log segment 1 log-side offset
-        -87.099375 / 0.9, // log segment 1 lin-side slope
-        1.0,              // log segment 1 lin-side offset
-        0.24136077,       // log segment 2 log-side slope
-        0.092864125,      // log segment 2 log-side offset
-        87.099375 / 0.9,  // log segment 2 lin-side slope
-        1.0,              // log segment 2 lin-side offset
-        1.0,              // linear segment slope (not used)
-        0.0,              // linear segment offset (not used)
-    ];
-    // DOUBLE_LOG_TO_LIN is the inverse of LIN_TO_DOUBLE_LOG.
-    add_fixed_function(ops, FixedFunctionStyle::LinToDoubleLog, &params, INV);
+    create_lut(ops, 4096, |input| {
+        let out = if input < 0.092864125 {
+            -(10.0f64.powf((0.092864125 - input) / 0.24136077) - 1.0) / 87.099375
+        } else {
+            (10.0f64.powf((input - 0.092864125) / 0.24136077) - 1.0) / 87.099375
+        };
+        (out * 0.9) as f32
+    });
 }
 
-/// Canon Log 3 to linear (inverse double-log curve with a linear segment).
+/// Canon Log 3 to linear (a 4096 entries LUT, as OCIO builds it with
+/// `OCIO_LUT_SUPPORT`).
 pub(crate) fn clog3_to_linear(ops: &mut TransformVec) {
-    let params = [
-        10.0,            // log base
-        -0.014 * 0.9,    // break point 1
-        0.014 * 0.9,     // break point 2
-        -0.36726845,     // log segment 1 log-side slope
-        0.12783901,      // log segment 1 log-side offset
-        -14.98325 / 0.9, // log segment 1 lin-side slope
-        1.0,             // log segment 1 lin-side offset
-        0.36726845,      // log segment 2 log-side slope
-        0.12240537,      // log segment 2 log-side offset
-        14.98325 / 0.9,  // log segment 2 lin-side slope
-        1.0,             // log segment 2 lin-side offset
-        1.9754798,       // linear segment slope
-        0.12512219,      // linear segment offset
-    ];
-    // DOUBLE_LOG_TO_LIN is the inverse of LIN_TO_DOUBLE_LOG.
-    add_fixed_function(ops, FixedFunctionStyle::LinToDoubleLog, &params, INV);
+    create_lut(ops, 4096, |input| {
+        let out = if input < 0.097465473 {
+            -(10.0f64.powf((0.12783901 - input) / 0.36726845) - 1.0) / 14.98325
+        } else if input <= 0.15277891 {
+            (input - 0.12512219) / 1.9754798
+        } else {
+            (10.0f64.powf((input - 0.12240537) / 0.36726845) - 1.0) / 14.98325
+        };
+        (out * 0.9) as f32
+    });
 }
 
 /// Register the Canon camera builtins.

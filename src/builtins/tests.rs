@@ -616,7 +616,8 @@ fn validate_values_cover_all_builtins() {
         let blt = BuiltinTransform::new(style);
         blt.validate().unwrap();
         let g = blt.to_group_transform().unwrap();
-        assert_eq!(g.transforms, t);
+        // Compare the debug output as some LUTs hold NaNs (as in OCIO).
+        assert_eq!(format!("{:?}", g.transforms), format!("{t:?}"));
     }
 }
 
@@ -745,7 +746,6 @@ fn validate_display_view_round_trip(
 }
 
 #[test]
-#[ignore = "precision: HDR PQ round trip exceeds tolerance near R=0 (index 560), under investigation"]
 fn aces2_displayview_roundtrip() {
     // Perform a round-trip test from display code-values to ACES and back to
     // code values. This uses a 7 x 7 x 7 grid of RGB values.
@@ -943,31 +943,19 @@ fn builtin_structure() {
 
     // Cameras and displays.
     let t = builtin_transforms("CURVE - APPLE_LOG_to_LINEAR").unwrap();
-    assert_eq!(t.len(), 2);
-    let Transform::FixedFunction(ff) = &t[1] else {
+    assert_eq!(t.len(), 1);
+    let Transform::Lut1D(lut) = &t[0] else {
         panic!()
     };
-    assert_eq!(
-        (ff.style, ff.direction),
-        (
-            FixedFunctionStyle::LinToGammaLog,
-            TransformDirection::Inverse
-        )
-    );
-    assert_eq!(ff.params.len(), 10);
+    assert!(lut.input_half_domain);
+    assert_eq!(lut.value(0xbc00)[0], -0.05641088f32);
 
     let t = builtin_transforms("CURVE - CANON_CLOG3_to_LINEAR").unwrap();
-    let Transform::FixedFunction(ff) = &t[0] else {
+    let Transform::Lut1D(lut) = &t[0] else {
         panic!()
     };
-    assert_eq!(
-        (ff.style, ff.direction),
-        (
-            FixedFunctionStyle::LinToDoubleLog,
-            TransformDirection::Inverse
-        )
-    );
-    assert_eq!(ff.params.len(), 13);
+    assert_eq!(lut.length(), 4096);
+    assert!(!lut.input_half_domain);
 
     let t = builtin_transforms("RED_REDLOGFILM-RWG_to_ACES2065-1").unwrap();
     let Transform::LogAffine(l) = &t[0] else {
@@ -1005,25 +993,18 @@ fn builtin_structure() {
     };
     assert_eq!(ff.style, FixedFunctionStyle::Rec2100Surround);
     assert_eq!(ff.params, vec![1.0 / 1.2]);
-    let Transform::FixedFunction(ff) = &t[4] else {
+    let Transform::Lut1D(lut) = &t[4] else {
         panic!()
     };
-    assert_eq!(
-        (ff.style, ff.direction),
-        (
-            FixedFunctionStyle::LinToGammaLog,
-            TransformDirection::Forward
-        )
-    );
+    assert!(lut.input_half_domain);
 
     let t = builtin_transforms("CURVE - ST-2084_to_LINEAR").unwrap();
-    let Transform::FixedFunction(ff) = &t[0] else {
+    let Transform::Lut1D(lut) = &t[0] else {
         panic!()
     };
-    assert_eq!(
-        (ff.style, ff.direction),
-        (FixedFunctionStyle::LinToPq, TransformDirection::Inverse)
-    );
+    assert!(lut.input_half_domain);
+    // 1.0 in PQ is 10000 nits, i.e. 100 in nits/100.
+    assert!((lut.value(0x3c00)[0] - 100.0).abs() < 1e-3);
 }
 
 #[test]

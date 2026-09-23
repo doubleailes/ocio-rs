@@ -3,10 +3,9 @@
 use crate::builtins::color_matrix_helpers::{
     build_conversion_matrix, AdaptationMethod, Primaries, ACES_AP0, REC2020,
 };
-use crate::builtins::op_helpers::{add_fixed_function, add_matrix, add_range, TransformVec};
+use crate::builtins::op_helpers::{add_matrix, create_half_lut, TransformVec};
 use crate::builtins::registry::BuiltinTransformRegistry;
-use crate::types::FixedFunctionStyle;
-use crate::types::TransformDirection::{Forward as FWD, Inverse as INV};
+use crate::types::TransformDirection::Forward as FWD;
 
 /// Apple Wide Gamut primaries (from the Apple Log 2 white paper).
 pub const APPLE_WIDE_GAMUT: Primaries = Primaries::new(
@@ -16,7 +15,8 @@ pub const APPLE_WIDE_GAMUT: Primaries = Primaries::new(
     (0.3127, 0.3290),
 );
 
-/// Apple Log to linear: a clamp at 0 followed by the inverse gamma-log curve.
+/// Apple Log to linear (a half-domain LUT, as OCIO builds it with
+/// `OCIO_LUT_SUPPORT`).
 pub(crate) fn apple_log_to_linear(ops: &mut TransformVec) {
     const R_0: f64 = -0.05641088;
     const R_T: f64 = 0.01;
@@ -25,30 +25,16 @@ pub(crate) fn apple_log_to_linear(ops: &mut TransformVec) {
     const GAMMA: f64 = 0.08550479;
     const DELTA: f64 = 0.69336945;
 
-    let gamma_log_params = [
-        R_0, // mirror point
-        R_T, // break point
-        // Gamma segment.
-        2.0,  // gamma power
-        C,    // post-power scale
-        -R_0, // pre-power offset
-        // Log segment.
-        2.0,   // log base
-        GAMMA, // log-side slope
-        DELTA, // log-side offset
-        1.0,   // lin-side slope
-        BETA,  // lin-side offset
-    ];
-
-    // Don't clamp high end.
-    add_range(ops, Some(0.0), None, Some(0.0), None, FWD);
-    // GAMMA_LOG_TO_LIN is the inverse of LIN_TO_GAMMA_LOG.
-    add_fixed_function(
-        ops,
-        FixedFunctionStyle::LinToGammaLog,
-        &gamma_log_params,
-        INV,
-    );
+    let p_t = C * (R_T - R_0).powf(2.0);
+    create_half_lut(ops, move |input| {
+        if input >= p_t {
+            (2.0f64.powf((input - DELTA) / GAMMA) - BETA) as f32
+        } else if input >= 0.0 {
+            ((input / C).sqrt() + R_0) as f32
+        } else {
+            R_0 as f32
+        }
+    });
 }
 
 /// Register the Apple camera builtins.
