@@ -361,7 +361,24 @@ fn load_exponent_with_linear(node: &Node) -> Result<Transform> {
                     offset_found = true;
                 }
             }
-            "style" => t.negative_style = NegativeStyle::parse(&load_string(val)?)?,
+            "style" => {
+                // Port of ExponentWithLinearTransform::setNegativeStyle (which
+                // goes through GammaOpData::ConvertStyleMonCurve).
+                let style = NegativeStyle::parse(&load_string(val)?)?;
+                match style {
+                    NegativeStyle::PassThru => {
+                        return Err(Error::msg(
+                            "Pass thru negative extrapolation is not valid for MonCurve exponent style.",
+                        ))
+                    }
+                    NegativeStyle::Clamp => {
+                        return Err(Error::msg(
+                            "Clamp negative extrapolation is not valid for MonCurve exponent style.",
+                        ))
+                    }
+                    _ => t.negative_style = style,
+                }
+            }
             "direction" => t.direction = load_direction(val)?,
             "name" => t.metadata.set_name(&load_string(val)?),
             _ => log_unknown_key_named(&node.tag, k),

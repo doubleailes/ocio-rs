@@ -3,6 +3,35 @@
 
 use std::sync::{Mutex, MutexGuard};
 
+pub mod profiles;
+
+/// Load `s`, validate the config and check that it serializes back to `s`.
+#[track_caller]
+pub fn check_roundtrip(s: &str) -> ocio::Config {
+    let config = ocio::Config::create_from_str(s).unwrap();
+    config.validate().unwrap();
+    assert_eq!(config.serialize().unwrap(), s);
+    config
+}
+
+/// Load `input`, validate the config and check that it serializes to
+/// `output`.
+#[track_caller]
+pub fn check_roundtrip_to(input: &str, output: &str) -> ocio::Config {
+    let config = ocio::Config::create_from_str(input).unwrap();
+    config.validate().unwrap();
+    assert_eq!(config.serialize().unwrap(), output);
+    config
+}
+
+/// Load `s` (no validation) and check that it serializes back to `s`.
+#[track_caller]
+pub fn check_roundtrip_no_validation(s: &str) -> ocio::Config {
+    let config = ocio::Config::create_from_str(s).unwrap();
+    assert_eq!(config.serialize().unwrap(), s);
+    config
+}
+
 /// Assert that `r` is an error whose message contains `what`.
 #[macro_export]
 macro_rules! assert_err {
