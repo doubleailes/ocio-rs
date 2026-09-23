@@ -54,6 +54,63 @@ pub fn data_file(rel: &str) -> String {
     format!("{}/tests/data/files/{}", env!("CARGO_MANIFEST_DIR"), rel)
 }
 
+use ocio::config::logging::LogGuard;
+
+/// Port of `checkAndMuteSceneLinearRoleError`.
+pub fn mute_scene_linear_role_error(g: &LogGuard) -> bool {
+    g.find_and_remove("[OpenColorIO Error]: The scene_linear role is required for a config version 2.2 or higher.")
+}
+
+/// Port of `checkAndMuteCompositingLogRoleError`.
+pub fn mute_compositing_log_role_error(g: &LogGuard) -> bool {
+    g.find_and_remove("[OpenColorIO Error]: The compositing_log role is required for a config version 2.2 or higher.")
+}
+
+/// Port of `checkAndMuteColorTimingRoleError`.
+pub fn mute_color_timing_role_error(g: &LogGuard) -> bool {
+    g.find_and_remove("[OpenColorIO Error]: The color_timing role is required for a config version 2.2 or higher.")
+}
+
+/// Port of `checkAndMuteAcesInterchangeRoleError`.
+pub fn mute_aces_interchange_role_error(g: &LogGuard) -> bool {
+    g.find_and_remove(
+        "[OpenColorIO Error]: The aces_interchange role is required when there are scene-referred color spaces and the config version is 2.2 or higher.",
+    )
+}
+
+/// Port of `checkAndMuteDisplayInterchangeRoleError`.
+pub fn mute_display_interchange_role_error(g: &LogGuard) -> bool {
+    g.find_and_remove(
+        "[OpenColorIO Error]: The cie_xyz_d65_interchange role is required when there are display-referred color spaces and the config version is 2.2 or higher.",
+    )
+}
+
+/// Check and mute the four "missing role" errors logged when validating
+/// upgraded configs.
+pub fn mute_missing_role_errors(g: &LogGuard) {
+    assert!(mute_scene_linear_role_error(g));
+    assert!(mute_compositing_log_role_error(g));
+    assert!(mute_color_timing_role_error(g));
+    assert!(mute_aces_interchange_role_error(g));
+}
+
+/// Port of `muteInactiveColorspaceInfo`.
+pub fn mute_inactive_colorspace_info(g: &LogGuard) {
+    g.find_all_and_remove(
+        r"\[OpenColorIO Info\]: Inactive.*- Display' is neither a color space nor a named transform.[\r\n]+",
+    );
+}
+
+/// Port of `checkAndMuteWarning`.
+pub fn mute_warning(g: &LogGuard, s: &str) -> bool {
+    g.find_all_and_remove(&format!(r"\[OpenColorIO Warning\]: {}[\.\r\n]+", s))
+}
+
+/// Port of `checkAndMuteError`.
+pub fn mute_error(g: &LogGuard, s: &str) -> bool {
+    g.find_all_and_remove(&format!(r"\[OpenColorIO Error\]: {}[\r\n]+", s))
+}
+
 /// Compare two strings line by line (as OCIO's tests do).
 pub fn check_lines(actual: &str, expected: &str) {
     let a: Vec<&str> = actual.lines().collect();
