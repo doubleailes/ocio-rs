@@ -68,24 +68,26 @@ pub const DEFAULT_FAMILY_SEPARATOR: char = '/';
 const DEFAULT_LUMA_COEFS: [f64; 3] = [0.2126, 0.7152, 0.0722];
 
 /// The config used by `Config::create_raw`.
-pub const INTERNAL_RAW_PROFILE: &str = "ocio_profile_version: 2\n\
-strictparsing: false\n\
-roles:\n\
-  default: raw\n\
-file_rules:\n\
-  - !<Rule> {name: Default, colorspace: default}\n\
-displays:\n\
-  sRGB:\n\
-  - !<View> {name: Raw, colorspace: raw}\n\
-colorspaces:\n\
-  - !<ColorSpace>\n\
-      name: raw\n\
-      family: raw\n\
-      equalitygroup:\n\
-      bitdepth: 32f\n\
-      isdata: true\n\
-      allocation: uniform\n\
-      description: 'A raw color space. Conversions to and from this space are no-ops.'\n";
+pub const INTERNAL_RAW_PROFILE: &str = concat!(
+    "ocio_profile_version: 2\n",
+    "strictparsing: false\n",
+    "roles:\n",
+    "  default: raw\n",
+    "file_rules:\n",
+    "  - !<Rule> {name: Default, colorspace: default}\n",
+    "displays:\n",
+    "  sRGB:\n",
+    "  - !<View> {name: Raw, colorspace: raw}\n",
+    "colorspaces:\n",
+    "  - !<ColorSpace>\n",
+    "      name: raw\n",
+    "      family: raw\n",
+    "      equalitygroup:\n",
+    "      bitdepth: 32f\n",
+    "      isdata: true\n",
+    "      allocation: uniform\n",
+    "      description: 'A raw color space. Conversions to and from this space are no-ops.'\n",
+);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Validation {
