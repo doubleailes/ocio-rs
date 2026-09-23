@@ -7,14 +7,22 @@
 //! input domain to `[0, 1]`.
 
 use super::utils::{
-    lerpf, min_max_matrix, new_lut1d, new_lut3d, split_by_white_spaces, string_to_int,
-    string_vec_to_float_vec, string_vec_to_int_vec, trim, vecs_equal_with_rel_error, IStream,
+    bake_identity_lut1d, bake_identity_lut3d, format_fixed6, lerpf, min_max_matrix, new_lut1d,
+    new_lut3d, split_by_white_spaces, string_to_int, string_vec_to_float_vec,
+    string_vec_to_int_vec, trim, vecs_equal_with_rel_error, write_metadata_lines, IStream,
     MAX_1D_LUT_LENGTH, MAX_3D_LUT_LENGTH,
 };
 use super::{bake_capability, capability, CachedFile, FileFormat, FormatInfo};
-use crate::error::Result;
-use crate::transforms::GroupTransform;
-use crate::types::{BitDepth, Interpolation, METADATA_DESCRIPTION};
+use crate::baker::{
+    input_to_target_processor, shaper_to_input_processor, shaper_to_target_processor, Baker,
+};
+use crate::error::{Error, Result};
+use crate::ops::lut3d::Lut3DOrder;
+use crate::transforms::{AllocationTransform, GroupTransform, Transform};
+use crate::types::{
+    Allocation, BitDepth, Interpolation, OptimizationFlags, TransformDirection,
+    METADATA_DESCRIPTION,
+};
 
 /// 2^16 samples.
 const NUM_PRELUT_SAMPLES: usize = 65536;
@@ -420,6 +428,134 @@ impl FileFormat for LocalFileFormat {
 
         Ok(CachedFile::new(group))
     }
+
+    fn bake(&self, baker: &Baker, _format_name: &str) -> Result<Vec<u8>> {
+        const DEFAULT_CUBE_SIZE: usize = 32;
+        const DEFAULT_SHAPER_SIZE: usize = 1024;
+
+        let config = baker.required_config()?;
+
+        // Smallest cube is 2x2x2.
+        let cube_size = baker.cube_size().unwrap_or(DEFAULT_CUBE_SIZE).max(2);
+
+        let mut cube_data = bake_identity_lut3d(cube_size, Lut3DOrder::FastRed)?;
+
+        let shaper_in_data: Vec<f32>;
+        let shaper_out_data: Vec<f32>;
+
+        // Use an explicit shaper space.
+        // (OCIO note: the optional allocation of the shaper space could be
+        // used instead of the implied 0-1 uniform allocation.)
+        if !baker.shaper_space().is_empty() {
+            let shaper_size = baker.shaper_size().unwrap_or(DEFAULT_SHAPER_SIZE);
+
+            shaper_out_data = bake_identity_lut1d(shaper_size)?;
+            let mut shaper_in = bake_identity_lut1d(shaper_size)?;
+
+            shaper_to_input_processor(baker)?.apply_rgb_slice(&mut shaper_in);
+            shaper_in_data = shaper_in;
+
+            shaper_to_target_processor(baker)?.apply_rgb_slice(&mut cube_data);
+        } else {
+            // A shaper is not specified, let's fake one, using the input
+            // space allocation as our guide.
+            let input_color_space =
+                config.get_color_space(baker.input_space()).ok_or_else(|| {
+                    Error::msg(format!(
+                        "Could not find input colorspace '{}'.",
+                        baker.input_space()
+                    ))
+                })?;
+
+            // Let's make an allocation transform for this colorspace
+            // (the number of variables may be 0).
+            let allocation = AllocationTransform {
+                allocation: input_color_space.allocation(),
+                vars: input_color_space
+                    .allocation_vars()
+                    .iter()
+                    .map(|&v| f64::from(v))
+                    .collect(),
+                ..Default::default()
+            };
+
+            // What size shaper should we make?
+            let mut shaper_size = baker.shaper_size().unwrap_or(DEFAULT_SHAPER_SIZE).max(2);
+            if input_color_space.allocation() == Allocation::Uniform {
+                // If we know it's a uniform scaling, only 2 points will
+                // suffice.
+                shaper_size = 2;
+            }
+
+            shaper_out_data = bake_identity_lut1d(shaper_size)?;
+            let mut shaper_in = bake_identity_lut1d(shaper_size)?;
+
+            // Apply the inverse of the allocation to the shaper input
+            // (x axis) and to the cube.
+            let shaper_to_input = config
+                .get_processor_for_transform(
+                    &Transform::Allocation(allocation),
+                    TransformDirection::Inverse,
+                )?
+                .optimized_cpu_processor(OptimizationFlags::LOSSLESS);
+
+            shaper_to_input.apply_rgb_slice(&mut shaper_in);
+            shaper_to_input.apply_rgb_slice(&mut cube_data);
+            shaper_in_data = shaper_in;
+
+            // Apply the 3D LUT to the remainder (from the input to the
+            // output).
+            input_to_target_processor(baker)?.apply_rgb_slice(&mut cube_data);
+        }
+
+        // Write out the file.
+        let mut out = String::new();
+        out.push_str("CSPLUTV100\n");
+        out.push_str("3D\n");
+        out.push('\n');
+        out.push_str("BEGIN METADATA\n");
+        write_metadata_lines(&mut out, baker.format_metadata(), "");
+        out.push_str("END METADATA\n");
+        out.push('\n');
+
+        // Write out the 1D prelut.
+        if shaper_out_data.len() != shaper_in_data.len() {
+            crate::bail!("Internal shaper size exception.");
+        }
+
+        if !shaper_in_data.is_empty() {
+            let num = shaper_in_data.len() / 3;
+            for c in 0..3 {
+                out.push_str(&format!("{num}\n"));
+                let ins: Vec<String> = (0..num)
+                    .map(|i| format_fixed6(shaper_in_data[3 * i + c]))
+                    .collect();
+                out.push_str(&ins.join(" "));
+                out.push('\n');
+
+                let outs: Vec<String> = (0..num)
+                    .map(|i| format_fixed6(shaper_out_data[3 * i + c]))
+                    .collect();
+                out.push_str(&outs.join(" "));
+                out.push('\n');
+            }
+        }
+        out.push('\n');
+
+        // Write out the 3D cube.
+        out.push_str(&format!("{cube_size} {cube_size} {cube_size}\n"));
+        for rgb in cube_data.chunks_exact(3) {
+            out.push_str(&format!(
+                "{} {} {}\n",
+                format_fixed6(rgb[0]),
+                format_fixed6(rgb[1]),
+                format_fixed6(rgb[2])
+            ));
+        }
+        out.push('\n');
+
+        Ok(out.into_bytes())
+    }
 }
 
 #[cfg(test)]
@@ -678,5 +814,234 @@ mod tests {
             file.group.transforms.last().unwrap(),
             Transform::Lut3D(_)
         ));
+    }
+
+    // Baker tests (port of the baker parts of `FileFormatCSP_tests.cpp`).
+
+    use crate::fileformats::utils::bake_test_utils::{
+        bake, baker, check_round_trip, compare_lines, config_yaml,
+    };
+
+    fn target_offset_config(extra: &[(&str, &str)]) -> String {
+        let mut spaces = vec![("lnf", "")];
+        spaces.extend_from_slice(extra);
+        spaces.push((
+            "target",
+            "from_scene_reference: !<CDLTransform> {offset: [0.1, 0.1, 0.1]}",
+        ));
+        config_yaml(&spaces)
+    }
+
+    const CUBE_OFFSET: &str = "2 2 2\n\
+        0.100000 0.100000 0.100000\n\
+        1.100000 0.100000 0.100000\n\
+        0.100000 1.100000 0.100000\n\
+        1.100000 1.100000 0.100000\n\
+        0.100000 0.100000 1.100000\n\
+        1.100000 0.100000 1.100000\n\
+        0.100000 1.100000 1.100000\n\
+        1.100000 1.100000 1.100000\n\
+        \n";
+
+    #[test]
+    fn complete_3d() {
+        let config = target_offset_config(&[(
+            "shaper",
+            "to_scene_reference: !<ExponentTransform> {value: [2.6, 2.6, 2.6, 1]}",
+        )]);
+        let mut b = baker(&config, "cinespace");
+        b.format_metadata_mut()
+            .add_child_element(METADATA_DESCRIPTION, "date: 2011:02:21 15:22:55");
+        b.format_metadata_mut()
+            .add_child_element(METADATA_DESCRIPTION, "Baked by OCIO");
+        b.set_input_space("lnf");
+        b.set_shaper_space("shaper");
+        b.set_target_space("target");
+        b.set_shaper_size(Some(10));
+        b.set_cube_size(Some(2));
+
+        let shaper_in = "0.000000 0.003303 0.020028 0.057476 0.121430 0.216916 0.348468 0.520265 0.736213 1.000000";
+        let shaper_out = "0.000000 0.111111 0.222222 0.333333 0.444444 0.555556 0.666667 0.777778 0.888889 1.000000";
+        let expected = format!(
+            "CSPLUTV100\n3D\n\nBEGIN METADATA\ndate: 2011:02:21 15:22:55\nBaked by OCIO\nEND METADATA\n\n\
+             10\n{shaper_in}\n{shaper_out}\n10\n{shaper_in}\n{shaper_out}\n10\n{shaper_in}\n{shaper_out}\n\n{CUBE_OFFSET}"
+        );
+        let out = bake(&b);
+        compare_lines(&out, &expected, 1e-5, |i| i > 6);
+        assert_eq!(out, expected);
+    }
+
+    #[test]
+    fn shaper_hdr() {
+        let config = config_yaml(&[
+            ("lnf", ""),
+            (
+                "lnf_tweak",
+                "from_scene_reference: !<CDLTransform> {offset: [2, -2, 0.9]}",
+            ),
+            (
+                "target",
+                "from_scene_reference: !<CDLTransform> {offset: [0.1, 0.1, 0.1]}",
+            ),
+        ]);
+        let mut b = baker(&config, "cinespace");
+        b.format_metadata_mut()
+            .add_child_element(METADATA_DESCRIPTION, "date: 2011:02:21 15:22:55");
+        b.set_input_space("lnf_tweak");
+        b.set_shaper_space("lnf");
+        b.set_target_space("target");
+        b.set_shaper_size(Some(10));
+        b.set_cube_size(Some(2));
+
+        let shaper_out = "0.000000 0.111111 0.222222 0.333333 0.444444 0.555556 0.666667 0.777778 0.888889 1.000000";
+        let expected = format!(
+            "CSPLUTV100\n3D\n\nBEGIN METADATA\ndate: 2011:02:21 15:22:55\nEND METADATA\n\n\
+             10\n2.000000 2.111111 2.222222 2.333333 2.444444 2.555556 2.666667 2.777778 2.888889 3.000000\n{shaper_out}\n\
+             10\n-2.000000 -1.888889 -1.777778 -1.666667 -1.555556 -1.444444 -1.333333 -1.222222 -1.111111 -1.000000\n{shaper_out}\n\
+             10\n0.900000 1.011111 1.122222 1.233333 1.344444 1.455556 1.566667 1.677778 1.788889 1.900000\n{shaper_out}\n\n{CUBE_OFFSET}"
+        );
+        let out = bake(&b);
+        compare_lines(&out, &expected, 1e-5, |i| i > 6);
+    }
+
+    #[test]
+    fn no_shaper() {
+        let config = target_offset_config(&[]);
+        let mut b = baker(&config, "cinespace");
+        b.format_metadata_mut()
+            .add_child_element(METADATA_DESCRIPTION, "date: 2011:02:21 15:22:55");
+        b.set_input_space("lnf");
+        b.set_target_space("target");
+        b.set_shaper_size(Some(10));
+        b.set_cube_size(Some(2));
+
+        // The input space has a uniform allocation, so a 2 entries shaper.
+        let shaper = "2\n0.000000 1.000000\n0.000000 1.000000\n";
+        let expected = format!(
+            "CSPLUTV100\n3D\n\nBEGIN METADATA\ndate: 2011:02:21 15:22:55\nEND METADATA\n\n\
+             {shaper}{shaper}{shaper}\n{CUBE_OFFSET}"
+        );
+        assert_eq!(bake(&b), expected);
+    }
+
+    #[test]
+    fn bake_lg2_allocation() {
+        // Port of the cinespace part of the `Baker, bake_3dlut` test: the
+        // shaper is derived from the lg2 allocation of the input space.
+        let config = r#"ocio_profile_version: 2
+
+file_rules:
+  - !<Rule> {name: Default, colorspace: lnh}
+
+colorspaces:
+  - !<ColorSpace>
+    name : lnh
+    bitdepth : 16f
+    isdata : false
+    allocation : lg2
+
+  - !<ColorSpace>
+    name : gamma22
+    bitdepth : 8ui
+    isdata : false
+    allocation : uniform
+    to_reference : !<ExponentTransform> {value: [2.2, 2.2, 2.2, 1]}
+"#;
+        let mut b = baker(config, "cinespace");
+        b.format_metadata_mut()
+            .add_child_element("Desc", "this is some metadata!");
+        b.set_input_space("lnh");
+        b.set_target_space("gamma22");
+        b.set_shaper_size(Some(4));
+        b.set_cube_size(Some(2));
+
+        let expected = "CSPLUTV100\n\
+            3D\n\
+            \n\
+            BEGIN METADATA\n\
+            this is some metadata!\n\
+            END METADATA\n\
+            \n\
+            4\n\
+            0.000977 0.039373 1.587401 64.000000\n\
+            0.000000 0.333333 0.666667 1.000000\n\
+            4\n\
+            0.000977 0.039373 1.587401 64.000000\n\
+            0.000000 0.333333 0.666667 1.000000\n\
+            4\n\
+            0.000977 0.039373 1.587401 64.000000\n\
+            0.000000 0.333333 0.666667 1.000000\n\
+            \n\
+            2 2 2\n\
+            0.042823 0.042823 0.042823\n\
+            6.622026 0.042823 0.042823\n\
+            0.042823 6.622026 0.042823\n\
+            6.622026 6.622026 0.042823\n\
+            0.042823 0.042823 6.622026\n\
+            6.622026 0.042823 6.622026\n\
+            0.042823 6.622026 6.622026\n\
+            6.622026 6.622026 6.622026\n\
+            \n";
+        compare_lines(&bake(&b), expected, 1e-5, |i| i > 6);
+    }
+
+    #[test]
+    fn bake_defaults() {
+        let config = target_offset_config(&[(
+            "shaper",
+            "to_scene_reference: !<ExponentTransform> {value: [2.6, 2.6, 2.6, 1]}",
+        )]);
+        let mut b = baker(&config, "cinespace");
+        b.set_input_space("lnf");
+        b.set_target_space("target");
+        let out = bake(&b);
+        let lines: Vec<&str> = out.lines().collect();
+        // No metadata, 2 entries shaper (uniform allocation), 32^3 cube.
+        assert_eq!(lines[3], "BEGIN METADATA");
+        assert_eq!(lines[4], "END METADATA");
+        assert_eq!(lines[6], "2");
+        assert_eq!(lines[15], "");
+        assert_eq!(lines[16], "32 32 32");
+        assert_eq!(lines.len(), 17 + 32 * 32 * 32 + 1);
+
+        // Default shaper size with a shaper space.
+        b.set_shaper_space("shaper");
+        let out = bake(&b);
+        let lines: Vec<&str> = out.lines().collect();
+        assert_eq!(lines[6], "1024");
+        assert_eq!(lines[7].split(' ').count(), 1024);
+    }
+
+    #[test]
+    fn bake_round_trip() {
+        let config = config_yaml(&[
+            ("lnf", ""),
+            (
+                "shaper",
+                "to_scene_reference: !<ExponentTransform> {value: [2.2, 2.2, 2.2, 1]}",
+            ),
+            (
+                "target",
+                "from_scene_reference: !<CDLTransform> {slope: [0.5, 0.6, 0.7], sat: 0.8}",
+            ),
+        ]);
+        let samples = [
+            [0.0, 0.0, 0.0],
+            [0.25, 0.5, 0.75],
+            [0.9, 0.1, 0.4],
+            [1.0, 1.0, 1.0],
+        ];
+
+        let mut b = baker(&config, "cinespace");
+        b.set_input_space("lnf");
+        b.set_target_space("target");
+        b.set_cube_size(Some(9));
+        check_round_trip(&b, &samples, 1e-5);
+
+        b.set_shaper_space("shaper");
+        b.set_shaper_size(Some(64));
+        b.set_cube_size(Some(33));
+        // The cube is sampled in the (non linear) shaper space.
+        check_round_trip(&b, &samples, 5e-4);
     }
 }

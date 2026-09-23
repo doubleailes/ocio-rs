@@ -321,6 +321,155 @@ fn bake_3dlut_processors() {
     assert!((rgb[2] - 0.75).abs() < 1e-5);
 }
 
+#[test]
+fn bake_3dlut() {
+    // Port of the baked outputs of the `bake_3dlut` test.
+    let config = Config::create_from_str(BAKE_3DLUT_PROFILE).unwrap();
+    config.validate().unwrap();
+
+    {
+        // Cinespace, with the shaper derived from the lg2 allocation of
+        // the input space.
+        let mut bake = Baker::new();
+        bake.set_config(&config);
+        bake.format_metadata_mut()
+            .add_child_element("Desc", "this is some metadata!");
+        bake.set_format("cinespace").unwrap();
+        bake.set_input_space("lnh");
+        bake.set_looks("foo, +bar");
+        bake.set_looks("");
+        bake.set_target_space("gamma22");
+        bake.set_shaper_size(Some(4));
+        bake.set_cube_size(Some(2));
+        let out = String::from_utf8(bake.bake().unwrap()).unwrap();
+
+        let expected = "CSPLUTV100\n\
+            3D\n\
+            \n\
+            BEGIN METADATA\n\
+            this is some metadata!\n\
+            END METADATA\n\
+            \n\
+            4\n\
+            0.000977 0.039373 1.587401 64.000000\n\
+            0.000000 0.333333 0.666667 1.000000\n\
+            4\n\
+            0.000977 0.039373 1.587401 64.000000\n\
+            0.000000 0.333333 0.666667 1.000000\n\
+            4\n\
+            0.000977 0.039373 1.587401 64.000000\n\
+            0.000000 0.333333 0.666667 1.000000\n\
+            \n\
+            2 2 2\n\
+            0.042823 0.042823 0.042823\n\
+            6.622026 0.042823 0.042823\n\
+            0.042823 6.622026 0.042823\n\
+            6.622026 6.622026 0.042823\n\
+            0.042823 0.042823 6.622026\n\
+            6.622026 0.042823 6.622026\n\
+            0.042823 6.622026 6.622026\n\
+            6.622026 6.622026 6.622026\n\
+            \n";
+        let res: Vec<&str> = out.lines().collect();
+        let exp: Vec<&str> = expected.lines().collect();
+        assert_eq!(res.len(), exp.len());
+        for (i, (r, e)) in res.iter().zip(exp.iter()).enumerate() {
+            if i > 6 {
+                // Number comparison.
+                let rv: Vec<f32> = r.split_whitespace().map(|v| v.parse().unwrap()).collect();
+                let ev: Vec<f32> = e.split_whitespace().map(|v| v.parse().unwrap()).collect();
+                assert_eq!(rv.len(), ev.len());
+                for (a, b) in rv.iter().zip(ev.iter()) {
+                    assert!((a - b).abs() < 1e-5, "line {i}: '{r}' vs '{e}'");
+                }
+            } else {
+                // Text comparison.
+                assert_eq!(r, e);
+            }
+        }
+    }
+
+    {
+        // Resolve cube with a look cancelling out the view.
+        let mut bake = Baker::new();
+        bake.set_config(&config);
+        bake.set_format("resolve_cube").unwrap();
+        bake.set_input_space("lnh");
+        bake.set_looks("contrastlook");
+        bake.set_display_view("display1", "view1");
+        bake.set_cube_size(Some(10));
+        let out = String::from_utf8(bake.bake().unwrap()).unwrap();
+
+        let expected = "LUT_1D_SIZE 10\n\
+            0.000000 0.000000 0.000000\n\
+            0.111111 0.111111 0.111111\n\
+            0.222222 0.222222 0.222222\n\
+            0.333333 0.333333 0.333333\n\
+            0.444444 0.444444 0.444444\n\
+            0.555556 0.555556 0.555556\n\
+            0.666667 0.666667 0.666667\n\
+            0.777778 0.777778 0.777778\n\
+            0.888889 0.888889 0.888889\n\
+            1.000000 1.000000 1.000000\n";
+        assert_eq!(out, expected);
+    }
+
+    {
+        // Resolve cube with a named transform as shaper space and a view
+        // with a look.
+        let mut bake = Baker::new();
+        bake.set_config(&config);
+        bake.set_format("resolve_cube").unwrap();
+        bake.set_input_space("lnh");
+        bake.set_shaper_space("logcnt");
+        bake.set_display_view("display1", "view2");
+        bake.set_shaper_size(Some(10));
+        bake.set_cube_size(Some(2));
+        let out = String::from_utf8(bake.bake().unwrap()).unwrap();
+
+        let expected = "LUT_1D_SIZE 10\n\
+            LUT_1D_INPUT_RANGE -0.017290 55.080036\n\
+            LUT_3D_SIZE 2\n\
+            0.000000 0.000000 0.000000\n\
+            0.763998 0.763998 0.763998\n\
+            0.838479 0.838479 0.838479\n\
+            0.882030 0.882030 0.882030\n\
+            0.912925 0.912925 0.912925\n\
+            0.936887 0.936887 0.936887\n\
+            0.956464 0.956464 0.956464\n\
+            0.973016 0.973016 0.973016\n\
+            0.987354 0.987354 0.987354\n\
+            1.000000 1.000000 1.000000\n\
+            0.000000 0.000000 0.000000\n\
+            8.054426 0.000000 0.000000\n\
+            0.000000 6.931791 0.000000\n\
+            6.384501 6.384501 0.000000\n\
+            0.000000 0.000000 8.336130\n\
+            7.904850 0.000000 7.904850\n\
+            0.000000 6.751890 6.751890\n\
+            6.185304 6.185304 6.185304\n";
+        assert_eq!(out, expected);
+    }
+}
+
+#[test]
+fn bake_all_formats() {
+    // Every format supporting baking bakes, and the error of an unknown
+    // format name given to a format is prefixed by the baker.
+    let config = Config::create_from_str(BAKE_3DLUT_PROFILE).unwrap();
+    for i in 0..Baker::num_formats() {
+        let name = Baker::format_name_by_index(i).unwrap();
+        let mut bake = Baker::new();
+        bake.set_config(&config);
+        bake.set_format(name).unwrap();
+        bake.set_input_space("lnh");
+        bake.set_target_space("gamma22");
+        bake.set_cube_size(Some(3));
+        let out = bake.bake().unwrap();
+        assert!(!out.is_empty(), "{name}");
+    }
+}
+
 const BAKING_VALIDATION_PROFILE: &str = r#"
         ocio_profile_version: 2
 
@@ -412,7 +561,6 @@ fn validation_baker(config: &Config, format: &str) -> Baker {
 }
 
 #[test]
-#[ignore = "needs format bake implementations"]
 fn baking_validation() {
     let config = Config::create_from_str(BAKING_VALIDATION_PROFILE).unwrap();
     config.validate().unwrap();
