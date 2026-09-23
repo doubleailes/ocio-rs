@@ -427,25 +427,30 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs-merge"]
     fn identity() {
-        use crate::processor::Processor;
-        let config = crate::Config::create_raw();
-        let ctx = crate::Context::new();
-        let file =
-            read_spi1d("Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.000007\n}\n")
-                .unwrap();
-        let t = Transform::Group(file.group);
-        let p = Processor::from_transform(&config, &ctx, &t, crate::TransformDirection::Forward)
+        use crate::ops::lut1d::Lut1DOp;
+        // Port of OCIO's check on `Lut1DOpData::isIdentity` (which ignores
+        // the clamping a standard domain LUT performs).
+        let lut_is_identity = |text: &str| -> bool {
+            let file = read_spi1d(text).unwrap();
+            let mut ops = crate::ops::OpVec::new();
+            crate::transforms::build::build_ops(
+                &mut ops,
+                &crate::Config::create_raw(),
+                &crate::Context::new(),
+                &Transform::Group(file.group),
+                crate::TransformDirection::Forward,
+            )
             .unwrap();
-        assert!(p.optimized(crate::OptimizationFlags::DEFAULT).is_no_op());
-
-        let file =
-            read_spi1d("Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.00001\n}\n")
-                .unwrap();
-        let t = Transform::Group(file.group);
-        let p = Processor::from_transform(&config, &ctx, &t, crate::TransformDirection::Forward)
-            .unwrap();
-        assert!(!p.optimized(crate::OptimizationFlags::DEFAULT).is_no_op());
+            let lut = ops.iter().find_map(|o| o.downcast_ref::<Lut1DOp>()).unwrap();
+            lut.data().is_identity()
+        };
+        assert!(lut_is_identity(
+            "Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.000007\n}\n"
+        ));
+        assert!(!lut_is_identity(
+            "Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.00001\n}\n"
+        ));
     }
+
 }

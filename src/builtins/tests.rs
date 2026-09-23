@@ -753,7 +753,7 @@ fn validate_display_view_round_trip(
 }
 
 #[test]
-#[ignore = "needs-merge"]
+#[ignore = "precision: HDR PQ round trip exceeds tolerance near R=0 (index 560), under investigation"]
 fn aces2_displayview_roundtrip() {
     // Perform a round-trip test from display code-values to ACES and back to
     // code values. This uses a 7 x 7 x 7 grid of RGB values.
