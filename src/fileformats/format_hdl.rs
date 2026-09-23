@@ -11,12 +11,18 @@
 //! RGBA, All) and for the `Sampling` tag.
 
 use super::utils::{
+    bake_identity_lut1d, bake_identity_lut3d, bake_linear_scale_lut1d, format_fixed6,
     from_chars_f32, min_max_matrix_f32, new_lut1d, new_lut3d, set_lut3d_from_red_fastest,
     split_by_white_spaces, string_to_float, string_to_int, trim, IStream, MAX_1D_LUT_LENGTH,
     MAX_3D_LUT_LENGTH,
 };
 use super::{bake_capability, capability, CachedFile, FileFormat, FormatInfo};
+use crate::baker::{
+    input_to_shaper_processor, input_to_target_processor, shaper_range, shaper_to_target_processor,
+    Baker,
+};
 use crate::error::{Error, Result};
+use crate::ops::lut3d::Lut3DOrder;
 use crate::transforms::{GroupTransform, Lut1DTransform};
 use crate::types::{BitDepth, Interpolation};
 use std::collections::BTreeMap;
@@ -327,6 +333,172 @@ impl FileFormat for LocalFileFormat {
         }
         Ok(CachedFile::new(group))
     }
+
+    fn bake(&self, baker: &Baker, format_name: &str) -> Result<Vec<u8>> {
+        if format_name != "houdini" {
+            crate::bail!("Unknown hdl format name, '{format_name}'.");
+        }
+
+        // Default sizes.
+        const DEFAULT_SHAPER_SIZE: usize = 1024;
+        // MPlay produces bad results with 32^3 cube (in a way that looks
+        // more quantised than even "nearest" interpolation in
+        // OCIOFileTransform).
+        const DEFAULT_CUBE_SIZE: usize = 64;
+        const DEFAULT_1D_SIZE: usize = 1024;
+
+        // Get configured sizes (the cube size is also the 1D LUT size).
+        let cube_size = baker.cube_size().unwrap_or(DEFAULT_CUBE_SIZE);
+        let shaper_size = baker.shaper_size().unwrap_or(DEFAULT_SHAPER_SIZE);
+        let oned_size = baker.cube_size().unwrap_or(DEFAULT_1D_SIZE);
+
+        // Version numbers.
+        const HDL_1D: i32 = 1; // 1D LUT version number.
+        const HDL_3D: i32 = 2; // 3D LUT version number.
+        const HDL_3D1D: i32 = 3; // 3D LUT with 1D prelut.
+
+        let shaper_space = baker.shaper_space();
+
+        // Determine the required LUT type.
+        let input_to_target = input_to_target_processor(baker)?;
+        let required_lut = if input_to_target.has_channel_crosstalk() {
+            if shaper_space.is_empty() {
+                // Has crosstalk, but no prelut, so need 3D LUT.
+                HDL_3D
+            } else {
+                // Crosstalk with shaper-space.
+                HDL_3D1D
+            }
+        } else {
+            // No crosstalk.
+            HDL_1D
+        };
+
+        // Make the prelut.
+        let mut prelut_data: Vec<f32> = Vec::new();
+
+        let mut from_in_start = 0.0f32;
+        let mut from_in_end = 1.0f32;
+
+        if required_lut == HDL_3D1D {
+            (from_in_start, from_in_end) = shaper_range(baker)?;
+
+            // Generate the identity prelut values, then apply the
+            // transform. The prelut is linearly sampled from fromInStart
+            // to fromInEnd.
+            prelut_data = bake_linear_scale_lut1d(shaper_size, from_in_start, from_in_end)?;
+            input_to_shaper_processor(baker)?.apply_rgb_slice(&mut prelut_data);
+        }
+
+        // (OCIO note: the "auto prelut" input-space allocation of the csp
+        // baker could be done here too.)
+
+        // Make the 3D LUT.
+        let mut cube_data: Vec<f32> = Vec::new();
+        if required_lut == HDL_3D || required_lut == HDL_3D1D {
+            cube_data = bake_identity_lut3d(cube_size, Lut3DOrder::FastRed)?;
+            if required_lut == HDL_3D1D {
+                shaper_to_target_processor(baker)?.apply_rgb_slice(&mut cube_data);
+            } else {
+                // No prelut, so the cube goes from input to target.
+                input_to_target.apply_rgb_slice(&mut cube_data);
+            }
+        }
+
+        // Make the 1D LUT.
+        let mut oned_data: Vec<f32> = Vec::new();
+        if required_lut == HDL_1D {
+            oned_data = if !shaper_space.is_empty() {
+                (from_in_start, from_in_end) = shaper_range(baker)?;
+                bake_linear_scale_lut1d(oned_size, from_in_start, from_in_end)?
+            } else {
+                bake_identity_lut1d(oned_size)?
+            };
+            input_to_target.apply_rgb_slice(&mut oned_data);
+        }
+
+        // Write the file contents.
+        let mut out = String::new();
+        out.push_str(&format!("Version\t\t{required_lut}\n"));
+        out.push_str("Format\t\tany\n");
+
+        out.push_str("Type\t\t");
+        out.push_str(match required_lut {
+            HDL_1D => "RGB",
+            HDL_3D => "3D",
+            _ => "3D+1D",
+        });
+        out.push('\n');
+
+        out.push_str(&format!(
+            "From\t\t{} {}\n",
+            format_fixed6(from_in_start),
+            format_fixed6(from_in_end)
+        ));
+        out.push_str(&format!(
+            "To\t\t{} {}\n",
+            format_fixed6(0.0),
+            format_fixed6(1.0)
+        ));
+        out.push_str(&format!("Black\t\t{}\n", format_fixed6(0.0)));
+        out.push_str(&format!("White\t\t{}\n", format_fixed6(1.0)));
+
+        match required_lut {
+            HDL_3D1D => out.push_str(&format!("Length\t\t{cube_size} {shaper_size}\n")),
+            HDL_3D => out.push_str(&format!("Length\t\t{cube_size}\n")),
+            _ => out.push_str(&format!("Length\t\t{oned_size}\n")),
+        }
+
+        out.push_str("LUT:\n");
+
+        // Write the prelut.
+        if required_lut == HDL_3D1D {
+            out.push_str("Pre {\n");
+            // Grab the green channel from the RGB prelut.
+            for rgb in prelut_data.chunks_exact(3) {
+                out.push_str(&format!("\t{}\n", format_fixed6(rgb[1])));
+            }
+            out.push_str("}\n");
+
+            // Write the "3D {" part of the output of the 3D+1D LUT.
+            out.push_str("3D {\n");
+        }
+
+        // Write the slightly-different "{" without line for the 3D-only LUT.
+        if required_lut == HDL_3D {
+            out.push_str(" {\n");
+        }
+
+        // Write the cube data after the "{".
+        if required_lut == HDL_3D || required_lut == HDL_3D1D {
+            // (OCIO note: the original baker code clamped values to 1.0.)
+            for rgb in cube_data.chunks_exact(3) {
+                out.push_str(&format!(
+                    "\t{} {} {}\n",
+                    format_fixed6(rgb[0]),
+                    format_fixed6(rgb[1]),
+                    format_fixed6(rgb[2])
+                ));
+            }
+
+            // Write the closing "}".
+            out.push_str(" }\n");
+        }
+
+        // Write out the channels of the 1D LUT.
+        if required_lut == HDL_1D {
+            for (name, c) in [("R", 0), ("G", 1), ("B", 2)] {
+                out.push_str(name);
+                out.push_str(" {\n");
+                for rgb in oned_data.chunks_exact(3) {
+                    out.push_str(&format!("\t{}\n", format_fixed6(rgb[c])));
+                }
+                out.push_str("}\n");
+            }
+        }
+
+        Ok(out.into_bytes())
+    }
 }
 
 #[cfg(test)]
@@ -569,5 +741,309 @@ mod tests {
             e.message(),
             "Prelut size must be between 2 and 300000, found: -1"
         );
+    }
+
+    // Baker tests (port of the baker parts of `FileFormatHDL_tests.cpp`).
+
+    use crate::fileformats::utils::bake_test_utils::{
+        bake, baker, check_round_trip, compare_lines, config_yaml, SHAPER_LOG2_CONFIG,
+    };
+
+    /// The target space desaturates, causing channel crosstalk.
+    const TARGET_SAT: (&str, &str) = ("target", "from_scene_reference: !<CDLTransform> {sat: 0.5}");
+
+    fn hdl_1d_channel(name: &str, values: &str) -> String {
+        let mut s = format!("{name} {{\n");
+        for v in values.split(' ') {
+            s.push_str(&format!("\t{v}\n"));
+        }
+        s.push_str("}\n");
+        s
+    }
+
+    fn hdl_1d(from: &str, values: &str) -> String {
+        format!(
+            "Version\t\t1\nFormat\t\tany\nType\t\tRGB\nFrom\t\t{from}\nTo\t\t0.000000 1.000000\n\
+             Black\t\t0.000000\nWhite\t\t1.000000\nLength\t\t10\nLUT:\n{}{}{}",
+            hdl_1d_channel("R", values),
+            hdl_1d_channel("G", values),
+            hdl_1d_channel("B", values)
+        )
+    }
+
+    #[test]
+    fn bake_1d() {
+        let config = config_yaml(&[
+            ("lnf", ""),
+            (
+                "target",
+                "from_scene_reference: !<CDLTransform> {offset: [0.1, 0.1, 0.1]}",
+            ),
+        ]);
+        let mut b = baker(&config, "houdini");
+        b.set_input_space("lnf");
+        b.set_target_space("target");
+        // FIXME (as in OCIO): misusing the cube size to set the 1D LUT size.
+        b.set_cube_size(Some(10));
+
+        let expected = hdl_1d(
+            "0.000000 1.000000",
+            "0.100000 0.211111 0.322222 0.433333 0.544444 0.655556 0.766667 0.877778 0.988889 1.100000",
+        );
+        assert_eq!(bake(&b), expected);
+    }
+
+    #[test]
+    fn bake_1d_shaper() {
+        {
+            // Lin to Log.
+            let mut b = baker(SHAPER_LOG2_CONFIG, "houdini");
+            b.set_input_space("Raw");
+            b.set_target_space("Log2");
+            b.set_shaper_space("Log2");
+            b.set_cube_size(Some(10));
+
+            let expected = hdl_1d(
+                "0.001989 16.291878",
+                "0.000000 0.756268 0.833130 0.878107 0.910023 0.934780 0.955010 0.972114 0.986931 1.000000",
+            );
+            assert_eq!(bake(&b), expected);
+        }
+        {
+            // Log to Lin.
+            let mut b = baker(SHAPER_LOG2_CONFIG, "houdini");
+            b.set_input_space("Log2");
+            b.set_target_space("Raw");
+            b.set_cube_size(Some(10));
+
+            let expected = hdl_1d(
+                "0.000000 1.000000",
+                "0.001989 0.005413 0.014731 0.040091 0.109110 0.296951 0.808177 2.199522 5.986179 16.291878",
+            );
+            compare_lines(&bake(&b), &expected, 1e-5, |i| {
+                (10..=19).contains(&i) || (22..=31).contains(&i) || (34..=43).contains(&i)
+            });
+        }
+    }
+
+    const CUBE_SAT_2: &str = "\t0.000000 0.000000 0.000000\n\
+        \t0.606300 0.106300 0.106300\n\
+        \t0.357600 0.857600 0.357600\n\
+        \t0.963900 0.963900 0.463900\n\
+        \t0.036100 0.036100 0.536100\n\
+        \t0.642400 0.142400 0.642400\n\
+        \t0.393700 0.893700 0.893700\n\
+        \t1.000000 1.000000 1.000000\n";
+
+    #[test]
+    fn bake_3d() {
+        let config = config_yaml(&[("lnf", ""), TARGET_SAT]);
+        let mut b = baker(&config, "houdini");
+        b.set_input_space("lnf");
+        b.set_target_space("target");
+        b.set_cube_size(Some(2));
+
+        let expected = format!(
+            "Version\t\t2\nFormat\t\tany\nType\t\t3D\nFrom\t\t0.000000 1.000000\n\
+             To\t\t0.000000 1.000000\nBlack\t\t0.000000\nWhite\t\t1.000000\nLength\t\t2\n\
+             LUT:\n {{\n{CUBE_SAT_2} }}\n"
+        );
+        assert_eq!(bake(&b), expected);
+    }
+
+    #[test]
+    fn bake_3d_1d() {
+        let config = config_yaml(&[
+            ("lnf", ""),
+            (
+                "shaper",
+                "to_scene_reference: !<ExponentTransform> {value: [2.6, 2.6, 2.6, 1]}",
+            ),
+            TARGET_SAT,
+        ]);
+        let mut b = baker(&config, "houdini");
+        b.set_input_space("lnf");
+        b.set_shaper_space("shaper");
+        b.set_target_space("target");
+        b.set_shaper_size(Some(10));
+        b.set_cube_size(Some(2));
+
+        let expected = format!(
+            "Version\t\t3\nFormat\t\tany\nType\t\t3D+1D\nFrom\t\t0.000000 1.000000\n\
+             To\t\t0.000000 1.000000\nBlack\t\t0.000000\nWhite\t\t1.000000\nLength\t\t2 10\n\
+             LUT:\nPre {{\n\t0.000000\n\t0.429520\n\t0.560744\n\t0.655378\n\t0.732057\n\
+             \t0.797661\n\t0.855604\n\t0.907865\n\t0.955710\n\t1.000000\n}}\n\
+             3D {{\n{CUBE_SAT_2} }}\n"
+        );
+        let out = bake(&b);
+        // The lines are compared as numbers (OCIO does not check the values
+        // of this test because of platform differences).
+        compare_lines(&out, &expected, 1e-5, |i| {
+            (10..=19).contains(&i) || (22..=29).contains(&i)
+        });
+    }
+
+    #[test]
+    fn look_test() {
+        // Sets up a Look with the same parameters as the bake_3d_1d test,
+        // but with a different shaper space, to ensure that case is caught.
+        // Also ensure the effects of the desaturation are detected by using
+        // a 3 cubed LUT, which will thus test colour values other than the
+        // corner points of the cube.
+        let config = r#"ocio_profile_version: 2
+
+roles:
+  reference: lnf
+  default: lnf
+
+looks:
+  - !<Look>
+    name: look
+    process_space: look_process
+    transform: !<CDLTransform> {sat: 0.5}
+
+colorspaces:
+  - !<ColorSpace>
+    name: lnf
+    family: lnf
+
+  - !<ColorSpace>
+    name: shaper
+    family: shaper
+    to_scene_reference: !<ExponentTransform> {value: [2.2, 2.2, 2.2, 1]}
+
+  - !<ColorSpace>
+    name: look_process
+    family: look_process
+    to_scene_reference: !<ExponentTransform> {value: [2.6, 2.6, 2.6, 1]}
+"#;
+        let mut b = baker(config, "houdini");
+        b.set_input_space("lnf");
+        b.set_shaper_space("shaper");
+        b.set_target_space("shaper");
+        b.set_looks("look");
+        b.set_shaper_size(Some(10));
+        b.set_cube_size(Some(3));
+
+        let expected = "Version\t\t3\n\
+            Format\t\tany\n\
+            Type\t\t3D+1D\n\
+            From\t\t0.000000 1.000000\n\
+            To\t\t0.000000 1.000000\n\
+            Black\t\t0.000000\n\
+            White\t\t1.000000\n\
+            Length\t\t3 10\n\
+            LUT:\n\
+            Pre {\n\
+            \t0.000000\n\
+            \t0.368344\n\
+            \t0.504760\n\
+            \t0.606913\n\
+            \t0.691699\n\
+            \t0.765539\n\
+            \t0.831684\n\
+            \t0.892049\n\
+            \t0.947870\n\
+            \t1.000000\n\
+            }\n\
+            3D {\n\
+            \t0.000000 0.000000 0.000000\n\
+            \t0.276787 0.035360 0.035360\n\
+            \t0.553575 0.070720 0.070720\n\
+            \t0.148309 0.416989 0.148309\n\
+            \t0.478739 0.478739 0.201718\n\
+            \t0.774120 0.528900 0.245984\n\
+            \t0.296618 0.833978 0.296618\n\
+            \t0.650361 0.902354 0.355417\n\
+            \t0.957478 0.957478 0.403436\n\
+            \t0.009867 0.009867 0.239325\n\
+            \t0.296368 0.049954 0.296368\n\
+            \t0.575308 0.086766 0.343137\n\
+            \t0.166161 0.437812 0.437812\n\
+            \t0.500000 0.500000 0.500000\n\
+            \t0.796987 0.550484 0.550484\n\
+            \t0.316402 0.857106 0.607391\n\
+            \t0.672631 0.925760 0.672631\n\
+            \t0.981096 0.981096 0.725386\n\
+            \t0.019735 0.019735 0.478650\n\
+            \t0.312132 0.062101 0.541651\n\
+            \t0.592736 0.099909 0.592736\n\
+            \t0.180618 0.454533 0.695009\n\
+            \t0.517061 0.517061 0.761560\n\
+            \t0.815301 0.567796 0.815301\n\
+            \t0.332322 0.875624 0.875624\n\
+            \t0.690478 0.944497 0.944497\n\
+            \t1.000000 1.000000 1.000000\n\
+            }\n";
+        let out = bake(&b);
+        let out_lines: Vec<&str> = out.lines().map(str::trim).collect();
+        let exp_lines: Vec<&str> = expected.lines().map(str::trim).collect();
+        assert_eq!(out_lines, exp_lines);
+    }
+
+    #[test]
+    fn bake_defaults_and_errors() {
+        let config = config_yaml(&[
+            ("lnf", ""),
+            (
+                "shaper",
+                "to_scene_reference: !<ExponentTransform> {value: [2.2, 2.2, 2.2, 1]}",
+            ),
+            TARGET_SAT,
+        ]);
+        let mut b = baker(&config, "houdini");
+        b.set_input_space("lnf");
+        b.set_target_space("shaper");
+        let out = bake(&b);
+        assert!(out.contains("Length\t\t1024\n"));
+
+        b.set_target_space("target");
+        let out = bake(&b);
+        assert!(out.contains("Length\t\t64\n"));
+        assert_eq!(out.lines().count(), 11 + 64 * 64 * 64);
+
+        b.set_shaper_space("shaper");
+        b.set_cube_size(Some(3));
+        let out = bake(&b);
+        assert!(out.contains("Length\t\t3 1024\n"));
+
+        let e = LocalFileFormat.bake(&b, "hdl").unwrap_err();
+        assert_eq!(e.message(), "Unknown hdl format name, 'hdl'.");
+    }
+
+    #[test]
+    fn bake_round_trip() {
+        let samples = [
+            [0.0, 0.0, 0.0],
+            [0.25, 0.5, 0.75],
+            [0.9, 0.1, 0.4],
+            [1.0, 1.0, 1.0],
+        ];
+
+        // Note: the 1D LUTs ("RGB" type) can't be read back, the Houdini
+        // reader only supports the 'C', '3D' and '3D+1D' types (as in OCIO).
+
+        // 3D and 3D + 1D.
+        let config = config_yaml(&[
+            ("lnf", ""),
+            (
+                "shaper",
+                "to_scene_reference: !<ExponentTransform> {value: [2.2, 2.2, 2.2, 1]}",
+            ),
+            (
+                "target",
+                "from_scene_reference: !<CDLTransform> {slope: [0.5, 0.6, 0.7], sat: 0.8}",
+            ),
+        ]);
+        let mut b = baker(&config, "houdini");
+        b.set_input_space("lnf");
+        b.set_target_space("target");
+        b.set_cube_size(Some(5));
+        check_round_trip(&b, &samples, 1e-5);
+
+        b.set_shaper_space("shaper");
+        b.set_shaper_size(Some(256));
+        b.set_cube_size(Some(33));
+        check_round_trip(&b, &samples, 5e-4);
     }
 }

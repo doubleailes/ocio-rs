@@ -10,11 +10,14 @@
 //! ...
 //! ```
 
+use super::utils::{bake_identity_lut3d, format_fixed6_rgb};
 use super::utils::{
     from_chars_f32, lut3d_index_blue_fast, new_lut3d, scanf, IStream, MAX_3D_LUT_LENGTH,
 };
 use super::{bake_capability, capability, CachedFile, FileFormat, FormatInfo};
+use crate::baker::{input_to_target_processor, Baker};
 use crate::error::Result;
+use crate::ops::lut3d::Lut3DOrder;
 use crate::transforms::GroupTransform;
 use crate::types::{BitDepth, Interpolation};
 
@@ -123,6 +126,38 @@ impl FileFormat for LocalFileFormat {
         let mut group = GroupTransform::new();
         group.append(lut);
         Ok(CachedFile::new(group))
+    }
+
+    fn bake(&self, baker: &Baker, format_name: &str) -> Result<Vec<u8>> {
+        const DEFAULT_CUBE_SIZE: usize = 32;
+
+        if format_name != "spi3d" {
+            crate::bail!("Unknown spi format name, '{format_name}'.");
+        }
+
+        // Smallest cube is 2x2x2.
+        let cube_size = baker.cube_size().unwrap_or(DEFAULT_CUBE_SIZE).max(2);
+
+        let mut cube_data = bake_identity_lut3d(cube_size, Lut3DOrder::FastBlue)?;
+        input_to_target_processor(baker)?.apply_rgb_slice(&mut cube_data);
+
+        let mut out = String::new();
+        out.push_str("SPILUT 1.0\n");
+        out.push_str("3 3\n");
+        out.push_str(&format!("{cube_size} {cube_size} {cube_size}\n"));
+
+        // Fixed 6 decimal precision for the values.
+        for (i, rgb) in cube_data.chunks_exact(3).enumerate() {
+            out.push_str(&format!(
+                "{} {} {} {}\n",
+                ((i / cube_size) / cube_size) % cube_size,
+                (i / cube_size) % cube_size,
+                i % cube_size,
+                format_fixed6_rgb(rgb)
+            ));
+        }
+
+        Ok(out.into_bytes())
     }
 }
 
@@ -284,5 +319,71 @@ mod tests {
             };
             assert_eq!(lut.interpolation, expected);
         }
+    }
+
+    // Baker tests (port of the baker parts of `FileFormatSpi3D_tests.cpp`).
+
+    use crate::fileformats::utils::bake_test_utils::{bake, baker, check_round_trip, config_yaml};
+
+    #[test]
+    fn bake_3d() {
+        let config = config_yaml(&[
+            ("input", ""),
+            ("target", "from_scene_reference: !<CDLTransform> {sat: 0.5}"),
+        ]);
+        let mut b = baker(&config, "spi3d");
+        b.set_input_space("input");
+        b.set_target_space("target");
+        b.set_cube_size(Some(2));
+
+        let expected = "SPILUT 1.0\n\
+            3 3\n\
+            2 2 2\n\
+            0 0 0 0.000000 0.000000 0.000000\n\
+            0 0 1 0.036100 0.036100 0.536100\n\
+            0 1 0 0.357600 0.857600 0.357600\n\
+            0 1 1 0.393700 0.893700 0.893700\n\
+            1 0 0 0.606300 0.106300 0.106300\n\
+            1 0 1 0.642400 0.142400 0.642400\n\
+            1 1 0 0.963900 0.963900 0.463900\n\
+            1 1 1 1.000000 1.000000 1.000000\n";
+        assert_eq!(bake(&b), expected);
+    }
+
+    #[test]
+    fn bake_defaults_and_errors() {
+        let config = config_yaml(&[("input", ""), ("target", "")]);
+        let mut b = baker(&config, "spi3d");
+        b.set_input_space("input");
+        b.set_target_space("target");
+        let out = bake(&b);
+        assert!(out.starts_with("SPILUT 1.0\n3 3\n32 32 32\n0 0 0 0.000000 0.000000 0.000000\n"));
+        assert_eq!(out.lines().count(), 3 + 32 * 32 * 32);
+        assert!(out.ends_with("31 31 31 1.000000 1.000000 1.000000\n"));
+
+        let e = LocalFileFormat.bake(&b, "spi").unwrap_err();
+        assert_eq!(e.message(), "Unknown spi format name, 'spi'.");
+    }
+
+    #[test]
+    fn bake_round_trip() {
+        let config = config_yaml(&[
+            ("input", ""),
+            (
+                "target",
+                "from_scene_reference: !<CDLTransform> {slope: [0.5, 0.6, 0.7], sat: 0.8}",
+            ),
+        ]);
+        let mut b = baker(&config, "spi3d");
+        b.set_input_space("input");
+        b.set_target_space("target");
+        b.set_cube_size(Some(5));
+        let samples = [
+            [0.0, 0.0, 0.0],
+            [0.25, 0.5, 0.75],
+            [0.9, 0.1, 0.4],
+            [1.0, 1.0, 1.0],
+        ];
+        check_round_trip(&b, &samples, 1e-5);
     }
 }

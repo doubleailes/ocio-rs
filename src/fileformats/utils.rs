@@ -955,9 +955,243 @@ impl<'a> BinaryStream<'a> {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Baking helpers (shared by the `FileFormat::bake` implementations).
+
+/// Format `v` like a C++ `std::ostream` using `std::fixed` and the given
+/// precision (i.e. `printf("%.*f", precision, v)`, the float being promoted
+/// to double). Non finite values are written `nan`, `-nan`, `inf`, `-inf`.
+pub fn format_fixed(v: f32, precision: usize) -> String {
+    if v.is_nan() {
+        return if v.is_sign_negative() { "-nan" } else { "nan" }.to_string();
+    }
+    if v.is_infinite() {
+        return if v < 0.0 { "-inf" } else { "inf" }.to_string();
+    }
+    format!("{:.*}", precision, f64::from(v))
+}
+
+/// Format `v` like a C++ `std::ostream` using `std::fixed` and a precision
+/// of 6, which is what most LUT bakers use.
+pub fn format_fixed6(v: f32) -> String {
+    format_fixed(v, 6)
+}
+
+/// The first 3 values of `rgb` formatted with [`format_fixed6`] and
+/// separated by a space.
+pub fn format_fixed6_rgb(rgb: &[f32]) -> String {
+    rgb.iter()
+        .take(3)
+        .map(|&v| format_fixed6(v))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Allocate a zeroed buffer of `num_values` floats (`None` meaning the size
+/// computation overflowed), reporting an error instead of aborting when
+/// the buffer can't be allocated (C++ throws `std::bad_alloc`).
+pub fn alloc_bake_buffer(num_values: Option<usize>) -> Result<Vec<f32>> {
+    let too_large = || crate::error::Error::msg("The requested LUT size is too large.");
+    let n = num_values.ok_or_else(too_large)?;
+    let mut v: Vec<f32> = Vec::new();
+    v.try_reserve_exact(n).map_err(|_| too_large())?;
+    v.resize(n, 0.0);
+    Ok(v)
+}
+
+/// An RGB identity 3D LUT of `edge_len`^3 entries in the given order (the
+/// `GenerateIdentityLut3D` calls of the bakers).
+pub fn bake_identity_lut3d(
+    edge_len: usize,
+    order: crate::ops::lut3d::Lut3DOrder,
+) -> Result<Vec<f32>> {
+    let n = edge_len
+        .checked_mul(edge_len)
+        .and_then(|v| v.checked_mul(edge_len))
+        .and_then(|v| v.checked_mul(3));
+    let mut data = alloc_bake_buffer(n)?;
+    crate::ops::lut3d::generate_identity_lut3d(&mut data, edge_len, 3, order)?;
+    Ok(data)
+}
+
+/// An RGB identity ramp of `size` entries in `[0, 1]` (the
+/// `GenerateIdentityLut1D` calls of the bakers, with 3 channels).
+pub fn bake_identity_lut1d(size: usize) -> Result<Vec<f32>> {
+    let mut data = alloc_bake_buffer(size.checked_mul(3))?;
+    crate::ops::lut1d::generate_identity_lut1d(&mut data, size, 3);
+    Ok(data)
+}
+
+/// An RGB linear ramp of `size` entries from `start` to `end` (the
+/// `GenerateLinearScaleLut1D` calls of the bakers, with 3 channels).
+pub fn bake_linear_scale_lut1d(size: usize, start: f32, end: f32) -> Result<Vec<f32>> {
+    let mut data = alloc_bake_buffer(size.checked_mul(3))?;
+    crate::ops::lut1d::generate_linear_scale_lut1d(&mut data, size, 3, start, end);
+    Ok(data)
+}
+
+/// Append each element value of `metadata`'s children as a line starting
+/// with `prefix` (the bakers writing the baker metadata as comments).
+pub fn write_metadata_lines(
+    out: &mut String,
+    metadata: &crate::format_metadata::FormatMetadata,
+    prefix: &str,
+) {
+    for child in &metadata.children {
+        out.push_str(prefix);
+        out.push_str(child.element_value());
+        out.push('\n');
+    }
+}
+
+/// Test helpers for the `bake` implementations of the formats.
+#[cfg(test)]
+pub(crate) mod bake_test_utils {
+    use crate::baker::{input_to_target_processor, Baker};
+    use crate::config::Config;
+    use crate::fileformats::FormatRegistry;
+    use crate::transforms::Transform;
+    use crate::types::{Interpolation, OptimizationFlags, TransformDirection};
+
+    /// The config of the `bake_1d_shaper` tests (a linear and a log space).
+    pub const SHAPER_LOG2_CONFIG: &str = r#"
+        ocio_profile_version: 1
+
+        colorspaces:
+        - !<ColorSpace>
+          name : Raw
+          isdata : false
+
+        - !<ColorSpace>
+          name: Log2
+          isdata: false
+          from_reference: !<GroupTransform>
+            children:
+              - !<MatrixTransform> {matrix: [5.55556, 0, 0, 0, 0, 5.55556, 0, 0, 0, 0, 5.55556, 0, 0, 0, 0, 1]}
+              - !<LogTransform> {base: 2}
+              - !<MatrixTransform> {offset: [6.5, 6.5, 6.5, 0]}
+              - !<MatrixTransform> {matrix: [0.076923, 0, 0, 0, 0, 0.076923, 0, 0, 0, 0, 0.076923, 0, 0, 0, 0, 1]}
+    "#;
+
+    /// A v2 config whose first color space is the reference (and default)
+    /// one; each space is `(name, extra yaml lines)`, the extra lines being
+    /// indented by 4 spaces (e.g. `"from_scene_reference: !<...> {...}"`).
+    pub fn config_yaml(spaces: &[(&str, &str)]) -> String {
+        let mut s = String::from("ocio_profile_version: 2\n\n");
+        s.push_str("luma: [0.333, 0.333, 0.333]\n\n");
+        s.push_str(&format!(
+            "roles:\n  reference: {0}\n  default: {0}\n\ncolorspaces:\n",
+            spaces[0].0
+        ));
+        for (name, extra) in spaces {
+            s.push_str(&format!(
+                "  - !<ColorSpace>\n    name: {name}\n    family: {name}\n"
+            ));
+            for line in extra.lines().filter(|l| !l.trim().is_empty()) {
+                s.push_str("    ");
+                s.push_str(line.trim_start());
+                s.push('\n');
+            }
+            s.push('\n');
+        }
+        s
+    }
+
+    /// A baker for `format` using the config described by `yaml`.
+    pub fn baker(yaml: &str, format: &str) -> Baker {
+        let config = Config::create_from_str(yaml).unwrap();
+        let mut baker = Baker::new();
+        baker.set_config(&config);
+        baker.set_format(format).unwrap();
+        baker
+    }
+
+    /// Bake with the full validation of `Baker::bake`.
+    pub fn bake(baker: &Baker) -> String {
+        String::from_utf8(baker.bake().unwrap()).unwrap()
+    }
+
+    /// Compare line by line, as numbers (within `tol`) for the lines
+    /// satisfying `numeric(line_index)`, as text otherwise.
+    pub fn compare_lines(result: &str, expected: &str, tol: f32, numeric: impl Fn(usize) -> bool) {
+        let res: Vec<&str> = result.lines().collect();
+        let exp: Vec<&str> = expected.lines().collect();
+        assert_eq!(res.len(), exp.len(), "{result}");
+        for (i, (r, e)) in res.iter().zip(exp.iter()).enumerate() {
+            if numeric(i) {
+                let rv: Vec<f32> = r.split_whitespace().map(|s| s.parse().unwrap()).collect();
+                let ev: Vec<f32> = e.split_whitespace().map(|s| s.parse().unwrap()).collect();
+                assert_eq!(rv.len(), ev.len(), "line {i}: '{r}' vs '{e}'");
+                for (a, b) in rv.iter().zip(ev.iter()) {
+                    assert!((a - b).abs() <= tol, "line {i}: '{r}' vs '{e}'");
+                }
+            } else {
+                assert_eq!(r, e, "line {i}");
+            }
+        }
+    }
+
+    /// Bake, read the result back with the format reader and check that
+    /// the LUT reproduces the baked transform on `samples` within `tol`.
+    pub fn check_round_trip(baker: &Baker, samples: &[[f32; 3]], tol: f32) {
+        let bytes = baker.bake().unwrap();
+        let fmt = FormatRegistry::instance()
+            .format_by_name(baker.format())
+            .unwrap();
+        let cached = fmt
+            .read(&bytes, "memory file", Interpolation::Linear)
+            .unwrap();
+        let config = baker.config().unwrap();
+        let lut = config
+            .get_processor_for_transform(
+                &Transform::Group(cached.group),
+                TransformDirection::Forward,
+            )
+            .unwrap()
+            .optimized_cpu_processor(OptimizationFlags::NONE);
+        let reference = input_to_target_processor(baker).unwrap();
+        for s in samples {
+            let mut a = *s;
+            let mut b = *s;
+            lut.apply_rgb(&mut a);
+            reference.apply_rgb(&mut b);
+            for c in 0..3 {
+                assert!(
+                    (a[c] - b[c]).abs() <= tol,
+                    "sample {s:?}: LUT {a:?} vs transform {b:?}"
+                );
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn baking_fixed_format() {
+        assert_eq!(format_fixed6(0.0), "0.000000");
+        assert_eq!(format_fixed6(-0.0), "-0.000000");
+        assert_eq!(format_fixed6(1.0 / 3.0), "0.333333");
+        assert_eq!(format_fixed6(16.291878), "16.291878");
+        assert_eq!(format_fixed6(-2.0), "-2.000000");
+        assert_eq!(format_fixed6(f32::NAN), "nan");
+        assert_eq!(format_fixed6(f32::INFINITY), "inf");
+        assert_eq!(format_fixed6(f32::NEG_INFINITY), "-inf");
+        assert_eq!(format_fixed(0.5, 0), "0");
+        assert!(alloc_bake_buffer(None).is_err());
+        assert!(alloc_bake_buffer(Some(usize::MAX)).is_err());
+        assert!(bake_identity_lut3d(usize::MAX, crate::ops::lut3d::Lut3DOrder::FastRed).is_err());
+        let lut = bake_identity_lut3d(2, crate::ops::lut3d::Lut3DOrder::FastRed).unwrap();
+        assert_eq!(&lut[..6], &[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]);
+        let ramp = bake_linear_scale_lut1d(3, 1.0, 2.0).unwrap();
+        assert_eq!(ramp, vec![1.0, 1.0, 1.0, 1.5, 1.5, 1.5, 2.0, 2.0, 2.0]);
+        assert_eq!(
+            bake_identity_lut1d(2).unwrap(),
+            vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
+        );
+    }
 
     #[test]
     fn number_parsing() {

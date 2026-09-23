@@ -17,9 +17,13 @@
 //! when `[0, 1]`) followed by a 1D LUT.
 
 use super::utils::{
+    bake_identity_lut1d, bake_linear_scale_lut1d, format_fixed6, format_fixed6_rgb,
+};
+use super::utils::{
     from_chars_f32, min_max_matrix_f32, new_lut1d, scanf, trim, IStream, MAX_1D_LUT_LENGTH,
 };
 use super::{bake_capability, capability, CachedFile, FileFormat, FormatInfo};
+use crate::baker::{input_to_target_processor, shaper_range, Baker};
 use crate::error::{Error, Result};
 use crate::transforms::GroupTransform;
 use crate::types::{BitDepth, Interpolation};
@@ -236,6 +240,57 @@ impl FileFormat for LocalFileFormat {
         }
         group.append(lut);
         Ok(CachedFile::new(group))
+    }
+
+    fn bake(&self, baker: &Baker, format_name: &str) -> Result<Vec<u8>> {
+        const DEFAULT_1D_SIZE: usize = 4096;
+
+        if format_name != "spi1d" {
+            crate::bail!("Unknown spi format name, '{format_name}'.");
+        }
+
+        // The cube size is used as the 1D LUT size.
+        let oned_size = baker.cube_size().unwrap_or(DEFAULT_1D_SIZE);
+
+        let mut from_in_start = 0.0f32;
+        let mut from_in_end = 1.0f32;
+
+        // Generate the 1D LUT (the shaper space, if any, gives the input
+        // range of the LUT).
+        let mut oned_data = if !baker.shaper_space().is_empty() {
+            (from_in_start, from_in_end) = shaper_range(baker)?;
+            bake_linear_scale_lut1d(oned_size, from_in_start, from_in_end)?
+        } else {
+            bake_identity_lut1d(oned_size)?
+        };
+
+        input_to_target_processor(baker)?.apply_rgb_slice(&mut oned_data);
+
+        // Write the LUT (fixed 6 decimal precision).
+        let mut out = String::new();
+
+        // Header.
+        out.push_str("Version 1\n");
+        out.push_str(&format!(
+            "From {} {}\n",
+            format_fixed6(from_in_start),
+            format_fixed6(from_in_end)
+        ));
+        out.push_str(&format!("Length {oned_size}\n"));
+        out.push_str("Components 3\n");
+        out.push_str("{\n");
+
+        // Write the 1D data.
+        for rgb in oned_data.chunks_exact(3) {
+            out.push_str("    ");
+            out.push_str(&format_fixed6_rgb(rgb));
+            out.push('\n');
+        }
+
+        // Footer.
+        out.push_str("}\n");
+
+        Ok(out.into_bytes())
     }
 }
 
@@ -454,5 +509,95 @@ mod tests {
         assert!(!lut_is_identity(
             "Version 1\nFrom 0.0 1.0\nLength 2\nComponents 1\n{\n0.0\n1.00001\n}\n"
         ));
+    }
+
+    // Baker tests (port of the baker parts of `FileFormatSpi1D_tests.cpp`).
+
+    use crate::fileformats::utils::bake_test_utils::{
+        bake, baker, check_round_trip, compare_lines, config_yaml, SHAPER_LOG2_CONFIG,
+    };
+
+    #[test]
+    fn bake_1d() {
+        let config = config_yaml(&[("input", ""), ("target", "")]);
+        let mut b = baker(&config, "spi1d");
+        b.set_input_space("input");
+        b.set_target_space("target");
+        b.set_cube_size(Some(2));
+
+        let expected = "Version 1\n\
+            From 0.000000 1.000000\n\
+            Length 2\n\
+            Components 3\n\
+            {\n    0.000000 0.000000 0.000000\n    1.000000 1.000000 1.000000\n}\n";
+        assert_eq!(bake(&b), expected);
+    }
+
+    #[test]
+    fn bake_1d_shaper() {
+        {
+            // Lin to Log.
+            let mut b = baker(SHAPER_LOG2_CONFIG, "spi1d");
+            b.set_input_space("Raw");
+            b.set_target_space("Log2");
+            // The shaper space is used here to derive the range of the LUT.
+            // This is needed because the range [0, 1] will not cover the
+            // full extent of the log space.
+            b.set_shaper_space("Log2");
+            b.set_cube_size(Some(10));
+
+            let expected = "Version 1\n\
+                From 0.001989 16.291878\n\
+                Length 10\n\
+                Components 3\n\
+                {\n    0.000000 0.000000 0.000000\n    0.756268 0.756268 0.756268\n    0.833130 0.833130 0.833130\n    0.878107 0.878107 0.878107\n    0.910023 0.910023 0.910023\n    0.934780 0.934780 0.934780\n    0.955010 0.955010 0.955010\n    0.972114 0.972114 0.972114\n    0.986931 0.986931 0.986931\n    1.000000 1.000000 1.000000\n}\n";
+            assert_eq!(bake(&b), expected);
+        }
+        {
+            // Log to Lin.
+            let mut b = baker(SHAPER_LOG2_CONFIG, "spi1d");
+            b.set_input_space("Log2");
+            b.set_target_space("Raw");
+            b.set_cube_size(Some(10));
+
+            let expected = "Version 1\n\
+                From 0.000000 1.000000\n\
+                Length 10\n\
+                Components 3\n\
+                {\n    0.001989 0.001989 0.001989\n    0.005413 0.005413 0.005413\n    0.014731 0.014731 0.014731\n    0.040091 0.040091 0.040091\n    0.109110 0.109110 0.109110\n    0.296951 0.296951 0.296951\n    0.808177 0.808177 0.808177\n    2.199522 2.199522 2.199522\n    5.986179 5.986179 5.986179\n    16.291878 16.291878 16.291878\n}\n";
+            compare_lines(&bake(&b), expected, 1e-5, |i| (6..15).contains(&i));
+        }
+    }
+
+    #[test]
+    fn bake_defaults_and_errors() {
+        let config = config_yaml(&[("input", ""), ("target", "")]);
+        let mut b = baker(&config, "spi1d");
+        b.set_input_space("input");
+        b.set_target_space("target");
+        let out = bake(&b);
+        assert!(out.contains("Length 4096\n"));
+        assert_eq!(out.lines().count(), 5 + 4096 + 1);
+
+        let e = LocalFileFormat.bake(&b, "spi").unwrap_err();
+        assert_eq!(e.message(), "Unknown spi format name, 'spi'.");
+    }
+
+    #[test]
+    fn bake_round_trip() {
+        let mut b = baker(SHAPER_LOG2_CONFIG, "spi1d");
+        b.set_input_space("Log2");
+        b.set_target_space("Raw");
+        check_round_trip(
+            &b,
+            &[[0.0, 0.0, 0.0], [0.25, 0.5, 0.75], [1.0, 1.0, 1.0]],
+            1e-3,
+        );
+
+        let mut b = baker(SHAPER_LOG2_CONFIG, "spi1d");
+        b.set_input_space("Raw");
+        b.set_target_space("Log2");
+        b.set_shaper_space("Log2");
+        check_round_trip(&b, &[[0.18, 1.0, 10.0], [0.01, 0.5, 16.0]], 1e-3);
     }
 }
