@@ -172,6 +172,19 @@ impl FileFormat for LocalFileFormat {
             }
         }
 
+        // OCIO collects every triple before checking the count against the
+        // declared size. Only the values that can end up in the LUT are kept
+        // (the remaining triples are still parsed and counted) so that the
+        // memory stays bounded while the error messages stay identical.
+        let capacity = if in1d {
+            size1d as usize
+        } else if in3d {
+            (size3d * size3d * size3d) as usize
+        } else {
+            0
+        };
+        let mut num_entries = 0usize;
+
         loop {
             let l = left_trim(&line).to_string();
             // All lines starting with '#' are comments.
@@ -191,7 +204,12 @@ impl FileFormat for LocalFileFormat {
                     from_chars_f32(v[1].as_str()),
                     from_chars_f32(v[2].as_str()),
                 ) {
-                    (Some(r), Some(g), Some(b)) => raw.extend_from_slice(&[r, g, b]),
+                    (Some(r), Some(g), Some(b)) => {
+                        if num_entries < capacity {
+                            raw.extend_from_slice(&[r, g, b]);
+                        }
+                        num_entries += 1;
+                    }
                     _ => {
                         return Err(error_message(
                             "Invalid color triples",
@@ -215,12 +233,11 @@ impl FileFormat for LocalFileFormat {
         let dmax = domain_max.map(|v| v as f64);
 
         if in1d {
-            if size1d as i64 != (raw.len() / 3) as i64 {
+            if size1d as i64 != num_entries as i64 {
                 return Err(error_message(
                     &format!(
                         "Incorrect number of lut1d entries. Found {}, expected {}.",
-                        raw.len() / 3,
-                        size1d
+                        num_entries, size1d
                     ),
                     file_name,
                     -1,
@@ -236,11 +253,11 @@ impl FileFormat for LocalFileFormat {
             }
             group.append(lut);
         } else if in3d {
-            if (size3d * size3d * size3d) as i64 != (raw.len() / 3) as i64 {
+            if (size3d * size3d * size3d) as i64 != num_entries as i64 {
                 return Err(error_message(
                     &format!(
                         "Incorrect number of 3D LUT entries. Found {}, expected {}.",
-                        raw.len() / 3,
+                        num_entries,
                         size3d * size3d * size3d
                     ),
                     file_name,
@@ -394,6 +411,36 @@ mod tests {
             e.message(),
             "Error parsing Iridas .cube file (Memory File).  At line (1): 'lut_3d_size 2 2'.  Malformed 'LUT_3D_SIZE' tag."
         );
+    }
+
+    #[test]
+    fn too_many_entries() {
+        // Only the declared number of entries is kept, but every line is still
+        // parsed and counted, so the messages match OCIO (verified with the
+        // C++ build).
+        let lines = |n: usize| "0.5 0.5 0.5\n".repeat(n);
+        let e = read(&format!("LUT_3D_SIZE 2\n{}", lines(20))).unwrap_err();
+        assert_eq!(
+            e.message(),
+            "Error parsing Iridas .cube file (Memory File).  Incorrect number of 3D LUT entries. Found 20, expected 8."
+        );
+        let e = read(&format!("LUT_1D_SIZE 2\n{}", lines(11))).unwrap_err();
+        assert_eq!(
+            e.message(),
+            "Error parsing Iridas .cube file (Memory File).  Incorrect number of lut1d entries. Found 11, expected 2."
+        );
+        // A bad line after the declared size is still reported.
+        let e = read(&format!("LUT_3D_SIZE 2\n{}1 x 1\n", lines(12))).unwrap_err();
+        assert_eq!(
+            e.message(),
+            "Error parsing Iridas .cube file (Memory File).  At line (14): '1 x 1'.  Invalid color triples"
+        );
+        // The 1D size wins when both are declared; the last size tag is used.
+        assert!(read(&format!("LUT_1D_SIZE 2\nLUT_3D_SIZE 2\n{}", lines(8))).is_err());
+        assert!(read(&format!("LUT_1D_SIZE 2\nLUT_3D_SIZE 2\n{}", lines(2))).is_ok());
+        assert!(read(&format!("LUT_1D_SIZE 3\nLUT_1D_SIZE 2\n{}", lines(2))).is_ok());
+        // No size declared: the entries are only counted.
+        check_error(&lines(5), "LUT type (1D/3D) unspecified.");
     }
 
     #[test]
