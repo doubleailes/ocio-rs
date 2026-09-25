@@ -264,7 +264,9 @@ fn validate_params(p: &[f64], reqd_size: usize, low: &[f64], high: &[f64]) -> Re
         crate::bail!("GammaOp: Wrong number of parameters");
     }
     for i in 0..reqd_size {
-        if p[i] < low[i] {
+        // Deviation from OCIO, which accepts NaN here (both comparisons are
+        // false) and then renders NaN for the whole channel.
+        if p[i].is_nan() || p[i] < low[i] {
             crate::bail!(
                 "Parameter {} is less than lower bound {}",
                 format_g(p[i], 6),

@@ -145,6 +145,47 @@ fn data_validate() {
 }
 
 #[test]
+fn data_validate_nan() {
+    // Deviation from OCIO: NaN parameters pass OCIO's `<` / `>` bound
+    // checks (the C++ build renders NaN), the port rejects them.
+    let msg = |g: GammaOpData| g.validate().unwrap_err().message().to_string();
+    let id = [1.0];
+    let p = [f64::NAN];
+    assert_eq!(
+        msg(g4(GammaStyle::BasicFwd, &p, &id, &id, &id)),
+        "Parameter nan is less than lower bound 0.01"
+    );
+    assert_eq!(
+        msg(g4(GammaStyle::BasicRev, &id, &id, &id, &p)),
+        "Parameter nan is less than lower bound 0.01"
+    );
+    let id = [1.0, 0.0];
+    let p = [f64::NAN, 0.0];
+    assert_eq!(
+        msg(g4(GammaStyle::MoncurveFwd, &id, &p, &id, &id)),
+        "Parameter nan is less than lower bound 1"
+    );
+    let p = [2.0, f64::NAN];
+    assert_eq!(
+        msg(g4(GammaStyle::MoncurveMirrorRev, &id, &id, &p, &id)),
+        "Parameter nan is less than lower bound 0"
+    );
+
+    let mut exp = ExponentTransform::default();
+    exp.value[0] = f64::NAN;
+    assert_eq!(
+        exp.validate().unwrap_err().message(),
+        "ExponentTransform validation failed: Parameter nan is less than lower bound 0.01"
+    );
+    let mut exp = ExponentWithLinearTransform::default();
+    exp.offset[2] = f64::NAN;
+    assert_eq!(
+        exp.validate().unwrap_err().message(),
+        "ExponentWithLinearTransform validation failed: Parameter nan is less than lower bound 0"
+    );
+}
+
+#[test]
 fn data_equality() {
     let pr1 = [2.4, 0.1];
     let pg1 = [2.2, 0.2];
