@@ -8,6 +8,7 @@ use crate::types::EnvironmentMode;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::fmt;
+use std::sync::Arc;
 
 /// Key ordering used by OCIO's `EnvMap`: longest names first, then
 /// lexicographic. This guarantees `$TEST_$TESTING` resolves `TESTING` first.
@@ -101,9 +102,41 @@ pub struct Context {
     working_dir: String,
     env_mode: EnvironmentMode,
     env_map: EnvMap,
+    /// Files of the OCIOZ archive the config was read from, extracted beneath
+    /// a root directory (see [`Context::set_archive_files`]).
+    archive: Option<Arc<ArchiveFiles>>,
+}
+
+/// The file entries of an OCIOZ archive extracted beneath `root`.
+#[derive(Debug, PartialEq, Eq)]
+struct ArchiveFiles {
+    root: String,
+    files: Vec<String>,
 }
 
 impl Context {
+    /// Record the files of an OCIOZ archive extracted beneath `root`: like
+    /// OCIO's `CIOPOciozArchive::getFastLutFileHash`, a file reference below
+    /// `root` then matches an archive entry case insensitively.
+    pub(crate) fn set_archive_files(&mut self, root: &str, files: Vec<String>) {
+        self.archive = Some(Arc::new(ArchiveFiles {
+            root: root.to_string(),
+            files,
+        }));
+    }
+
+    /// The extracted archive file matching `full` (case insensitively).
+    fn archive_file(&self, full: &str) -> Option<String> {
+        let a = self.archive.as_ref()?;
+        let full = path_utils::normpath_posix(full);
+        let root = path_utils::normpath_posix(&a.root);
+        let rel = full.strip_prefix(&root)?.strip_prefix('/')?;
+        a.files
+            .iter()
+            .find(|f| path_utils::normpath_posix(f).eq_ignore_ascii_case(rel))
+            .map(|f| path_utils::normpath(&path_utils::join(&a.root, f)))
+    }
+
     /// Empty context (environment mode `LoadPredefined`).
     pub fn new() -> Self {
         Self::default()
@@ -298,11 +331,18 @@ impl Context {
         );
         for (i, sp) in paths.iter().enumerate() {
             let full = path_utils::join(sp, &resolved);
-            if !contains_context_variables(&full) && path_utils::file_exists(&full) {
+            let found = if contains_context_variables(&full) {
+                None
+            } else if path_utils::file_exists(&full) {
+                Some(path_utils::normpath(&full))
+            } else {
+                self.archive_file(&full)
+            };
+            if let Some(found) = found {
                 for (k, v) in &envs {
                     used_vars.set_string_var(k, Some(v));
                 }
-                return Ok(path_utils::normpath(&full));
+                return Ok(found);
             }
             if i != 0 {
                 err.push_str(" : ");

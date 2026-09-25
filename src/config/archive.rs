@@ -145,6 +145,16 @@ impl OciozArchive {
         let dir_str = dir.0.to_string_lossy().replace('\\', "/");
         extract_ocioz_archive(&self.path, &dir_str)?;
         config.set_working_dir(&dir_str);
+        // OCIO looks the LUT files up in the archive case insensitively
+        // (CIOPOciozArchive, mz_path_compare_wc): keep that on case-sensitive
+        // file systems.
+        let files = self
+            .entries
+            .keys()
+            .filter(|k| !k.ends_with('/'))
+            .cloned()
+            .collect();
+        config.context.set_archive_files(&dir_str, files);
         self.extracted = Some(std::sync::Arc::new(dir));
         Ok(())
     }
@@ -485,6 +495,25 @@ mod tests {
         std::os::unix::fs::symlink(&real, &link).unwrap();
         extract_ocioz_archive(archive.to_str().unwrap(), link.to_str().unwrap()).unwrap();
         assert!(real.join("luts/lut.cube").exists());
+    }
+
+    #[test]
+    fn archive_lut_lookup_ignores_case() {
+        // OCIO's CIOPOciozArchive matches the entries with mz_path_compare_wc(.., 1),
+        // i.e. case insensitively, even on case-sensitive file systems.
+        let tmp = scratch();
+        let archive = tmp.0.join("a.ocioz");
+        write_zip(&archive, &[("config.ocio", CONFIG), ("LUTS/LUT.CUBE", LUT)]);
+        let config = Config::create_from_file(archive.to_str().unwrap()).unwrap();
+        let p = config.get_processor("raw", "cs").unwrap();
+        let mut px = [1.0f32, 1.0, 1.0];
+        p.default_cpu_processor().apply_rgb(&mut px);
+        assert_eq!(px, [0.5, 0.5, 0.5]);
+
+        // Files that are not in the archive are still missing.
+        let mut cfg = config.create_editable_copy();
+        cfg.set_search_path("other");
+        assert!(cfg.get_processor("raw", "cs").is_err());
     }
 
     #[test]
