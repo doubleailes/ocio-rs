@@ -14,12 +14,15 @@
 //! A LUT may contain a 1D or a 3D LUT but not both. The domain becomes a
 //! range matrix placed before the LUT.
 
+use super::utils::{bake_identity_lut3d, format_fixed6_rgb, write_metadata_lines};
 use super::utils::{
     from_chars_f32, left_trim, min_max_matrix, new_lut1d, new_lut3d, scanf,
     set_lut3d_from_red_fastest, trim, IStream, MAX_1D_LUT_LENGTH, MAX_3D_LUT_LENGTH,
 };
 use super::{bake_capability, capability, CachedFile, FileFormat, FormatInfo};
+use crate::baker::{input_to_target_processor, Baker};
 use crate::error::{Error, Result};
+use crate::ops::lut3d::Lut3DOrder;
 use crate::transforms::GroupTransform;
 use crate::types::{BitDepth, Interpolation};
 
@@ -264,6 +267,37 @@ impl FileFormat for LocalFileFormat {
 
         Ok(CachedFile::new(group))
     }
+
+    fn bake(&self, baker: &Baker, format_name: &str) -> Result<Vec<u8>> {
+        const DEFAULT_CUBE_SIZE: usize = 32;
+
+        if format_name != "iridas_cube" {
+            crate::bail!("Unknown cube format name, '{format_name}'.");
+        }
+
+        // Smallest cube is 2x2x2.
+        let cube_size = baker.cube_size().unwrap_or(DEFAULT_CUBE_SIZE).max(2);
+
+        let mut cube_data = bake_identity_lut3d(cube_size, Lut3DOrder::FastRed)?;
+        input_to_target_processor(baker)?.apply_rgb_slice(&mut cube_data);
+
+        let mut out = String::new();
+        let metadata = baker.format_metadata();
+        write_metadata_lines(&mut out, metadata, "# ");
+        if !metadata.children.is_empty() {
+            out.push('\n');
+        }
+
+        out.push_str(&format!("LUT_3D_SIZE {cube_size}\n"));
+
+        // Fixed 6 decimal precision.
+        for rgb in cube_data.chunks_exact(3) {
+            out.push_str(&format_fixed6_rgb(rgb));
+            out.push('\n');
+        }
+
+        Ok(out.into_bytes())
+    }
 }
 
 #[cfg(test)]
@@ -430,5 +464,80 @@ mod tests {
             2.0, 0.0, 0.0, 2.0, 0.0, 2.0, 2.0, 2.0, 0.0, 2.0, 2.0, 2.0,
         ];
         assert_eq!(lut.values, expected);
+    }
+
+    // Baker tests (port of the baker parts of
+    // `FileFormatIridasCube_tests.cpp`).
+
+    use crate::fileformats::utils::bake_test_utils::{bake, baker, check_round_trip, config_yaml};
+
+    #[test]
+    fn no_shaper() {
+        let config = config_yaml(&[("lnf", ""), ("target", "")]);
+        let mut b = baker(&config, "iridas_cube");
+        b.format_metadata_mut().add_child_element(
+            crate::types::METADATA_DESCRIPTION,
+            "Alexa conversion LUT, logc2video. Full in/full out.",
+        );
+        b.format_metadata_mut().add_child_element(
+            crate::types::METADATA_DESCRIPTION,
+            "created by alexalutconv (2.11)",
+        );
+        b.set_input_space("lnf");
+        b.set_target_space("target");
+        b.set_cube_size(Some(2));
+
+        let expected = "# Alexa conversion LUT, logc2video. Full in/full out.\n\
+            # created by alexalutconv (2.11)\n\
+            \n\
+            LUT_3D_SIZE 2\n\
+            0.000000 0.000000 0.000000\n\
+            1.000000 0.000000 0.000000\n\
+            0.000000 1.000000 0.000000\n\
+            1.000000 1.000000 0.000000\n\
+            0.000000 0.000000 1.000000\n\
+            1.000000 0.000000 1.000000\n\
+            0.000000 1.000000 1.000000\n\
+            1.000000 1.000000 1.000000\n";
+        assert_eq!(bake(&b), expected);
+    }
+
+    #[test]
+    fn bake_defaults_and_errors() {
+        let config = config_yaml(&[("lnf", ""), ("target", "")]);
+        let mut b = baker(&config, "iridas_cube");
+        b.set_input_space("lnf");
+        b.set_target_space("target");
+        let out = bake(&b);
+        // No metadata, default cube size of 32.
+        assert!(out.starts_with("LUT_3D_SIZE 32\n0.000000 0.000000 0.000000\n"));
+        assert_eq!(out.lines().count(), 1 + 32 * 32 * 32);
+
+        let e = LocalFileFormat.bake(&b, "cube").unwrap_err();
+        assert_eq!(e.message(), "Unknown cube format name, 'cube'.");
+    }
+
+    #[test]
+    fn bake_round_trip() {
+        let config = config_yaml(&[
+            ("lnf", ""),
+            (
+                "target",
+                "from_scene_reference: !<CDLTransform> {slope: [0.5, 0.6, 0.7], sat: 0.8}",
+            ),
+        ]);
+        let mut b = baker(&config, "iridas_cube");
+        b.format_metadata_mut()
+            .add_child_element(crate::types::METADATA_DESCRIPTION, "Round trip");
+        b.set_input_space("lnf");
+        b.set_target_space("target");
+        b.set_cube_size(Some(5));
+        let samples = [
+            [0.0, 0.0, 0.0],
+            [0.25, 0.5, 0.75],
+            [0.9, 0.1, 0.4],
+            [1.0, 1.0, 1.0],
+        ];
+        check_round_trip(&b, &samples, 1e-5);
     }
 }

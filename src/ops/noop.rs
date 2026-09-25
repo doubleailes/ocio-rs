@@ -32,6 +32,9 @@ impl Op for MarkerNoOp {
     fn is_no_op(&self) -> bool {
         true
     }
+    fn is_no_op_type(&self) -> bool {
+        true
+    }
     fn has_channel_crosstalk(&self) -> bool {
         false
     }
@@ -75,6 +78,9 @@ impl Op for MetadataNoOp {
     }
     fn apply(&self, _pixels: &mut [Pixel]) {}
     fn is_no_op(&self) -> bool {
+        true
+    }
+    fn is_no_op_type(&self) -> bool {
         true
     }
     fn has_channel_crosstalk(&self) -> bool {

@@ -420,7 +420,10 @@ colorspaces:
     let p = config
         .get_processor_for_transform(&t, TransformDirection::Forward)
         .unwrap();
-    assert_eq!(p.ops().len(), 2);
+    // As in OCIO, the (identity) saturation matrix is kept until the
+    // processor is optimized.
+    assert_eq!(p.ops().len(), 3);
+    assert_eq!(p.optimized(OptimizationFlags::DEFAULT).ops().len(), 2);
 }
 
 #[test]

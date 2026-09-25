@@ -124,7 +124,7 @@ impl Context {
         for (k, v) in &self.env_map {
             s.push_str(&format!("{}={} ", k.0, v));
         }
-        format!("{:x}", md5::compute(s.as_bytes()))
+        crate::hash_utils::cache_id_hash(s.as_bytes())
     }
 
     /// Set the search path from a colon (or semicolon on Windows) separated string.

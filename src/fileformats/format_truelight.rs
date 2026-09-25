@@ -18,12 +18,15 @@
 //! The optional input LUT (1D) is applied before the cube (3D LUT, red
 //! fastest). The input LUT values are scaled from `[0, width - 1]`.
 
+use super::utils::{bake_identity_lut3d, format_fixed6, format_fixed6_rgb};
 use super::utils::{
     new_lut1d, new_lut3d, set_lut3d_from_red_fastest, split_by_white_spaces, string_to_int,
     string_vec_to_float_vec, trim, IStream, MAX_1D_LUT_LENGTH, MAX_3D_LUT_LENGTH,
 };
 use super::{bake_capability, capability, CachedFile, FileFormat, FormatInfo};
+use crate::baker::{input_to_target_processor, Baker};
 use crate::error::Result;
+use crate::ops::lut3d::Lut3DOrder;
 use crate::transforms::GroupTransform;
 use crate::types::{BitDepth, Interpolation};
 
@@ -207,6 +210,59 @@ impl FileFormat for LocalFileFormat {
 
         Ok(CachedFile::new(group))
     }
+
+    fn bake(&self, baker: &Baker, _format_name: &str) -> Result<Vec<u8>> {
+        const DEFAULT_CUBE_SIZE: usize = 32;
+        const DEFAULT_SHAPER_SIZE: usize = 1024;
+
+        // Smallest cube is 2x2x2.
+        let cube_size = baker.cube_size().unwrap_or(DEFAULT_CUBE_SIZE).max(2);
+
+        let mut cube_data = bake_identity_lut3d(cube_size, Lut3DOrder::FastRed)?;
+
+        // Apply the processor to the LUT data.
+        input_to_target_processor(baker)?.apply_rgb_slice(&mut cube_data);
+
+        // Smallest shaper is 2 entries.
+        let shaper_size = baker.shaper_size().unwrap_or(DEFAULT_SHAPER_SIZE).max(2);
+
+        // Write the header.
+        let mut out = String::new();
+        out.push_str("# Truelight Cube v2.0\n");
+        out.push_str(&format!("# lutLength {shaper_size}\n"));
+        out.push_str("# iDims     3\n");
+        out.push_str("# oDims     3\n");
+        out.push_str(&format!(
+            "# width     {cube_size} {cube_size} {cube_size}\n"
+        ));
+        out.push('\n');
+
+        // Write the shaper LUT (a unity LUT, fixed 6 decimal precision).
+        out.push_str("# InputLUT\n");
+        let cube_max = (cube_size - 1) as f32;
+        let write_v = |out: &mut String, v: f32| {
+            let s = format_fixed6(v);
+            out.push_str(&format!("{s} {s} {s}\n"));
+        };
+        for i in 0..shaper_size - 1 {
+            let v = (i as f32 / (shaper_size - 1) as f32) * cube_max;
+            write_v(&mut out, v);
+        }
+        // Ensure that the last value is spot on.
+        write_v(&mut out, cube_max);
+        out.push('\n');
+
+        // Write the cube.
+        out.push_str("# Cube\n");
+        for rgb in cube_data.chunks_exact(3) {
+            out.push_str(&format_fixed6_rgb(rgb));
+            out.push('\n');
+        }
+
+        out.push_str("# end\n");
+
+        Ok(out.into_bytes())
+    }
 }
 
 #[cfg(test)]
@@ -378,5 +434,91 @@ mod tests {
                 assert!((d[c] - r[c]).abs() <= 1e-6, "{d:?} {r:?}");
             }
         }
+    }
+
+    // Baker tests (OCIO has no bake test for this format).
+
+    use crate::fileformats::utils::bake_test_utils::{bake, baker, check_round_trip, config_yaml};
+
+    #[test]
+    fn bake_3d() {
+        let config = config_yaml(&[
+            ("input", ""),
+            ("target", "from_scene_reference: !<CDLTransform> {sat: 0.5}"),
+        ]);
+        let mut b = baker(&config, "truelight");
+        b.set_input_space("input");
+        b.set_target_space("target");
+        b.set_shaper_size(Some(5));
+        b.set_cube_size(Some(2));
+
+        let expected = "# Truelight Cube v2.0\n\
+            # lutLength 5\n\
+            # iDims     3\n\
+            # oDims     3\n\
+            # width     2 2 2\n\
+            \n\
+            # InputLUT\n\
+            0.000000 0.000000 0.000000\n\
+            0.250000 0.250000 0.250000\n\
+            0.500000 0.500000 0.500000\n\
+            0.750000 0.750000 0.750000\n\
+            1.000000 1.000000 1.000000\n\
+            \n\
+            # Cube\n\
+            0.000000 0.000000 0.000000\n\
+            0.606300 0.106300 0.106300\n\
+            0.357600 0.857600 0.357600\n\
+            0.963900 0.963900 0.463900\n\
+            0.036100 0.036100 0.536100\n\
+            0.642400 0.142400 0.642400\n\
+            0.393700 0.893700 0.893700\n\
+            1.000000 1.000000 1.000000\n\
+            # end\n";
+        assert_eq!(bake(&b), expected);
+    }
+
+    #[test]
+    fn bake_defaults() {
+        let config = config_yaml(&[("input", ""), ("target", "")]);
+        let mut b = baker(&config, "truelight");
+        b.set_input_space("input");
+        b.set_target_space("target");
+        let out = bake(&b);
+        let lines: Vec<&str> = out.lines().collect();
+        assert_eq!(lines[1], "# lutLength 1024");
+        assert_eq!(lines[4], "# width     32 32 32");
+        // The shaper maps [0, 1] to [0, cube size - 1].
+        assert_eq!(lines[7], "0.000000 0.000000 0.000000");
+        assert_eq!(lines[7 + 1023], "31.000000 31.000000 31.000000");
+        assert_eq!(lines.len(), 7 + 1024 + 2 + 32 * 32 * 32 + 1);
+
+        // The smallest shaper has 2 entries.
+        b.set_shaper_size(Some(1));
+        let out = bake(&b);
+        assert!(out.contains("# lutLength 2\n"));
+    }
+
+    #[test]
+    fn bake_round_trip() {
+        let config = config_yaml(&[
+            ("input", ""),
+            (
+                "target",
+                "from_scene_reference: !<CDLTransform> {slope: [0.5, 0.6, 0.7], sat: 0.8}",
+            ),
+        ]);
+        let mut b = baker(&config, "truelight");
+        b.set_input_space("input");
+        b.set_target_space("target");
+        b.set_shaper_size(Some(16));
+        b.set_cube_size(Some(5));
+        let samples = [
+            [0.0, 0.0, 0.0],
+            [0.25, 0.5, 0.75],
+            [0.9, 0.1, 0.4],
+            [1.0, 1.0, 1.0],
+        ];
+        check_round_trip(&b, &samples, 1e-5);
     }
 }

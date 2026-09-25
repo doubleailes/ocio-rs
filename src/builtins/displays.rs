@@ -5,29 +5,51 @@ use super::color_matrix_helpers::{
     REC2020, REC709,
 };
 use super::op_helpers::{
-    add_fixed_function, add_gamma, add_matrix, add_scale, GammaStyle, TransformVec,
+    add_fixed_function, add_gamma, add_matrix, add_scale, create_half_lut, GammaStyle, TransformVec,
 };
 use super::registry::BuiltinTransformRegistry;
 use crate::error::Result;
 use crate::types::FixedFunctionStyle;
-use crate::types::TransformDirection::{Forward as FWD, Inverse as INV};
+use crate::types::TransformDirection::Forward as FWD;
 
-/// SMPTE ST-2084 (PQ) curves.
+/// SMPTE ST-2084 (PQ) curves (half-domain LUTs, as OCIO builds them with
+/// `OCIO_LUT_SUPPORT`).
 pub(crate) mod st_2084 {
     use super::*;
 
+    const M1: f64 = 0.25 * 2610.0 / 4096.0;
+    const M2: f64 = 128.0 * 2523.0 / 4096.0;
+    const C2: f64 = 32.0 * 2413.0 / 4096.0;
+    const C3: f64 = 32.0 * 2392.0 / 4096.0;
+    const C1: f64 = C3 - C2 + 1.0;
+
     /// PQ to linear nits/100.
     pub(crate) fn pq_to_linear(ops: &mut TransformVec) {
-        add_fixed_function(ops, FixedFunctionStyle::LinToPq, &[], INV);
+        create_half_lut(ops, |input| {
+            let n = input.abs(); // mirror about 0
+            let x = n.powf(1.0 / M2);
+            let mut l = ((x - C1).max(0.0) / (C2 - C3 * x)).powf(1.0 / M1);
+            // L is in nits/10000, convert to nits/100.
+            l *= 100.0;
+            l.copysign(input) as f32
+        });
     }
 
     /// Linear nits/100 to PQ.
     pub(crate) fn linear_to_pq(ops: &mut TransformVec) {
-        add_fixed_function(ops, FixedFunctionStyle::LinToPq, &[], FWD);
+        create_half_lut(ops, |input| {
+            // Input is in nits/100, convert to [0,1], where 1 is 10000 nits.
+            let l = (input * 0.01).abs();
+            let y = l.powf(M1);
+            let ratpoly = (C1 + C2 * y) / (1.0 + C3 * y);
+            let n = ratpoly.max(0.0).powf(M2);
+            n.copysign(input) as f32
+        });
     }
 }
 
-/// ITU-R BT.2100 HLG curves.
+/// ITU-R BT.2100 HLG curves (half-domain LUTs, as OCIO builds them with
+/// `OCIO_LUT_SUPPORT`).
 pub(crate) mod hlg {
     use super::*;
 
@@ -40,34 +62,37 @@ pub(crate) mod hlg {
     const E_SCALE: f64 = 3.0 / E_MAX;
     const E_BREAK: f64 = E_MAX / 12.0;
 
-    /// The parameters of the gamma-log fixed function implementing HLG.
-    fn params() -> [f64; 10] {
+    fn c() -> f64 {
         let c0 = 0.5 - A * (4.0 * A).ln();
-        let c = (12.0 / E_MAX).ln() * A + c0;
-        [
-            0.0,     // mirror point
-            E_BREAK, // break point
-            // Gamma segment.
-            0.5,            // gamma power
-            E_SCALE.sqrt(), // post-power scale
-            0.0,            // pre-power offset
-            // Log segment.
-            1.0f64.exp(), // log base
-            A,            // log-side slope
-            c,            // log-side offset
-            1.0,          // lin-side slope
-            -B,           // lin-side offset
-        ]
+        (12.0 / E_MAX).ln() * A + c0
     }
 
     /// HLG to linear.
     pub(crate) fn hlg_to_linear(ops: &mut TransformVec) {
-        add_fixed_function(ops, FixedFunctionStyle::LinToGammaLog, &params(), INV);
+        let c = c();
+        create_half_lut(ops, move |input| {
+            let e_prime = input.abs(); // mirror about 0
+            let out = if e_prime < 0.5 {
+                e_prime * e_prime / E_SCALE
+            } else {
+                B + ((e_prime - c) / A).exp()
+            };
+            out.copysign(input) as f32
+        });
     }
 
     /// Linear to HLG.
     pub(crate) fn linear_to_hlg(ops: &mut TransformVec) {
-        add_fixed_function(ops, FixedFunctionStyle::LinToGammaLog, &params(), FWD);
+        let c = c();
+        create_half_lut(ops, move |input| {
+            let e = input.abs(); // mirror about 0
+            let out = if e < E_BREAK {
+                (e * E_SCALE).sqrt()
+            } else {
+                A * (e - B).ln() + c
+            };
+            out.copysign(input) as f32
+        });
     }
 }
 

@@ -24,11 +24,15 @@
 //! ```
 
 use super::utils::{
-    bit_depth_max_value, get_3d_lut_edge_len_from_num_pixels, new_lut1d, new_lut3d,
-    split_by_white_spaces, string_vec_to_int_vec, trim, IStream, MAX_3D_LUT_LENGTH,
+    alloc_bake_buffer, bake_identity_lut3d, bit_depth_max_value,
+    get_3d_lut_edge_len_from_num_pixels, new_lut1d, new_lut3d, split_by_white_spaces,
+    string_vec_to_int_vec, trim, IStream, MAX_3D_LUT_LENGTH,
 };
 use super::{bake_capability, capability, CachedFile, FileFormat, FormatInfo};
+use crate::baker::{input_to_target_processor, Baker};
 use crate::error::Result;
+use crate::ops::lut1d::generate_identity_lut1d;
+use crate::ops::lut3d::Lut3DOrder;
 use crate::transforms::GroupTransform;
 use crate::types::{BitDepth, Interpolation};
 
@@ -266,6 +270,86 @@ impl FileFormat for LocalFileFormat {
 
         Ok(CachedFile::new(group))
     }
+
+    fn bake(&self, baker: &Baker, format_name: &str) -> Result<Vec<u8>> {
+        const SHAPER_BIT_DEPTH: i32 = 10;
+        const CUBE_BIT_DEPTH: i32 = 12;
+
+        // NOTE: This code is very old, Lustre and Flame have long been able
+        //       to support much larger cube sizes. Furthermore there is no
+        //       need to use the legacy 3dl format since CLF/CTF is supported.
+        let default_cube_size = match format_name {
+            "lustre" => 33,
+            "flame" => 17,
+            _ => crate::bail!("Unknown 3dl format name, '{format_name}'."),
+        };
+        let lustre = format_name == "lustre";
+
+        // Smallest cube is 2x2x2.
+        let cube_size = baker.cube_size().unwrap_or(default_cube_size).max(2);
+        let shaper_size = baker.shaper_size().unwrap_or(cube_size);
+
+        let mut cube_data = bake_identity_lut3d(cube_size, Lut3DOrder::FastBlue)?;
+        input_to_target_processor(baker)?.apply_rgb_slice(&mut cube_data);
+
+        // Write out the file. For maximum compatibility with other apps,
+        // the shaper is not utilized and no metadata is written.
+        let mut out = String::new();
+
+        if lustre {
+            let mesh_input_bit_depth = cube_dimension_len_to_lustre_bit_depth(cube_size);
+            out.push_str("3DMESH\n");
+            out.push_str(&format!("Mesh {mesh_input_bit_depth} {CUBE_BIT_DEPTH}\n"));
+        }
+
+        let mut shaper_data = alloc_bake_buffer(Some(shaper_size))?;
+        generate_identity_lut1d(&mut shaper_data, shaper_size, 1);
+
+        let shaper_scale = max_value_from_integer_bit_depth(SHAPER_BIT_DEPTH) as f32;
+        let shaper_line: Vec<String> = shaper_data
+            .iter()
+            .map(|&v| clamped_int_from_norm_float(v, shaper_scale).to_string())
+            .collect();
+        out.push_str(&shaper_line.join(" "));
+        out.push('\n');
+
+        // Write out the 3D cube.
+        let cube_scale = max_value_from_integer_bit_depth(CUBE_BIT_DEPTH) as f32;
+        for rgb in cube_data.chunks_exact(3) {
+            let r = clamped_int_from_norm_float(rgb[0], cube_scale);
+            let g = clamped_int_from_norm_float(rgb[1], cube_scale);
+            let b = clamped_int_from_norm_float(rgb[2], cube_scale);
+            out.push_str(&format!("{r} {g} {b}\n"));
+        }
+        out.push('\n');
+
+        if lustre {
+            out.push_str("LUT8\n");
+            out.push_str("gamma 1.0\n");
+        }
+
+        Ok(out.into_bytes())
+    }
+}
+
+/// Port of `GetMaxValueFromIntegerBitDepth`.
+fn max_value_from_integer_bit_depth(bit_depth: i32) -> i32 {
+    2f64.powi(bit_depth) as i32 - 1
+}
+
+/// Port of `GetClampedIntFromNormFloat`: clamp to `[0, 1]` (NaN giving 0,
+/// as `std::min(std::max(0.0f, val), 1.0f)` does), scale and round.
+fn clamped_int_from_norm_float(val: f32, scale: f32) -> i32 {
+    let val = if 0.0 < val { val } else { 0.0 };
+    let val = if 1.0 < val { 1.0 } else { val };
+    (val * scale).round() as i32
+}
+
+/// Port of `CubeDimensionLenToLustreBitDepth` (65 -> 6, 33 -> 5, 17 -> 4).
+fn cube_dimension_len_to_lustre_bit_depth(size: usize) -> i32 {
+    // Single precision, as `logf` is used.
+    let logval = (size.saturating_sub(1) as f32).ln() / 2f32.ln();
+    logval as i32
 }
 
 #[cfg(test)]
@@ -412,5 +496,126 @@ mod tests {
             .contains("Does not appear to contain a valid shaper LUT or a 3D LUT"));
         let e = read_3dl("0 0 0\n0 0 1\n").unwrap_err();
         assert!(e.message().contains("is unreasonably low"));
+    }
+
+    const BAKE_CONFIG: &str = r#"ocio_profile_version: 2
+
+roles:
+  reference: lnf
+  default: lnf
+
+colorspaces:
+  - !<ColorSpace>
+    name: lnf
+    family: lnf
+
+  - !<ColorSpace>
+    name: target
+    family: target
+    from_scene_reference: !<CDLTransform> {offset: [0, 0.1, 0.2]}
+"#;
+
+    #[test]
+    fn bake() {
+        use crate::fileformats::utils::bake_test_utils::{bake, baker};
+
+        let mut b = baker(BAKE_CONFIG, "flame");
+        // The metadata is not written.
+        b.format_metadata_mut()
+            .add_child_element(crate::types::METADATA_DESCRIPTION, "MetaData not written");
+        b.set_input_space("lnf");
+        b.set_target_space("target");
+        b.set_shaper_size(Some(10));
+        b.set_cube_size(Some(2));
+        let flame = bake(&b);
+
+        b.set_format("lustre").unwrap();
+        let lustre = bake(&b);
+
+        let expected_body = "0 114 227 341 455 568 682 796 909 1023\n\
+                             0 410 819\n\
+                             0 410 4095\n\
+                             0 4095 819\n\
+                             0 4095 4095\n\
+                             4095 410 819\n\
+                             4095 410 4095\n\
+                             4095 4095 819\n\
+                             4095 4095 4095\n\
+                             \n";
+        assert_eq!(flame, expected_body);
+        assert_eq!(
+            lustre,
+            format!("3DMESH\nMesh 0 12\n{expected_body}LUT8\ngamma 1.0\n")
+        );
+    }
+
+    #[test]
+    fn bake_defaults_and_errors() {
+        use crate::fileformats::utils::bake_test_utils::{bake, baker};
+
+        let mut b = baker(BAKE_CONFIG, "lustre");
+        b.set_input_space("lnf");
+        b.set_target_space("lnf");
+        let lustre = bake(&b);
+        let lines: Vec<&str> = lustre.lines().collect();
+        // Default cube size of 33 for lustre (5 bits).
+        assert_eq!(lines[1], "Mesh 5 12");
+        assert_eq!(lines[2].split(' ').count(), 33);
+        assert_eq!(lines.len(), 2 + 1 + 33 * 33 * 33 + 1 + 2);
+        assert_eq!(lines[3], "0 0 0");
+        assert_eq!(lines[4], "0 0 128");
+        assert_eq!(lines[3 + 33 * 33 * 33 - 1], "4095 4095 4095");
+
+        b.set_format("flame").unwrap();
+        let flame = bake(&b);
+        let lines: Vec<&str> = flame.lines().collect();
+        // Default cube size of 17 for flame.
+        assert_eq!(lines[0].split(' ').count(), 17);
+        assert_eq!(lines[0].split(' ').next_back(), Some("1023"));
+        assert_eq!(lines.len(), 1 + 17 * 17 * 17 + 1);
+
+        // Other sizes (65 -> 6 bits, 17 -> 4 bits).
+        assert_eq!(cube_dimension_len_to_lustre_bit_depth(65), 6);
+        assert_eq!(cube_dimension_len_to_lustre_bit_depth(33), 5);
+        assert_eq!(cube_dimension_len_to_lustre_bit_depth(17), 4);
+        assert_eq!(cube_dimension_len_to_lustre_bit_depth(2), 0);
+
+        // Clamping.
+        assert_eq!(clamped_int_from_norm_float(-1.0, 4095.0), 0);
+        assert_eq!(clamped_int_from_norm_float(2.0, 4095.0), 4095);
+        assert_eq!(clamped_int_from_norm_float(f32::NAN, 4095.0), 0);
+        assert_eq!(clamped_int_from_norm_float(0.5, 1023.0), 512);
+
+        // Unknown format name.
+        let e = LocalFileFormat.bake(&b, "unknown").unwrap_err();
+        assert_eq!(e.message(), "Unknown 3dl format name, 'unknown'.");
+    }
+
+    #[test]
+    fn bake_round_trip() {
+        use crate::fileformats::utils::bake_test_utils::{baker, check_round_trip};
+
+        let config = r#"ocio_profile_version: 2
+
+roles:
+  reference: lnf
+  default: lnf
+
+colorspaces:
+  - !<ColorSpace>
+    name: lnf
+
+  - !<ColorSpace>
+    name: target
+    from_scene_reference: !<CDLTransform> {slope: [0.5, 0.6, 0.7], sat: 0.8}
+"#;
+        for format in ["flame", "lustre"] {
+            let mut b = baker(config, format);
+            b.set_input_space("lnf");
+            b.set_target_space("target");
+            let samples = [[0.0, 0.0, 0.0], [0.25, 0.5, 0.75], [1.0, 1.0, 1.0]];
+            // 12 bits quantization.
+            check_round_trip(&b, &samples, 1e-3);
+        }
     }
 }

@@ -10,12 +10,15 @@
 //! ...
 //! ```
 
+use super::utils::{bake_identity_lut3d, format_fixed6_rgb};
 use super::utils::{
     new_lut3d, set_lut3d_from_red_fastest, split_by_white_spaces, string_to_int,
     string_vec_to_float_vec, trim, IStream, MAX_3D_LUT_LENGTH,
 };
 use super::{bake_capability, capability, CachedFile, FileFormat, FormatInfo};
+use crate::baker::{input_to_target_processor, Baker};
 use crate::error::{Error, Result};
+use crate::ops::lut3d::Lut3DOrder;
 use crate::transforms::GroupTransform;
 use crate::types::{BitDepth, Interpolation};
 
@@ -144,6 +147,37 @@ impl FileFormat for LocalFileFormat {
         group.append(lut);
         Ok(CachedFile::new(group))
     }
+
+    fn bake(&self, baker: &Baker, format_name: &str) -> Result<Vec<u8>> {
+        const DEFAULT_CUBE_SIZE: usize = 64;
+
+        if format_name != "iridas_itx" {
+            // Note: OCIO's message says 3dl.
+            crate::bail!("Unknown 3dl format name, '{format_name}'.");
+        }
+
+        // Smallest cube is 2x2x2.
+        let cube_size = baker.cube_size().unwrap_or(DEFAULT_CUBE_SIZE).max(2);
+
+        let mut cube_data = bake_identity_lut3d(cube_size, Lut3DOrder::FastRed)?;
+
+        // Apply the conversion from the input space to the output space.
+        input_to_target_processor(baker)?.apply_rgb_slice(&mut cube_data);
+
+        // Write out the file. For maximum compatibility with other apps,
+        // the shaper is not utilized and no metadata is written.
+        let mut out = String::new();
+        out.push_str(&format!("LUT_3D_SIZE {cube_size}\n"));
+
+        // Fixed 6 decimal precision.
+        for rgb in cube_data.chunks_exact(3) {
+            out.push_str(&format_fixed6_rgb(rgb));
+            out.push('\n');
+        }
+        out.push('\n');
+
+        Ok(out.into_bytes())
+    }
 }
 
 #[cfg(test)]
@@ -223,5 +257,73 @@ mod tests {
             2.0, 0.0, 0.0, 2.0, 0.0, 2.0, 2.0, 2.0, 0.0, 2.0, 2.0, 2.0,
         ];
         assert_eq!(lut.values, expected);
+    }
+
+    // Baker tests (OCIO has no bake test for this format).
+
+    use crate::fileformats::utils::bake_test_utils::{bake, baker, check_round_trip, config_yaml};
+
+    #[test]
+    fn bake_3d() {
+        let config = config_yaml(&[
+            ("input", ""),
+            ("target", "from_scene_reference: !<CDLTransform> {sat: 0.5}"),
+        ]);
+        let mut b = baker(&config, "iridas_itx");
+        // The metadata is not written.
+        b.format_metadata_mut()
+            .add_child_element(crate::types::METADATA_DESCRIPTION, "not written");
+        b.set_input_space("input");
+        b.set_target_space("target");
+        b.set_cube_size(Some(2));
+
+        let expected = "LUT_3D_SIZE 2\n\
+            0.000000 0.000000 0.000000\n\
+            0.606300 0.106300 0.106300\n\
+            0.357600 0.857600 0.357600\n\
+            0.963900 0.963900 0.463900\n\
+            0.036100 0.036100 0.536100\n\
+            0.642400 0.142400 0.642400\n\
+            0.393700 0.893700 0.893700\n\
+            1.000000 1.000000 1.000000\n\
+            \n";
+        assert_eq!(bake(&b), expected);
+    }
+
+    #[test]
+    fn bake_defaults_and_errors() {
+        let config = config_yaml(&[("input", ""), ("target", "")]);
+        let mut b = baker(&config, "iridas_itx");
+        b.set_input_space("input");
+        b.set_target_space("target");
+        let out = bake(&b);
+        // Default cube size of 64.
+        assert!(out.starts_with("LUT_3D_SIZE 64\n"));
+        assert_eq!(out.lines().count(), 1 + 64 * 64 * 64 + 1);
+
+        let e = LocalFileFormat.bake(&b, "itx").unwrap_err();
+        assert_eq!(e.message(), "Unknown 3dl format name, 'itx'.");
+    }
+
+    #[test]
+    fn bake_round_trip() {
+        let config = config_yaml(&[
+            ("input", ""),
+            (
+                "target",
+                "from_scene_reference: !<CDLTransform> {slope: [0.5, 0.6, 0.7], sat: 0.8}",
+            ),
+        ]);
+        let mut b = baker(&config, "iridas_itx");
+        b.set_input_space("input");
+        b.set_target_space("target");
+        b.set_cube_size(Some(5));
+        let samples = [
+            [0.0, 0.0, 0.0],
+            [0.25, 0.5, 0.75],
+            [0.9, 0.1, 0.4],
+            [1.0, 1.0, 1.0],
+        ];
+        check_round_trip(&b, &samples, 1e-5);
     }
 }

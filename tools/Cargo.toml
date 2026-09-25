@@ -1,0 +1,18 @@
+[package]
+name = "ocio-tools"
+version = "0.1.0"
+edition = "2021"
+license = "BSD-3-Clause"
+description = "Command line tools of the ocio crate (ports of the OpenColorIO apps)."
+publish = false
+
+[lib]
+name = "ocio_tools"
+path = "src/lib.rs"
+
+[dependencies]
+ocio = { path = ".." }
+half = "2"
+exr = "1.7"
+image = { version = "0.25", default-features = false, features = ["png", "tiff", "jpeg"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
