@@ -169,6 +169,34 @@ fn main() -> ExitCode {
     let mut view = String::new();
     let mut namedtransform = String::new();
 
+    // The transform modes are exclusive. Deviation: OCIO has these checks
+    // too, but most of them are unreachable in its mode selection (e.g.
+    // `--lut --invertview` silently ignores `--invertview`).
+    let conflict = if use_lut && use_display_view {
+        Some("ERROR: Options lut & view can't be used at the same time.")
+    } else if use_display_view && use_invert_view {
+        Some("ERROR: Options view & invertview can't be used at the same time.")
+    } else if use_lut && use_invert_view {
+        Some("ERROR: Options lut & invertview can't be used at the same time.")
+    } else if use_named_transform
+        && (use_lut || use_display_view || use_invert_view || use_inv_named_transform)
+    {
+        Some(
+            "ERROR: Option namedtransform can't be used with lut, view, invertview, \
+             or invnamedtransform at the same time.",
+        )
+    } else if use_inv_named_transform && (use_lut || use_display_view || use_invert_view) {
+        Some(
+            "ERROR: Option invnamedtransform can't be used with lut, view, invertview, \
+             or namedtransform at the same time.",
+        )
+    } else {
+        None
+    };
+    if let Some(msg) = conflict {
+        return usage_error(&ap, msg);
+    }
+
     if !use_lut
         && !use_display_view
         && !use_invert_view
@@ -185,11 +213,6 @@ fn main() -> ExitCode {
         inputcolorspace = arg(1);
         outputimage = arg(2);
         outputcolorspace = Some(arg(3));
-    } else if use_lut && use_display_view {
-        return usage_error(
-            &ap,
-            "ERROR: Options lut & view can't be used at the same time.",
-        );
     } else if use_lut {
         if args.len() != 3 {
             return usage_error(
@@ -234,13 +257,6 @@ fn main() -> ExitCode {
         outputimage = arg(3);
         outputcolorspace = Some(arg(4));
     } else if use_named_transform {
-        if use_inv_named_transform {
-            return usage_error(
-                &ap,
-                "ERROR: Option namedtransform can't be used with lut, view, invertview, \
-                 or invnamedtransform at the same time.",
-            );
-        }
         if args.len() != 3 {
             return usage_error(
                 &ap,

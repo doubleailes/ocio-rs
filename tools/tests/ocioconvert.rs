@@ -47,6 +47,30 @@ fn usage() {
         .stderr
         .starts_with("ERROR: Options lut & view can't be used at the same time.\n"));
 
+    // Every combination of transform modes is rejected.
+    let modes = [
+        "--lut",
+        "--view",
+        "--invertview",
+        "--namedtransform",
+        "--invnamedtransform",
+    ];
+    for (i, a) in modes.iter().enumerate() {
+        for b in &modes[i + 1..] {
+            let r = run(EXE, &[a, b, "a", "b", "c", "d", "e"]);
+            assert_eq!(r.code, 1, "{a} {b}");
+            assert!(
+                r.stderr.starts_with("ERROR: Option") && r.stderr.contains("can't be used"),
+                "{a} {b}: {}",
+                r.stderr
+            );
+        }
+    }
+    let r = run(EXE, &["--view", "--invertview", "a", "b", "c", "d", "e"]);
+    assert!(r
+        .stderr
+        .starts_with("ERROR: Options view & invertview can't be used at the same time.\n"));
+
     let r = run(EXE, &["--bitdepth", "int7", "a", "b", "c", "d"]);
     assert_eq!(r.code, 1);
     assert!(r.stderr.starts_with(
