@@ -429,7 +429,7 @@ impl Config {
     }
 
     /// Load a config stored in an OCIOZ archive.
-    pub fn create_from_archive(archive: archive::OciozArchive) -> Result<Config> {
+    pub fn create_from_archive(mut archive: archive::OciozArchive) -> Result<Config> {
         let text = archive.config_data()?;
         let mut config = Config::read(&text, Some(yaml::ARCHIVE_FILENAME))?;
         archive.prepare_context(&mut config)?;
