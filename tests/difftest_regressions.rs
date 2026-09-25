@@ -319,7 +319,6 @@ fn integer_input_uses_lut_lookup() {
     let si = PackedImageDesc::new(ImageData::U16(&mut src), 1, 1, 4).unwrap();
     let mut di = PackedImageDesc::new(ImageData::U16(&mut dst), 1, 1, 4).unwrap();
     cpu.apply_src_dst(&si, &mut di).unwrap();
-    drop(di);
     // Value from OCIO (the interpolation gives 28849 for green).
     assert_eq!(dst, [35168, 28850, 5056, 36494]);
 
@@ -340,6 +339,5 @@ fn integer_input_uses_lut_lookup() {
     let si = PackedImageDesc::new(ImageData::U8(&mut src), 1, 1, 4).unwrap();
     let mut di = PackedImageDesc::new(ImageData::F32(&mut dst), 1, 1, 4).unwrap();
     cpu.apply_src_dst(&si, &mut di).unwrap();
-    drop(di);
     assert_eq!(dst, [0.0, 4.00326056e+36, f32::MAX, 1.0]);
 }
