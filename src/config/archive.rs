@@ -18,7 +18,7 @@ use std::io::{Read, Write};
 const MAX_ENTRY_SIZE: u64 = 256 * 1024 * 1024;
 
 fn normalize(p: &str) -> String {
-    crate::path_utils::normpath(&p.replace('\\', "/"))
+    crate::path_utils::normpath_posix(p)
 }
 
 fn path_equal(a: &str, b: &str) -> bool {

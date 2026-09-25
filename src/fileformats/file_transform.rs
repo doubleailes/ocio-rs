@@ -582,8 +582,9 @@ mod tests {
         concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/files").to_string()
     }
 
+    /// The (normalized) path of a test file, as resolved by the context.
     fn test_file(name: &str) -> String {
-        format!("{}/{}", test_files_dir(), name)
+        crate::path_utils::normpath(&format!("{}/{}", test_files_dir(), name))
     }
 
     fn check_error<T>(res: Result<T>, what: &str) {

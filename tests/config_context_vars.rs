@@ -408,14 +408,22 @@ fn config_context_variable_with_search_path_v1() {
         .create_editable_copy();
     assert_err!(
         cfg.get_processor("cs1", "cs2"),
-        "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: '$ENV1/lut1d_green.ctf'."
+        if cfg!(windows) {
+            "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: '$ENV1\\lut1d_green.ctf'."
+        } else {
+            "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: '$ENV1/lut1d_green.ctf'."
+        }
     );
     cfg.add_environment_var("ENV1", Some(&data_file("")));
     cfg.get_processor("cs1", "cs2").unwrap();
     cfg.add_environment_var("ENV1", Some("faulty/path"));
     assert_err!(
         cfg.get_processor("cs1", "cs2"),
-        "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: 'faulty/path/lut1d_green.ctf'."
+        if cfg!(windows) {
+            "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: 'faulty\\path\\lut1d_green.ctf'."
+        } else {
+            "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: 'faulty/path/lut1d_green.ctf'."
+        }
     );
     cfg.add_environment_var("ENV1", None);
     cfg.set_search_path(&format!("{}:$ENV1", data_file("")));
@@ -492,7 +500,11 @@ fn config_context_variable_with_search_path_v2() {
     cfg.add_environment_var("ENV1", None);
     assert_err!(
         cfg.get_processor("cs1", "cs2"),
-        "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: '$ENV1/lut1d_green.ctf'."
+        if cfg!(windows) {
+            "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: '$ENV1\\lut1d_green.ctf'."
+        } else {
+            "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: '$ENV1/lut1d_green.ctf'."
+        }
     );
     let dir = data_file("");
     for sp in [
@@ -507,7 +519,11 @@ fn config_context_variable_with_search_path_v2() {
     cfg.set_search_path("$ENV1:faulty/path");
     assert_err!(
         cfg.get_processor("cs1", "cs2"),
-        "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: '$ENV1/lut1d_green.ctf' : 'faulty/path/lut1d_green.ctf'."
+        if cfg!(windows) {
+            "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: '$ENV1\\lut1d_green.ctf' : 'faulty\\path\\lut1d_green.ctf'."
+        } else {
+            "The specified file reference 'lut1d_green.ctf' could not be located. The following attempts were made: '$ENV1/lut1d_green.ctf' : 'faulty/path/lut1d_green.ctf'."
+        }
     );
 }
 

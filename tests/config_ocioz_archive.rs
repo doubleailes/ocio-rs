@@ -65,7 +65,12 @@ fn ocioz_is_config_archivable() {
     let mut cfg = Config::create_from_str(IS_ARCHIVABLE_CONFIG)
         .unwrap()
         .create_editable_copy();
-    cfg.set_working_dir("/fake_working_dir");
+    // A working directory is needed to archive a config.
+    cfg.set_working_dir(if cfg!(windows) {
+        r"C:\fake_working_dir"
+    } else {
+        "/fake_working_dir"
+    });
     cfg.validate().unwrap();
 
     // Legal search paths.
@@ -94,6 +99,12 @@ fn ocioz_is_config_archivable() {
         "luts:/$SHOT",
     ] {
         cfg.set_search_path(sp);
+        assert!(!cfg.is_archivable(), "search path {sp:?}");
+    }
+    #[cfg(windows)]
+    for sp in [r"C:\luts", r"C:\", r"C:\$SHOT"] {
+        cfg.clear_search_paths();
+        cfg.add_search_path(sp);
         assert!(!cfg.is_archivable(), "search path {sp:?}");
     }
 
@@ -130,6 +141,10 @@ fn ocioz_is_config_archivable() {
         check_ft(p, true);
     }
     for p in ["../luts", r"..\myLuts", "$SHOT", "/luts", "/$SHOT"] {
+        check_ft(p, false);
+    }
+    #[cfg(windows)]
+    for p in [r"C:\luts", r"C:\", r"\$SHOT"] {
         check_ft(p, false);
     }
 }
