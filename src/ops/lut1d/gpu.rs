@@ -128,7 +128,14 @@ pub(crate) fn lut1d_shader_program(
 
     let length = lut_data.array().length();
     let width = length.min(default_max_width);
-    let height = (length / default_max_width) + 1;
+    // Note: OCIO computes the height as `length / max_width + 1` but the
+    // padded rows advance by `max_width - 1` entries, so for some lengths
+    // (e.g. 8191 with a 4096 limit) that height misses a row (and OCIO
+    // fails in CreatePaddedLutChannels). Use the number of rows the padding
+    // and the shader lookup actually need when it is larger; for all the
+    // other lengths the height is OCIO's.
+    let needed_height = (length.max(1) - 1) / (default_max_width - 1) + 1;
+    let height = ((length / default_max_width) + 1).max(needed_height);
     let num_channels = lut_data.array().num_color_components();
 
     // Note: The 1D LUT needs a GPU texture for the Look-up table

@@ -1656,3 +1656,80 @@ fn aces2_clamp_upper_bound_precision() {
         "    outColor.rgb = min(vec3(3468.943359375, 3468.943359375, 3468.943359375), outColor.rgb);\n"
     ));
 }
+
+/// The 2D texture of a 1D LUT must have enough rows for the padded entries:
+/// rows advance by `width - 1` entries. The expected heights come from the
+/// C++ OCIO 2.6 library, which fails with `std::bad_alloc` for the lengths
+/// marked `None` (its `length / width + 1` height misses a row).
+#[test]
+fn lut1d_texture_height() {
+    let cases: &[(u32, usize, Option<u32>)] = &[
+        (4096, 4095, Some(1)),
+        (4096, 4096, Some(2)),
+        (4096, 4097, Some(2)),
+        (4096, 8190, Some(2)),
+        (4096, 8191, None),
+        (4096, 8192, Some(3)),
+        (4096, 8193, Some(3)),
+        (4096, 12285, Some(3)),
+        (4096, 12286, None),
+        (4096, 12287, None),
+        (4096, 12288, Some(4)),
+        (64, 2, Some(1)),
+        (64, 63, Some(1)),
+        (64, 64, Some(2)),
+        (64, 126, Some(2)),
+        (64, 127, None),
+        (64, 128, Some(3)),
+        (64, 189, Some(3)),
+        (64, 190, None),
+        (64, 191, None),
+        (64, 192, Some(4)),
+        (64, 256, Some(5)),
+        (64, 1000, Some(16)),
+        (64, 4032, Some(64)),
+        (64, 4033, None),
+        (64, 4096, None),
+    ];
+    let config = Config::create();
+    for &(max_width, length, cpp_height) in cases {
+        let mut t = crate::transforms::Lut1DTransform::new(length, false);
+        for i in 0..length {
+            let v = i as f32 / (length - 1) as f32;
+            t.set_value(i, v, v * 0.5, v * 0.25);
+        }
+        let gpu = processor(&config, Transform::Lut1D(t))
+            .default_gpu_processor()
+            .unwrap();
+        let mut desc = GpuShaderDesc::new();
+        desc.set_language(GpuLanguage::Glsl4_0);
+        desc.set_texture_max_width(max_width);
+        gpu.extract_gpu_shader_info(&mut desc).unwrap();
+
+        let tex = desc.texture(0).unwrap();
+        let (w, h) = (tex.width as usize, tex.height as usize);
+        let step = w - 1;
+        let needed = (length - 1) / step.max(1) + 1;
+        assert_eq!(
+            tex.height,
+            cpp_height.unwrap_or(needed as u32),
+            "length {length}, max width {max_width}"
+        );
+        let values = desc.texture_values(0).unwrap();
+        assert_eq!(values.len(), w * h * 3);
+
+        // Every entry is found where the shader's _computePos looks for it.
+        for k in 0..length {
+            let (row, col) = if h > 1 { (k / step, k % step) } else { (0, k) };
+            assert!(row < h, "length {length}: entry {k} in row {row} of {h}");
+            let v = k as f32 / (length - 1) as f32;
+            let texel = &values[3 * (row * w + col)..3 * (row * w + col) + 3];
+            assert_eq!(texel, &[v, v * 0.5, v * 0.25], "length {length}, entry {k}");
+        }
+        if h > 1 {
+            assert!(desc
+                .shader_text()
+                .contains(&format!("retVal.y = (retVal.y + 0.5) / {h}.;")));
+        }
+    }
+}
