@@ -91,6 +91,10 @@ fn check_bit_depth(data: &ImageData, bd: BitDepth) -> Result<()> {
     }
 }
 
+fn dimensions_overflow() -> Error {
+    Error::msg("PackedImageDesc: image dimensions and strides overflow the address space.")
+}
+
 /// Access to an image as a grid of RGBA pixels.
 pub trait ImageDesc {
     fn width(&self) -> usize;
@@ -145,7 +149,8 @@ impl<'a> PackedImageDesc<'a> {
     ) -> Result<Self> {
         let nc = ordering.num_channels();
         let bd = data.default_bit_depth();
-        Self::with_strides(data, width, height, ordering, bd, nc, nc * width)
+        let y_stride = nc.checked_mul(width).ok_or_else(dimensions_overflow)?;
+        Self::with_strides(data, width, height, ordering, bd, nc, y_stride)
     }
 
     /// Full control: bit depth (for 10/12/14 bit data in `u16` buffers) and
@@ -167,7 +172,11 @@ impl<'a> PackedImageDesc<'a> {
             ));
         }
         if height > 0 && width > 0 {
-            let needed = (height - 1) * y_stride + (width - 1) * x_stride + nc;
+            let needed = (height - 1)
+                .checked_mul(y_stride)
+                .and_then(|n| (width - 1).checked_mul(x_stride)?.checked_add(n))
+                .and_then(|n| n.checked_add(nc))
+                .ok_or_else(dimensions_overflow)?;
             if data.len() < needed {
                 return Err(Error::msg(format!(
                     "PackedImageDesc: buffer too small ({} elements, {} needed).",
@@ -273,7 +282,9 @@ impl<'a> PlanarImageDesc<'a> {
                 ));
             }
         }
-        let n = width * height;
+        let n = width.checked_mul(height).ok_or_else(|| {
+            Error::msg("PlanarImageDesc: image dimensions overflow the address space.")
+        })?;
         for c in [&r, &g, &b].into_iter().chain(a.iter()) {
             if c.len() < n {
                 return Err(Error::msg("PlanarImageDesc: channel buffer too small."));
@@ -324,5 +335,80 @@ impl ImageDesc for PlanarImageDesc<'_> {
                 a.set(i, px[3], max);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const PACKED_OVERFLOW: &str =
+        "PackedImageDesc: image dimensions and strides overflow the address space.";
+
+    fn strided(buf: &mut [f32], w: usize, h: usize, xs: usize, ys: usize) -> Result<()> {
+        PackedImageDesc::with_strides(
+            ImageData::F32(buf),
+            w,
+            h,
+            ChannelOrdering::Rgba,
+            BitDepth::F32,
+            xs,
+            ys,
+        )
+        .map(|_| ())
+    }
+
+    #[test]
+    fn packed_overflow() {
+        let mut buf = [0.0f32; 16];
+        // Tightly packed: channels * width overflows.
+        let e = PackedImageDesc::new(ImageData::F32(&mut buf), usize::MAX / 2, 1, 4).unwrap_err();
+        assert_eq!(e.message(), PACKED_OVERFLOW);
+        // (height - 1) * y_stride overflows.
+        let e = strided(&mut buf, 1, 3, 4, usize::MAX / 2 + 1).unwrap_err();
+        assert_eq!(e.message(), PACKED_OVERFLOW);
+        // (width - 1) * x_stride overflows.
+        let e = strided(&mut buf, 3, 1, usize::MAX / 2 + 1, 0).unwrap_err();
+        assert_eq!(e.message(), PACKED_OVERFLOW);
+        // The sum overflows although each product fits.
+        let e = strided(&mut buf, 2, 2, usize::MAX / 2, usize::MAX / 2).unwrap_err();
+        assert_eq!(e.message(), PACKED_OVERFLOW);
+        let e = strided(&mut buf, 1, 2, 4, usize::MAX - 2).unwrap_err();
+        assert_eq!(e.message(), PACKED_OVERFLOW);
+        // Valid images are still accepted, too small buffers still rejected.
+        assert!(PackedImageDesc::new(ImageData::F32(&mut buf), 2, 2, 4).is_ok());
+        assert!(strided(&mut buf, 2, 2, 4, 8).is_ok());
+        let e = PackedImageDesc::new(ImageData::F32(&mut buf), 3, 2, 4).unwrap_err();
+        assert_eq!(
+            e.message(),
+            "PackedImageDesc: buffer too small (16 elements, 24 needed)."
+        );
+    }
+
+    #[test]
+    fn planar_overflow() {
+        let (mut r, mut g, mut b) = ([0.0f32; 4], [0.0f32; 4], [0.0f32; 4]);
+        let e = PlanarImageDesc::new(
+            ImageData::F32(&mut r),
+            ImageData::F32(&mut g),
+            ImageData::F32(&mut b),
+            None,
+            usize::MAX / 2,
+            3,
+        )
+        .unwrap_err();
+        assert_eq!(
+            e.message(),
+            "PlanarImageDesc: image dimensions overflow the address space."
+        );
+        assert!(PlanarImageDesc::new(
+            ImageData::F32(&mut r),
+            ImageData::F32(&mut g),
+            ImageData::F32(&mut b),
+            None,
+            2,
+            2,
+        )
+        .is_ok());
     }
 }
