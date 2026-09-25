@@ -246,11 +246,9 @@ fn main() -> ExitCode {
         Err(e) => return fail(&format!("\nERROR: {e}\n")),
     };
 
-    let config: Config;
-
     // If --luts have been specified, synthesize a new (temporary) config
     // with the transformation embedded in a colorspace.
-    if group.num_transforms() > 0 {
+    let config: Config = if group.num_transforms() > 0 {
         if !inputspace.is_empty() {
             return fail("\nERROR: --inputspace is not allowed when using --lut\n\n");
         }
@@ -293,7 +291,7 @@ fn main() -> ExitCode {
         {
             return fail(&format!("OCIO Error: {e}\n"));
         }
-        config = editable;
+        editable
     } else {
         if inputspace.is_empty() {
             return fail("\nERROR: You must specify the --inputspace.\n\n");
@@ -324,11 +322,11 @@ fn main() -> ExitCode {
             ap.print_usage();
             return ExitCode::from(1);
         };
-        config = match loaded {
+        match loaded {
             Ok(c) => c,
             Err(e) => return fail(&format!("OCIO Error: {e}\n")),
-        };
-    }
+        }
+    };
 
     if outputfile.is_empty() && !usestdout {
         return fail("\nERROR: You must specify the outputfile or --stdout.\n\n");

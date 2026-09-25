@@ -352,7 +352,7 @@ pub fn format_transform(t: &Transform) -> String {
 fn min_max(values: &[f32]) -> String {
     let mut mn = [f32::MAX; 3];
     let mut mx = [-f32::MAX; 3];
-    for px in values.chunks_exact(3) {
+    for px in values.as_chunks::<3>().0 {
         for c in 0..3 {
             mn[c] = mn[c].min(px[c]);
             mx[c] = mx[c].max(px[c]);

@@ -35,7 +35,9 @@ fn equal_with_safe_rel_error(
 }
 
 fn to_pixels(img: &[f32]) -> Vec<Pixel> {
-    img.chunks_exact(4)
+    img.as_chunks::<4>()
+        .0
+        .iter()
         .map(|c| [c[0], c[1], c[2], c[3]])
         .collect()
 }

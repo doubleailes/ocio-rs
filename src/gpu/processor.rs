@@ -277,7 +277,9 @@ fn create_3d_lut(ops: &[OpRc], edgelen: usize) -> Result<OpVec> {
 
     // Apply the lattice ops to it.
     let mut pixels: Vec<ops::Pixel> = img
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|c| [c[0], c[1], c[2], c[3]])
         .collect();
     ops::apply_ops(ops, &mut pixels);

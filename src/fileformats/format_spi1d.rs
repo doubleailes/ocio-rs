@@ -281,7 +281,7 @@ impl FileFormat for LocalFileFormat {
         out.push_str("{\n");
 
         // Write the 1D data.
-        for rgb in oned_data.chunks_exact(3) {
+        for rgb in oned_data.as_chunks::<3>().0 {
             out.push_str("    ");
             out.push_str(&format_fixed6_rgb(rgb));
             out.push('\n');

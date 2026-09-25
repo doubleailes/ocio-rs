@@ -420,7 +420,12 @@ impl FileFormat for LocalFileFormat {
         } else {
             &shaper_data
         };
-        for rgb in lut1d_data.chunks_exact(3).chain(cube_data.chunks_exact(3)) {
+        for rgb in lut1d_data
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .chain(cube_data.as_chunks::<3>().0.iter())
+        {
             out.push_str(&format_fixed6_rgb(rgb));
             out.push('\n');
         }

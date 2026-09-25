@@ -561,7 +561,7 @@ impl Lut1DOpData {
         // channels only, so they are replaced by the first one.
         let mut values = self.array.values.clone();
         if self.array.num_color_components() == 1 && self.array.max_color_components() == 3 {
-            for px in values.chunks_exact_mut(3) {
+            for px in values.as_chunks_mut::<3>().0 {
                 px[1] = px[0];
                 px[2] = px[0];
             }
@@ -1533,7 +1533,7 @@ pub(crate) fn format_float_g(v: f32) -> String {
 pub(crate) fn rgb_min_max(values: &[f32]) -> ([f32; 3], [f32; 3]) {
     let mut mn = [f32::MAX; 3];
     let mut mx = [-f32::MAX; 3];
-    for rgb in values.chunks_exact(3) {
+    for rgb in values.as_chunks::<3>().0 {
         for c in 0..3 {
             mn[c] = std_min(mn[c], rgb[c]);
             mx[c] = std_max(mx[c], rgb[c]);

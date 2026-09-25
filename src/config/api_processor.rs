@@ -581,7 +581,7 @@ impl Config {
             let abs_error = 1e-5f32;
             let mult = 64.0f32;
             let mut ret = true;
-            for pair in pixels.chunks_exact(2) {
+            for pair in pixels.as_chunks::<2>().0 {
                 for c in 0..3 {
                     ret &= ((pair[0][c] * mult) - pair[1][c]).abs() <= abs_error;
                 }

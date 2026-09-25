@@ -170,7 +170,7 @@ impl FileFormat for LocalFileFormat {
         out.push_str(&format!("LUT_3D_SIZE {cube_size}\n"));
 
         // Fixed 6 decimal precision.
-        for rgb in cube_data.chunks_exact(3) {
+        for rgb in cube_data.as_chunks::<3>().0 {
             out.push_str(&format_fixed6_rgb(rgb));
             out.push('\n');
         }

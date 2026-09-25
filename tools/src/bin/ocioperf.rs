@@ -377,7 +377,7 @@ fn run(ap: &ArgParse) -> Result<()> {
             for _ in 0..iterations {
                 // Always process the same complete image.
                 m.resume()?;
-                for px in img.chunks_exact_mut(NUM_CHANNELS) {
+                for px in img.as_chunks_mut::<NUM_CHANNELS>().0 {
                     let mut rgba = [px[0], px[1], px[2], px[3]];
                     cpu.apply_rgba(&mut rgba);
                     px.copy_from_slice(&rgba);

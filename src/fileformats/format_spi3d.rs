@@ -147,7 +147,7 @@ impl FileFormat for LocalFileFormat {
         out.push_str(&format!("{cube_size} {cube_size} {cube_size}\n"));
 
         // Fixed 6 decimal precision for the values.
-        for (i, rgb) in cube_data.chunks_exact(3).enumerate() {
+        for (i, rgb) in cube_data.as_chunks::<3>().0.iter().enumerate() {
             out.push_str(&format!(
                 "{} {} {} {}\n",
                 ((i / cube_size) / cube_size) % cube_size,

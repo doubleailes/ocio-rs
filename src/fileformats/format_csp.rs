@@ -544,7 +544,7 @@ impl FileFormat for LocalFileFormat {
 
         // Write out the 3D cube.
         out.push_str(&format!("{cube_size} {cube_size} {cube_size}\n"));
-        for rgb in cube_data.chunks_exact(3) {
+        for rgb in cube_data.as_chunks::<3>().0 {
             out.push_str(&format!(
                 "{} {} {}\n",
                 format_fixed6(rgb[0]),

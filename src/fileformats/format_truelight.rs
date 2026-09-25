@@ -254,7 +254,7 @@ impl FileFormat for LocalFileFormat {
 
         // Write the cube.
         out.push_str("# Cube\n");
-        for rgb in cube_data.chunks_exact(3) {
+        for rgb in cube_data.as_chunks::<3>().0 {
             out.push_str(&format_fixed6_rgb(rgb));
             out.push('\n');
         }

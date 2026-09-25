@@ -57,23 +57,21 @@ fn lut3d_concrete_interpolation(i: Interpolation) -> Interpolation {
 /// the file uses the `FileTransform` interpolation (if valid for the LUT).
 fn handle_lut_interpolation(op: &mut OpData, file_interp: Interpolation) {
     match op {
-        OpData::Lut1D(l) => {
+        OpData::Lut1D(l)
             if Lut1DData::is_valid_interpolation(file_interp)
                 && l.interpolation == Interpolation::Default
                 && lut1d_concrete_interpolation(l.interpolation)
-                    != lut1d_concrete_interpolation(file_interp)
-            {
-                l.interpolation = file_interp;
-            }
+                    != lut1d_concrete_interpolation(file_interp) =>
+        {
+            l.interpolation = file_interp;
         }
-        OpData::Lut3D(l) => {
+        OpData::Lut3D(l)
             if Lut3DData::is_valid_interpolation(file_interp)
                 && l.interpolation == Interpolation::Default
                 && lut3d_concrete_interpolation(l.interpolation)
-                    != lut3d_concrete_interpolation(file_interp)
-            {
-                l.interpolation = file_interp;
-            }
+                    != lut3d_concrete_interpolation(file_interp) =>
+        {
+            l.interpolation = file_interp;
         }
         _ => {}
     }

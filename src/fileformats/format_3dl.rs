@@ -315,7 +315,7 @@ impl FileFormat for LocalFileFormat {
 
         // Write out the 3D cube.
         let cube_scale = max_value_from_integer_bit_depth(CUBE_BIT_DEPTH) as f32;
-        for rgb in cube_data.chunks_exact(3) {
+        for rgb in cube_data.as_chunks::<3>().0 {
             let r = clamped_int_from_norm_float(rgb[0], cube_scale);
             let g = clamped_int_from_norm_float(rgb[1], cube_scale);
             let b = clamped_int_from_norm_float(rgb[2], cube_scale);

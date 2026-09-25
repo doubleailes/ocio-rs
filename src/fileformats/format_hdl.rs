@@ -455,7 +455,7 @@ impl FileFormat for LocalFileFormat {
         if required_lut == HDL_3D1D {
             out.push_str("Pre {\n");
             // Grab the green channel from the RGB prelut.
-            for rgb in prelut_data.chunks_exact(3) {
+            for rgb in prelut_data.as_chunks::<3>().0 {
                 out.push_str(&format!("\t{}\n", format_fixed6(rgb[1])));
             }
             out.push_str("}\n");
@@ -472,7 +472,7 @@ impl FileFormat for LocalFileFormat {
         // Write the cube data after the "{".
         if required_lut == HDL_3D || required_lut == HDL_3D1D {
             // (OCIO note: the original baker code clamped values to 1.0.)
-            for rgb in cube_data.chunks_exact(3) {
+            for rgb in cube_data.as_chunks::<3>().0 {
                 out.push_str(&format!(
                     "\t{} {} {}\n",
                     format_fixed6(rgb[0]),
@@ -490,7 +490,7 @@ impl FileFormat for LocalFileFormat {
             for (name, c) in [("R", 0), ("G", 1), ("B", 2)] {
                 out.push_str(name);
                 out.push_str(" {\n");
-                for rgb in oned_data.chunks_exact(3) {
+                for rgb in oned_data.as_chunks::<3>().0 {
                     out.push_str(&format!("\t{}\n", format_fixed6(rgb[c])));
                 }
                 out.push_str("}\n");

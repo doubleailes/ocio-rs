@@ -434,10 +434,8 @@ impl MarkedEventReceiver for Builder<'_> {
                     .unwrap_or_else(Node::undefined);
                 self.push_value(node);
             }
-            Event::DocumentEnd => {
-                if self.stack.is_empty() {
-                    self.done = true;
-                }
+            Event::DocumentEnd if self.stack.is_empty() => {
+                self.done = true;
             }
             _ => {}
         }
