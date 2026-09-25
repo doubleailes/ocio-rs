@@ -91,6 +91,23 @@ fn validate_params(params: &[f64]) -> Result<()> {
             format_g(params[LOG_SIDE_SLOPE], 6)
         );
     }
+    // Deviation from OCIO, which accepts NaN parameters (and then renders
+    // NaN or meaningless values).
+    const NAMES: [&str; 6] = [
+        "log side slope",
+        "log side offset",
+        "linear side slope",
+        "linear side offset",
+        "linear side break",
+        "linear slope",
+    ];
+    if let Some(i) = params.iter().position(|p| p.is_nan()) {
+        crate::bail!(
+            "Log: Invalid {name} value '{}', {name} cannot be NaN.",
+            format_g(params[i], 6),
+            name = NAMES[i]
+        );
+    }
     Ok(())
 }
 
@@ -257,7 +274,9 @@ impl LogOpData {
                 "Log: Invalid base value '{}', base cannot be 1.",
                 format_g(self.base, 6)
             );
-        } else if self.base <= 0.0 {
+        } else if self.base <= 0.0 || self.base.is_nan() {
+            // Deviation from OCIO: NaN is rejected too (OCIO accepts it and
+            // renders NaN).
             crate::bail!(
                 "Log: Invalid base value '{}', base must be greater than 0.",
                 format_g(self.base, 6)

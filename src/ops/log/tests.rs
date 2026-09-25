@@ -148,6 +148,55 @@ fn data_validation_fails() {
 }
 
 #[test]
+fn log_data_validate_nan() {
+    // Deviation from OCIO: NaN base / parameters pass OCIO's
+    // LogOpData::validate (the C++ build renders NaN), the port rejects them.
+    let msg = |l: LogOpData| l.validate().unwrap_err().message().to_string();
+    let l = LogOpData::from_base(f64::NAN, TransformDirection::Forward);
+    assert_eq!(
+        msg(l),
+        "Log: Invalid base value 'nan', base must be greater than 0."
+    );
+    let names = [
+        "log side slope",
+        "log side offset",
+        "linear side slope",
+        "linear side offset",
+    ];
+    for (i, name) in names.iter().enumerate() {
+        for dir in [TransformDirection::Forward, TransformDirection::Inverse] {
+            // log slope, log offset, lin slope, lin offset (per channel).
+            let mut p = [[1.0; 3], [0.0; 3], [1.0; 3], [0.0; 3]];
+            p[i][1] = f64::NAN;
+            let l = LogOpData::from_affine(2.0, &p[0], &p[1], &p[2], &p[3], dir);
+            assert_eq!(
+                msg(l),
+                format!("Log: Invalid {name} value 'nan', {name} cannot be NaN.")
+            );
+        }
+    }
+
+    let mut t = LogCameraTransform::new([0.1; 3]);
+    t.lin_side_break[2] = f64::NAN;
+    assert_eq!(
+        t.validate().unwrap_err().message(),
+        "LogCameraTransform validation failed: Log: Invalid linear side break value 'nan', linear side break cannot be NaN."
+    );
+    t.lin_side_break = [0.1; 3];
+    t.linear_slope = Some([1.0, f64::NAN, 1.0]);
+    assert_eq!(
+        t.validate().unwrap_err().message(),
+        "LogCameraTransform validation failed: Log: Invalid linear slope value 'nan', linear slope cannot be NaN."
+    );
+    let mut t = LogTransform::default();
+    t.base = f64::NAN;
+    assert_eq!(
+        t.validate().unwrap_err().message(),
+        "LogTransform validation failed: Log: Invalid base value 'nan', base must be greater than 0."
+    );
+}
+
+#[test]
 fn data_log_inverse() {
     let pr = vec![1.5, 10.0, 1.1, 1.0];
     let pg = vec![1.6, 20.0, 1.2, 2.0];
