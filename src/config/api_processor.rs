@@ -197,8 +197,16 @@ impl Config {
         let mut result = proc;
         if let Ok(mut cache) = self.processor_cache.lock() {
             if !env_present(OCIO_DISABLE_CACHE_FALLBACK) {
+                // Note: OCIO only compares the cache ids, which do not
+                // include the GPU allocations, so it may reuse a processor
+                // whose legacy GPU processor uses other allocations.
                 let id = result.cache_id();
-                if let Some(p) = cache.entries.values().find(|p| p.cache_id() == id) {
+                let legacy_id = result.legacy_gpu_cache_id();
+                if let Some(p) = cache
+                    .entries
+                    .values()
+                    .find(|p| p.cache_id() == id && p.legacy_gpu_cache_id() == legacy_id)
+                {
                     result = p.clone();
                 }
             }

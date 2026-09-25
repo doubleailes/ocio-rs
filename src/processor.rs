@@ -144,6 +144,21 @@ impl Processor {
         crate::hash_utils::cache_id_hash_uuid(ops::ops_cache_id(&self.ops).as_bytes())
     }
 
+    /// Identifier of the ops and of the GPU allocations used by the legacy
+    /// GPU processor (the allocations are not part of
+    /// [`cache_id`](Self::cache_id), as in OCIO).
+    pub(crate) fn legacy_gpu_cache_id(&self) -> String {
+        let ops: OpVec = self
+            .legacy_ops
+            .iter()
+            .filter(|o| {
+                !o.is_no_op_type() || o.downcast_ref::<crate::config::AllocationNoOp>().is_some()
+            })
+            .cloned()
+            .collect();
+        ops::ops_cache_id(&ops)
+    }
+
     pub fn processor_metadata(&self) -> &ProcessorMetadata {
         &self.metadata
     }

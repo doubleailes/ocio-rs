@@ -303,3 +303,59 @@ fn config_context_variables_typical_use_cases() {
         assert!(!same_instance(&procs[1], &procs[2]));
     }
 }
+
+/// Legacy GPU shader text and 3D LUT values of a processor.
+fn legacy_gpu(p: &Processor) -> (String, Vec<f32>) {
+    let gpu = p
+        .optimized_legacy_gpu_processor(OptimizationFlags::DEFAULT, 8)
+        .unwrap();
+    use ocio::gpu::{GpuShaderCreator, GpuShaderDesc};
+    let mut desc = GpuShaderDesc::new();
+    desc.set_language(GpuLanguage::Glsl4_0);
+    gpu.extract_gpu_shader_info(&mut desc).unwrap();
+    (
+        desc.shader_text().to_string(),
+        desc.texture_3d_values(0).unwrap().to_vec(),
+    )
+}
+
+/// Two color spaces with the same transform but different allocations give
+/// processors with the same cache id. The cache must not reuse the first one
+/// for the second, as its legacy GPU processor bakes the allocation.
+/// Deviation: OCIO 2.6 reuses it (its cache ids ignore the allocations), so
+/// its legacy GPU processor of `b` uses the allocation of `a`.
+#[test]
+fn processor_cache_keeps_different_allocations() {
+    let _lock = env_lock();
+    let config = format!(
+        "ocio_profile_version: 2\n\nsearch_path: {}\n\nroles:\n  default: raw\n\ndisplays:\n  disp:\n    - !<View> {{name: v, colorspace: out}}\n\ncolorspaces:\n  - !<ColorSpace>\n    name: raw\n\n  - !<ColorSpace>\n    name: a\n    allocation: lg2\n    allocationvars: [-8, 5]\n    to_scene_reference: !<MatrixTransform> {{matrix: [2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1]}}\n\n  - !<ColorSpace>\n    name: b\n    allocation: uniform\n    allocationvars: [0, 1]\n    to_scene_reference: !<MatrixTransform> {{matrix: [2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1]}}\n\n  - !<ColorSpace>\n    name: out\n    from_scene_reference: !<FileTransform> {{src: spi_ocio_srgb_test.spi3d, interpolation: linear}}\n",
+        data_file("")
+    );
+    let cfg = load(&config);
+    let pa = cs(&cfg, None, "a", "out");
+    let pb = cs(&cfg, None, "b", "out");
+    assert_eq!(pa.cache_id(), pb.cache_id());
+    assert!(!same_instance(&pa, &pb));
+    // A processor with the same allocations is still shared.
+    let pa2 = cfg
+        .get_processor_for_transform(
+            &Transform::ColorSpace(ColorSpaceTransform {
+                src: "a".into(),
+                dst: "out".into(),
+                ..Default::default()
+            }),
+            TransformDirection::Forward,
+        )
+        .unwrap();
+    assert!(same_instance(&pa, &pa2));
+
+    let uncached = cfg.create_editable_copy();
+    uncached.set_processor_cache_flags(ProcessorCacheFlags::OFF);
+    let (text_a, lut_a) = legacy_gpu(&cs(&uncached, None, "a", "out"));
+    let (text_b, lut_b) = legacy_gpu(&cs(&uncached, None, "b", "out"));
+    assert!(text_a.contains("log2(outColor.rgb)"));
+    assert!(!text_b.contains("log2"));
+    assert_ne!(lut_a, lut_b);
+    assert_eq!(legacy_gpu(&pa), (text_a, lut_a));
+    assert_eq!(legacy_gpu(&pb), (text_b, lut_b));
+}
