@@ -341,3 +341,49 @@ fn integer_input_uses_lut_lookup() {
     cpu.apply_src_dst(&si, &mut di).unwrap();
     assert_eq!(dst, [0.0, 4.00326056e+36, f32::MAX, 1.0]);
 }
+
+/// A 10-bit image in a `u16` buffer may hold values above 1023. The look-up
+/// of the first 1D LUT clamps them to the last entry, as the 32f renderer
+/// does. Deviation: OCIO 2.6 reads outside of its look-up table for them
+/// (garbage values or a crash).
+#[test]
+fn integer_input_lut_lookup_clamps_out_of_range_codes() {
+    let mut t = Lut1DTransform::new(17, false);
+    for i in 0..17 {
+        let v = i as f32 / 16.0;
+        t.set_value(i, v * v, 0.5 * v, 0.25 + 0.5 * v);
+    }
+    let p = Config::create_raw()
+        .get_processor_for_transform(&Transform::Lut1D(t), TransformDirection::Forward)
+        .unwrap();
+    let cpu = p.optimized_cpu_processor_with_bit_depths(
+        BitDepth::UInt10,
+        BitDepth::F32,
+        OptimizationFlags::DEFAULT,
+    );
+    let mut src = [
+        1023u16, 1023, 1023, 1023, 4000, 1100, 65535, 1023, 512, 0, 2000, 1023,
+    ];
+    let mut dst = [0f32; 12];
+    let si = PackedImageDesc::with_strides(
+        ImageData::U16(&mut src),
+        3,
+        1,
+        ChannelOrdering::Rgba,
+        BitDepth::UInt10,
+        4,
+        12,
+    )
+    .unwrap();
+    let mut di = PackedImageDesc::new(ImageData::F32(&mut dst), 3, 1, 4).unwrap();
+    cpu.apply_src_dst(&si, &mut di).unwrap();
+    // The in-range values are from OCIO.
+    assert_eq!(&dst[0..3], &[1.0, 0.5, 0.75]);
+    assert_eq!(&dst[4..7], &[1.0, 0.5, 0.75]);
+    assert_eq!(&dst[8..11], &[0.250519305, 0.0, 0.75]);
+
+    // Same values as the 32f renderer.
+    let mut rgb = [4000.0 / 1023.0, 1100.0 / 1023.0, 65535.0 / 1023.0];
+    p.default_cpu_processor().apply_rgb(&mut rgb);
+    assert_eq!(rgb, [1.0, 0.5, 0.75]);
+}

@@ -619,7 +619,12 @@ impl BitDepthLuts {
                     } else {
                         (p[c] * max).round() as usize
                     };
-                    rgb2[c] = luts[c].get(codes[c]).copied().unwrap_or(0.0);
+                    // Note: The 10, 12 and 14 bit images may hold values
+                    // above the maximum code value. OCIO reads outside of
+                    // its table for them; clamp to the last entry, as the
+                    // renderer of the 32f values does.
+                    let lut = &luts[c];
+                    rgb2[c] = lut[codes[c].min(lut.len() - 1)];
                 }
                 if *hue_adjust {
                     // The hue is computed from the input values (the code
