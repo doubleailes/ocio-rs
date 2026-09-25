@@ -1,0 +1,27 @@
+[package]
+name = "ocio"
+version = "0.1.0"
+edition = "2021"
+license = "MIT AND BSD-3-Clause"
+description = "A pure Rust port of OpenColorIO, the color management framework for visual effects and animation."
+repository = "https://github.com/doubleailes/ocio-rs"
+readme = "README.md"
+keywords = ["color", "ocio", "vfx", "lut", "aces"]
+categories = ["graphics", "multimedia::images"]
+
+[lib]
+name = "ocio"
+path = "src/lib.rs"
+
+[dependencies]
+half = "2"
+md5 = "0.8"
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+regex = "1"
+yaml-rust2 = "0.10"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+
+[workspace]
+members = [".", "tools"]
