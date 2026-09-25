@@ -191,7 +191,12 @@ impl Processor {
     /// Processor with optimized ops.
     pub fn optimized(&self, flags: OptimizationFlags) -> Processor {
         let mut p = self.clone();
-        p.ops = optimize_ops(&self.ops, flags);
+        let (ops, ops_replaced) = optimize_ops_impl(&self.ops, flags);
+        p.ops = ops;
+        if ops_replaced {
+            // As in OCIO (see `optimize_ops_impl`).
+            p.format_metadata = FormatMetadata::default();
+        }
         p
     }
 
@@ -362,6 +367,14 @@ fn unify_dynamic_properties(ops: OpVec) -> OpVec {
 
 /// Optimize an op list (port of the main loop of `OpRcPtrVec::optimize`).
 pub fn optimize_ops(ops: &[OpRc], flags: OptimizationFlags) -> OpVec {
+    optimize_ops_impl(ops, flags).0
+}
+
+/// [`optimize_ops`], also returning true when an op was replaced by simpler
+/// ones (`ReplaceOps`). OCIO then rebuilds the op list, which drops its
+/// format metadata (e.g. the CLF `ProcessList` description and id).
+fn optimize_ops_impl(ops: &[OpRc], flags: OptimizationFlags) -> (OpVec, bool) {
+    let mut ops_replaced = false;
     // RemoveNoOpTypes.
     let mut v: OpVec = ops.iter().filter(|o| !is_no_op_type(o)).cloned().collect();
 
@@ -373,8 +386,15 @@ pub fn optimize_ops(ops: &[OpRc], flags: OptimizationFlags) -> OpVec {
     }
 
     if flags == OptimizationFlags::NONE {
-        return v;
+        return (v, false);
     }
+
+    // `Op::simplify` handles both `ReplaceOps` (gated by `SIMPLIFY_OPS`) and
+    // `ReplaceIdentityOps` (gated by `IDENTITY` / `IDENTITY_GAMMA`): the flags
+    // are split to run them as two steps, in the OCIO order.
+    let identity_mask = OptimizationFlags::IDENTITY.0 | OptimizationFlags::IDENTITY_GAMMA.0;
+    let replace_flags = OptimizationFlags(flags.0 & !identity_mask);
+    let identity_flags = OptimizationFlags(flags.0 & !OptimizationFlags::SIMPLIFY_OPS.0);
 
     // `Op::combine_with` handles both the removal of inverse pairs (gated by
     // the `PAIR_IDENTITY_*` flags) and the composition of ops (gated by the
@@ -394,19 +414,11 @@ pub fn optimize_ops(ops: &[OpRc], flags: OptimizationFlags) -> OpVec {
             count += n - v.len();
         }
 
-        // ReplaceOps & ReplaceIdentityOps: replace ops by simpler ones.
-        let mut j = 0;
-        while j < v.len() {
-            if let Some(repl) = v[j].simplify(flags) {
-                let repl: OpVec = repl.into_iter().filter(|o| !o.is_no_op()).collect();
-                let n = repl.len();
-                v.splice(j..j + 1, repl);
-                count += 1;
-                j += n;
-            } else {
-                j += 1;
-            }
-        }
+        // ReplaceOps, then ReplaceIdentityOps.
+        let replaced = simplify_ops(&mut v, replace_flags);
+        ops_replaced |= replaced > 0;
+        count += replaced;
+        count += simplify_ops(&mut v, identity_flags);
         count += ops::lut1d::replace_identity_luts(&mut v, flags);
 
         // RemoveInverseOps: the processed part of the list is used as a stack
@@ -449,7 +461,26 @@ pub fn optimize_ops(ops: &[OpRc], flags: OptimizationFlags) -> OpVec {
             }
         }
     }
-    v
+    (v, ops_replaced)
+}
+
+/// Replace the ops by their simpler replacement ([`Op::simplify`]); returns
+/// the number of replaced ops.
+fn simplify_ops(v: &mut OpVec, flags: OptimizationFlags) -> usize {
+    let mut count = 0;
+    let mut j = 0;
+    while j < v.len() {
+        if let Some(repl) = v[j].simplify(flags) {
+            let repl: OpVec = repl.into_iter().filter(|o| !o.is_no_op()).collect();
+            let n = repl.len();
+            v.splice(j..j + 1, repl);
+            count += 1;
+            j += n;
+        } else {
+            j += 1;
+        }
+    }
+    count
 }
 
 /// Maximum number of optimization passes (as in OCIO).

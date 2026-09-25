@@ -233,3 +233,67 @@ fn matrix_renderer_matches_scalar_evaluation_order() {
         }
     }
 }
+
+/// A 1D LUT read from a file with one color component stays a one component
+/// LUT: the flattening of the inverse half-domain LUT (which, as in OCIO,
+/// only affects the active channels) is used for all the channels and the
+/// LUT is written with one component.
+#[test]
+fn inverse_half_domain_lut_keeps_one_component() {
+    let p = file_processor(
+        "lut1d_inverse_halfdom_slog_fclut.ctf",
+        TransformDirection::Forward,
+        Interpolation::Default,
+    )
+    .unwrap();
+    let g = p.create_group_transform();
+    let Transform::Lut1D(lut) = &g.transforms[0] else {
+        panic!("expected a Lut1D");
+    };
+    // -infinity entry, flattened (the file has 16384).
+    assert_eq!(&lut.values[64512 * 3..64512 * 3 + 3], &[0.0, 0.0, 0.0]);
+    let ctf = g
+        .write(&Config::create_raw(), "Color Transform Format")
+        .unwrap();
+    // Output of OCIO.
+    assert!(ctf.contains(r#"<Array dim="65536 1">"#));
+    let lines: Vec<&str> = ctf.lines().collect();
+    let first = lines.iter().position(|l| l.contains("<Array")).unwrap() + 1;
+    assert_eq!(lines[first].trim(), "17830");
+    assert_eq!(lines[first + 64512].trim(), "0");
+}
+
+/// OCIO drops the format metadata of the op list when the optimizer replaces
+/// an op by simpler ones (`ReplaceOps` rebuilds the list), e.g. a CDL
+/// without power becoming matrices.
+#[test]
+fn optimized_processor_drops_metadata_when_ops_are_replaced() {
+    let p = file_processor(
+        "clf/cdl_missing_sop.clf",
+        TransformDirection::Forward,
+        Interpolation::Default,
+    )
+    .unwrap();
+    let config = Config::create_raw();
+    let ctf = p
+        .create_group_transform()
+        .write(&config, "Color Transform Format")
+        .unwrap();
+    assert!(ctf.contains("<Description>"));
+    let opt = p.optimized(OptimizationFlags::DEFAULT);
+    let ctf = opt
+        .create_group_transform()
+        .write(&config, "Color Transform Format")
+        .unwrap();
+    assert!(ctf.contains(r#" id="urn:uuid:"#), "{ctf}");
+    assert!(!ctf.contains("Missing SOP"), "{ctf}");
+    // No replacement: the metadata is kept.
+    let flags =
+        OptimizationFlags(OptimizationFlags::DEFAULT.0 & !OptimizationFlags::SIMPLIFY_OPS.0);
+    let ctf = p
+        .optimized(flags)
+        .create_group_transform()
+        .write(&config, "Color Transform Format")
+        .unwrap();
+    assert!(!ctf.contains("urn:uuid:"), "{ctf}");
+}

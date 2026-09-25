@@ -531,13 +531,19 @@ impl Lut1DOpData {
         if t.output_raw_halfs {
             half_flags.0 |= HalfFlags::OUTPUT_HALF_CODE.0;
         }
+        let mut array = Lut1DArray {
+            length,
+            num_color_components: 3,
+            values: t.values.clone(),
+        };
+        // The transform does not record the number of color components: a
+        // LUT whose channels are identical is handled as a one component LUT,
+        // as OCIO does for the LUTs read from files (this matters for the
+        // flattening of inverse LUTs, done on the active channels only).
+        array.adjust_color_component_number();
         Ok(Self {
             interpolation: t.interpolation,
-            array: Lut1DArray {
-                length,
-                num_color_components: 3,
-                values: t.values.clone(),
-            },
+            array,
             half_flags,
             hue_adjust: t.hue_adjust,
             direction: t.direction,
@@ -549,9 +555,20 @@ impl Lut1DOpData {
 
     /// Convert to a transform.
     pub fn to_transform(&self) -> Lut1DTransform {
+        // A LUT reduced to one color component only uses (and OCIO only
+        // writes) the first channel: the other channels may differ, e.g.
+        // after the flattening of an inverse LUT which is done on the active
+        // channels only, so they are replaced by the first one.
+        let mut values = self.array.values.clone();
+        if self.array.num_color_components() == 1 && self.array.max_color_components() == 3 {
+            for px in values.chunks_exact_mut(3) {
+                px[1] = px[0];
+                px[2] = px[0];
+            }
+        }
         Lut1DTransform {
             direction: self.direction,
-            values: self.array.values.clone(),
+            values,
             input_half_domain: self.is_input_half_domain(),
             output_raw_halfs: self.is_output_raw_halfs(),
             hue_adjust: self.hue_adjust,
