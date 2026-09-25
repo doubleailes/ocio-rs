@@ -41,7 +41,7 @@ fn measure_transform_file() {
     let s = &r.stdout;
     assert!(s.starts_with(&format!(
         "\nOCIO Version: {}\n\nProcessing using '{lut}'\n\n\n\nProcessing statistics:\n\n",
-        ocio::OCIO_VERSION
+        ocio::OCIO_VERSION_FULL_STR
     )));
     assert!(s.contains("Create the processor:\t\t\tFor 1 iterations, it took: ["));
     assert!(s.contains("Create the optimized processor:\t\tFor 1 iterations, it took: ["));

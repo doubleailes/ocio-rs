@@ -1552,7 +1552,7 @@ fn load_config(node: &Node, config: &mut Config, filename: Option<&str>) -> Resu
         }
         s.push_str(&format!(
             "is version {major}.{minor}. This version of the OpenColorIO library ({}) is not able to load that config version.\n{}",
-            crate::OCIO_VERSION,
+            crate::get_version(),
             e.message()
         ));
         return Err(Error::msg(s));

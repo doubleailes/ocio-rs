@@ -70,7 +70,61 @@ pub fn clear_all_caches() {
     fileformats::file_transform::clear_file_transform_caches();
 }
 
-/// Library version (matches the OCIO version this port tracks).
-pub const OCIO_VERSION: &str = "2.5.0";
+/// Library version (matches the OCIO version this port tracks: `OCIO_VERSION`,
+/// set by `project(OpenColorIO VERSION 2.6.0)` in OCIO's CMakeLists.txt).
+pub const OCIO_VERSION: &str = "2.6.0";
+/// Release type of the tracked OCIO version (`OCIO_VERSION_STATUS_STR`).
+pub const OCIO_VERSION_STATUS_STR: &str = "dev";
+/// Full version string (`OCIO_VERSION_FULL_STR`), as returned by `OCIO::GetVersion`.
+pub const OCIO_VERSION_FULL_STR: &str = "2.6.0dev";
+/// Version as an integer, `0xMMmmpp00` (`OCIO_VERSION_HEX`, `OCIO::GetVersionHex`).
+pub const OCIO_VERSION_HEX: u32 = 0x0206_0000;
+
+/// The library version, e.g. "2.6.0dev" (port of `GetVersion`).
+pub fn get_version() -> &'static str {
+    OCIO_VERSION_FULL_STR
+}
+
+/// The library version as an integer, `0xMMmmpp00` (port of `GetVersionHex`).
+pub fn get_version_hex() -> u32 {
+    OCIO_VERSION_HEX
+}
 /// Version of this crate.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[cfg(test)]
+mod version_tests {
+    use super::*;
+
+    #[test]
+    fn version_matches_ocio_2_6() {
+        // Values reported by the OCIO 2.6 C++ library.
+        assert_eq!(get_version(), "2.6.0dev");
+        assert_eq!(get_version_hex(), 0x0206_0000);
+        assert_eq!(
+            OCIO_VERSION_FULL_STR,
+            format!("{OCIO_VERSION}{OCIO_VERSION_STATUS_STR}")
+        );
+        let mut parts = OCIO_VERSION.split('.').map(|p| p.parse::<u32>().unwrap());
+        let hex = (parts.next().unwrap() << 24)
+            | (parts.next().unwrap() << 16)
+            | (parts.next().unwrap() << 8);
+        assert_eq!(hex, OCIO_VERSION_HEX);
+        // The latest supported config version follows the library version.
+        assert_eq!(
+            config::LAST_SUPPORTED_MINOR_VERSION[1],
+            (OCIO_VERSION_HEX >> 16) & 0xff
+        );
+
+        let err = Config::create_from_str("ocio_profile_version: 2.7\n").unwrap_err();
+        assert!(
+            err.to_string().contains(
+                "This .ocio config is version 2.7. This version of the OpenColorIO library \
+                 (2.6.0dev) is not able to load that config version.\n\
+                 The minor version 7 is not supported for major version 2. Maximum minor \
+                 version is 6."
+            ),
+            "{err}"
+        );
+    }
+}

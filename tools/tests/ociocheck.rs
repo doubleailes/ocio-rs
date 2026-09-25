@@ -53,8 +53,8 @@ fn valid_config() {
     let s = &r.stdout;
     assert!(s.starts_with(&format!(
         "\nOpenColorIO Library Version: {}\nOpenColorIO Library VersionHex: {}\n\nLoading {}\n",
-        ocio::OCIO_VERSION,
-        0x0205_0000,
+        ocio::OCIO_VERSION_FULL_STR,
+        ocio::OCIO_VERSION_HEX,
         config
     )));
     assert!(s.contains("** General **\nEnvironment: {}\nSearch Path: luts\n"));

@@ -65,7 +65,7 @@ fn convert() {
     assert_eq!(r.code, 0, "{}", r.stderr);
     assert!(r.stdout.starts_with(&format!(
         "OCIO Version: {}\nBuilding the transformation.\n\nCreating the CLF lut file\n  Processing took: ",
-        ocio::OCIO_VERSION
+        ocio::OCIO_VERSION_FULL_STR
     )));
     let text = std::fs::read_to_string(&out).unwrap();
     assert!(text.contains("<Id>urn:uuid:"));

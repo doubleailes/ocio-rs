@@ -70,7 +70,7 @@ fn process_pixels() {
         r.stdout,
         format!(
             "\nOCIO Version: {}\n\n\nInput  [R G B]: [0.5 0.5 0.5]\nOutput [R G B]: [  0 0.5   0]\n",
-            ocio::OCIO_VERSION
+            ocio::OCIO_VERSION_FULL_STR
         )
     );
 

@@ -15,20 +15,14 @@ pub mod imageio;
 use ocio::config::utils::format_g;
 use std::time::{Duration, Instant};
 
-/// The library version (`OCIO::GetVersion`).
+/// The library version, e.g. "2.6.0dev" (`OCIO::GetVersion`).
 pub fn version() -> &'static str {
-    ocio::OCIO_VERSION
+    ocio::get_version()
 }
 
 /// The library version as an integer, `0xMMmmpp00` (`OCIO::GetVersionHex`).
 pub fn version_hex() -> u32 {
-    let mut parts = ocio::OCIO_VERSION
-        .split('.')
-        .map(|p| p.trim().parse::<u32>().unwrap_or(0));
-    let major = parts.next().unwrap_or(0);
-    let minor = parts.next().unwrap_or(0);
-    let patch = parts.next().unwrap_or(0);
-    (major << 24) | (minor << 16) | (patch << 8)
+    ocio::get_version_hex()
 }
 
 /// Value of an environment variable, `None` when unset
@@ -237,7 +231,8 @@ mod tests {
 
     #[test]
     fn helpers() {
-        assert_eq!(version_hex(), 0x0205_0000);
+        assert_eq!(version(), "2.6.0dev");
+        assert_eq!(version_hex(), 0x0206_0000);
         assert_eq!(remove_extension("dir/archive.ocioz"), "dir/archive");
         assert_eq!(remove_extension("dir.x/archive"), "dir.x/archive");
         assert_eq!(remove_extension("a.b.c"), "a.b");
