@@ -500,49 +500,50 @@ fn read_exr(filename: &str) -> std::result::Result<ImageIO, String> {
     let layer = image.layer_data;
     let (width, height) = (layer.size.width(), layer.size.height());
     let list = &layer.channel_data.list;
-    let find = |name: &str| {
-        list.iter()
-            .position(|c| c.name.to_string().eq_ignore_ascii_case(name))
+    // As OCIO's EXR reader (`imageio_exr.cpp`): the R, G and B channels are
+    // read (zero filled if missing) and A only if present; no other channel
+    // is preserved. The image is half float unless one of these channels is
+    // float.
+    let find = |name: &str| list.iter().position(|c| c.name.to_string() == name);
+    let rgb = [find("R"), find("G"), find("B")];
+    let alpha = find("A");
+    let selected: Vec<Option<usize>> = match alpha {
+        Some(a) => vec![rgb[0], rgb[1], rgb[2], Some(a)],
+        None => rgb.to_vec(),
     };
-    let selected: Vec<usize> = match (find("R"), find("G"), find("B")) {
-        (Some(r), Some(g), Some(b)) => {
-            let mut v = vec![r, g, b];
-            if let Some(a) = find("A") {
-                v.push(a);
-            }
-            v
-        }
-        _ => match list.len() {
-            0 => return Err("the image has no channel".to_string()),
-            // Luminance only: expand to RGB.
-            1 | 2 => vec![0, 0, 0],
-            3 => vec![0, 1, 2],
-            _ => vec![0, 1, 2, 3],
-        },
-    };
-    let all_half = selected
+    let any_float = selected
         .iter()
-        .all(|i| matches!(list[*i].sample_data, FlatSamples::F16(_)));
+        .flatten()
+        .any(|i| matches!(list[*i].sample_data, FlatSamples::F32(_)));
     let nc = selected.len();
     let n = width * height;
-    let data = if all_half {
-        let mut out = vec![f16::ZERO; n * nc];
-        for (c, idx) in selected.iter().enumerate() {
-            if let FlatSamples::F16(v) = &list[*idx].sample_data {
-                for (i, s) in v.iter().enumerate().take(n) {
-                    out[i * nc + c] = *s;
-                }
-            }
-        }
-        PixelData::F16(out)
-    } else {
+    let data = if any_float {
         let mut out = vec![0.0f32; n * nc];
         for (c, idx) in selected.iter().enumerate() {
+            let Some(idx) = idx else { continue };
             for (i, s) in list[*idx].sample_data.values_as_f32().enumerate().take(n) {
                 out[i * nc + c] = s;
             }
         }
         PixelData::F32(out)
+    } else {
+        let mut out = vec![f16::ZERO; n * nc];
+        for (c, idx) in selected.iter().enumerate() {
+            let Some(idx) = idx else { continue };
+            match &list[*idx].sample_data {
+                FlatSamples::F16(v) => {
+                    for (i, s) in v.iter().enumerate().take(n) {
+                        out[i * nc + c] = *s;
+                    }
+                }
+                other => {
+                    for (i, s) in other.values_as_f32().enumerate().take(n) {
+                        out[i * nc + c] = f16::from_f32(s);
+                    }
+                }
+            }
+        }
+        PixelData::F16(out)
     };
     let mut attributes = Vec::new();
     for (k, v) in &layer.attributes.other {
@@ -616,6 +617,50 @@ mod tests {
             *v = i as f32 / 32.0;
         }
         img
+    }
+
+    #[test]
+    fn exr_channels_as_ocio() {
+        use exr::prelude::*;
+        // Luminance + alpha: as in OCIO, RGB are zero filled and A is kept.
+        let path = temp_path("ya.exr");
+        let (w, h) = (2usize, 1usize);
+        let y = FlatSamples::F16(vec![f16::from_f32(0.5), f16::from_f32(0.25)]);
+        let a = FlatSamples::F16(vec![f16::from_f32(1.0), f16::from_f32(0.75)]);
+        let channels = AnyChannels::sort(SmallVec::from_vec(vec![
+            AnyChannel::new("Y", y),
+            AnyChannel::new("A", a),
+        ]));
+        Image::from_channels((w, h), channels)
+            .write()
+            .to_file(&path)
+            .unwrap();
+        let img = ImageIO::open(&path).unwrap();
+        assert_eq!(img.num_channels(), 4);
+        match &img.data {
+            PixelData::F16(v) => {
+                let v: Vec<f32> = v.iter().map(|x| x.to_f32()).collect();
+                assert_eq!(v, vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.75]);
+            }
+            _ => panic!("expected a half float image"),
+        }
+
+        // Missing G channel, float R: float image, G zero filled, no alpha.
+        let path = temp_path("rb.exr");
+        let channels = AnyChannels::sort(SmallVec::from_vec(vec![
+            AnyChannel::new("R", FlatSamples::F32(vec![0.5, 0.25])),
+            AnyChannel::new("B", FlatSamples::F16(vec![f16::from_f32(1.0); 2])),
+        ]));
+        Image::from_channels((w, h), channels)
+            .write()
+            .to_file(&path)
+            .unwrap();
+        let img = ImageIO::open(&path).unwrap();
+        assert_eq!(img.num_channels(), 3);
+        match &img.data {
+            PixelData::F32(v) => assert_eq!(v, &vec![0.5, 0.0, 1.0, 0.25, 0.0, 1.0]),
+            _ => panic!("expected a float image"),
+        }
     }
 
     #[test]
