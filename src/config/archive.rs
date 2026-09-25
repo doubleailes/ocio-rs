@@ -182,6 +182,7 @@ impl ExtractedDir {
                 COUNTER.fetch_add(1, Ordering::Relaxed)
             );
             let dir = tmp.join(format!("ocio-ocioz-{:x}", md5::compute(seed.as_bytes())));
+            #[cfg_attr(not(unix), allow(unused_mut))]
             let mut builder = std::fs::DirBuilder::new();
             #[cfg(unix)]
             {
