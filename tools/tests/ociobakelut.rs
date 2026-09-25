@@ -245,6 +245,40 @@ fn bake_luts_to_file() {
 }
 
 #[test]
+fn cccid_applies_to_inverse_luts() {
+    let ccc = data_file("cdl_test1.ccc");
+    let dir = temp_dir("bakelut_cccid");
+    let out = dir.join("out.clf").to_string_lossy().into_owned();
+    let r = run(
+        EXE,
+        &[
+            "--v",
+            "--cccid",
+            "cc0002",
+            "--lut",
+            &ccc,
+            "--invlut",
+            &ccc,
+            "--format",
+            CLF,
+            "--cubesize",
+            "2",
+            &out,
+        ],
+    );
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    for dir in ["forward", "inverse"] {
+        assert!(
+            r.stdout.contains(&format!(
+                "<FileTransform direction={dir}, interpolation=best, src={ccc}, cccid=cc0002>"
+            )),
+            "{}",
+            r.stdout
+        );
+    }
+}
+
+#[test]
 fn bake_from_config() {
     let dir = temp_dir("bakelut_config");
     let config = write_test_config(&dir, false);

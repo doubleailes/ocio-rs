@@ -61,6 +61,11 @@ fn parse_luts(argv: &[String]) -> Result<GroupTransform, Error> {
                 let mut t = FileTransform::new(&argv[i + 1]);
                 t.interpolation = Interpolation::Best;
                 t.direction = TransformDirection::Inverse;
+                // Deviation: OCIO's ociobakelut ignores --cccid for --invlut,
+                // although the option applies to "any following LUTs".
+                if let Some(id) = &last_ccc_id {
+                    t.ccc_id = id.clone();
+                }
                 group.append(t);
                 i += 1;
             }
