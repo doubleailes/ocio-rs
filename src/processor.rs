@@ -211,11 +211,14 @@ impl Processor {
             ops: optimize_ops(&self.ops, flags),
             input_bit_depth: BitDepth::F32,
             output_bit_depth: BitDepth::F32,
+            bit_depth_luts: None,
         }
     }
 
-    /// CPU processor with bit depths (informational: images are converted
-    /// according to their own bit depth in `apply`).
+    /// CPU processor with bit depths. Images are converted according to their
+    /// own bit depth in `apply`; when they have the processor bit depths, the
+    /// first / last 1D LUTs are rendered as OCIO does for these bit depths
+    /// (look-up of the input code values, rounding of the scaled output).
     pub fn optimized_cpu_processor_with_bit_depths(
         &self,
         input: BitDepth,
@@ -224,10 +227,12 @@ impl Processor {
     ) -> CpuProcessor {
         let mut ops = optimize_ops(&self.ops, flags);
         optimize_for_bit_depth(&mut ops, input, output, flags);
+        let bit_depth_luts = BitDepthLuts::new(&ops, input, output).map(Arc::new);
         CpuProcessor {
             ops,
             input_bit_depth: input,
             output_bit_depth: output,
+            bit_depth_luts,
         }
     }
 }
@@ -502,6 +507,160 @@ pub struct CpuProcessor {
     ops: OpVec,
     input_bit_depth: BitDepth,
     output_bit_depth: BitDepth,
+    /// Bit-depth specific renderers of the first / last 1D LUT (see
+    /// [`BitDepthLuts`]), used when the images have the processor bit depths.
+    bit_depth_luts: Option<Arc<BitDepthLuts>>,
+}
+
+/// Port of the bit-depth handling of `CreateCPUEngine`: when the first op is
+/// a 1D LUT and the input is an integer or half bit depth, OCIO replaces the
+/// interpolation by a look-up of the input code values; when the last op (of
+/// several) is a 1D LUT and the output is an integer bit depth, the LUT
+/// values are scaled to the output range before the interpolation and the
+/// result is rounded. Only forward LUTs are handled this way (the inverse
+/// ones use the generic conversions, which give the same result up to the
+/// rounding).
+#[derive(Debug)]
+struct BitDepthLuts {
+    /// Look-up tables (R, G, B) indexed by the input code value (or the half
+    /// float bits), replacing `ops[0]`, and the hue adjust flag.
+    input: Option<([Vec<f32>; 3], bool)>,
+    /// Scaled renderer replacing the last op, and the output maximum value.
+    output: Option<(ops::lut1d::cpu::ForwardRenderer, f32)>,
+}
+
+impl BitDepthLuts {
+    fn new(ops: &[OpRc], input: BitDepth, output: BitDepth) -> Option<Self> {
+        let lut_at = |i: usize| {
+            ops.get(i)
+                .and_then(|o| o.downcast_ref::<ops::lut1d::Lut1DOp>())
+                .map(|l| l.data())
+                .filter(|d| d.direction() == TransformDirection::Forward)
+        };
+        let input_luts = if input != BitDepth::F32 {
+            lut_at(0).and_then(|lut| {
+                let hue_adjust = lut.hue_adjust() != crate::types::Lut1DHueAdjust::None;
+                Self::lookup_tables(lut, input)
+                    .ok()
+                    .map(|t| (t, hue_adjust))
+            })
+        } else {
+            None
+        };
+        let output_lut = if ops.len() > 1 && !output.is_float() {
+            lut_at(ops.len() - 1).map(|lut| {
+                let out_max = output.max_value() as f32;
+                (
+                    ops::lut1d::cpu::ForwardRenderer::with_out_scale(lut, out_max),
+                    out_max,
+                )
+            })
+        } else {
+            None
+        };
+        if input_luts.is_none() && output_lut.is_none() {
+            return None;
+        }
+        Some(Self {
+            input: input_luts,
+            output: output_lut,
+        })
+    }
+
+    /// The LUT values for a look-up at `input` bit depth (the LUT is
+    /// resampled when its domain does not allow a look-up).
+    fn lookup_tables(lut: &ops::lut1d::Lut1DOpData, input: BitDepth) -> Result<[Vec<f32>; 3]> {
+        use ops::lut1d::{ComposeMethod, Lut1DOpData};
+        let resampled;
+        let lut = if lut.may_lookup(input) {
+            lut
+        } else {
+            let domain = Lut1DOpData::make_lookup_domain(input)?;
+            resampled = Lut1DOpData::compose(&domain, lut, ComposeMethod::ResampleNo)?;
+            &resampled
+        };
+        let values = lut.array().values();
+        let dim = lut.array().length();
+        let make = |c: usize| {
+            (0..dim)
+                .map(|i| sanitize_float(values[i * 3 + c]))
+                .collect::<Vec<f32>>()
+        };
+        Ok([make(0), make(1), make(2)])
+    }
+
+    fn apply(&self, cpu: &CpuProcessor, pixels: &mut [Pixel]) {
+        let mut ops = &cpu.ops[..];
+        if let Some((luts, hue_adjust)) = &self.input {
+            let half = cpu.input_bit_depth == BitDepth::F16;
+            let max = cpu.input_bit_depth.max_value() as f32;
+            for p in pixels.iter_mut() {
+                let mut codes = [0usize; 3];
+                let mut rgb2 = [0.0f32; 3];
+                for c in 0..3 {
+                    // Recover the code value of the (exactly converted) input.
+                    codes[c] = if half {
+                        half::f16::from_f32(p[c]).to_bits() as usize
+                    } else {
+                        (p[c] * max).round() as usize
+                    };
+                    rgb2[c] = luts[c].get(codes[c]).copied().unwrap_or(0.0);
+                }
+                if *hue_adjust {
+                    // The hue is computed from the input values (the code
+                    // values for integer inputs), as in OCIO.
+                    let rgb = if half {
+                        [p[0], p[1], p[2]]
+                    } else {
+                        [codes[0] as f32, codes[1] as f32, codes[2] as f32]
+                    };
+                    ops::lut1d::cpu::hue_restore(&rgb, &mut rgb2);
+                }
+                p[..3].copy_from_slice(&rgb2);
+            }
+            ops = &ops[1..];
+        }
+        if let Some((renderer, out_max)) = &self.output {
+            let n = ops.len().saturating_sub(1);
+            for chunk in pixels.chunks_mut(CHUNK) {
+                ops::apply_ops(&ops[..n], chunk);
+                renderer.apply(chunk);
+                for p in chunk.iter_mut() {
+                    p[3] *= *out_max;
+                    for v in p.iter_mut() {
+                        // `Converter::CastValue` (the result is converted
+                        // back exactly by the image writer).
+                        let q = *v + 0.5;
+                        let q = if q.is_nan() || q < 0.0 {
+                            0.0
+                        } else if q > *out_max {
+                            *out_max
+                        } else {
+                            q.floor()
+                        };
+                        *v = q / *out_max;
+                    }
+                }
+            }
+        } else {
+            for chunk in pixels.chunks_mut(CHUNK) {
+                ops::apply_ops(ops, chunk);
+            }
+        }
+    }
+}
+
+/// Port of `SanitizeFloat`: infinities become +/-FLT_MAX and NaNs 0.
+fn sanitize_float(f: f32) -> f32 {
+    if f == f32::INFINITY {
+        f32::MAX
+    } else if f == f32::NEG_INFINITY {
+        -f32::MAX
+    } else if f.is_nan() {
+        0.0
+    } else {
+        f
+    }
 }
 
 /// Number of pixels processed per chunk.
@@ -514,6 +673,7 @@ impl CpuProcessor {
             ops,
             input_bit_depth: BitDepth::F32,
             output_bit_depth: BitDepth::F32,
+            bit_depth_luts: None,
         }
     }
 
@@ -602,12 +762,26 @@ impl CpuProcessor {
 
     /// Apply in place to an image.
     pub fn apply(&self, img: &mut dyn ImageDesc) {
+        let luts = self.bit_depth_luts_for(img.bit_depth(), img.bit_depth());
         let w = img.width();
         let mut row = vec![[0.0f32; 4]; w];
         for y in 0..img.height() {
             img.read_row(y, &mut row);
-            self.apply_pixels(&mut row);
+            match luts {
+                Some(l) => l.apply(self, &mut row),
+                None => self.apply_pixels(&mut row),
+            }
             img.write_row(y, &row);
+        }
+    }
+
+    /// The bit-depth specific LUT renderers, if the images have the
+    /// processor bit depths.
+    fn bit_depth_luts_for(&self, input: BitDepth, output: BitDepth) -> Option<&BitDepthLuts> {
+        if input == self.input_bit_depth && output == self.output_bit_depth {
+            self.bit_depth_luts.as_deref()
+        } else {
+            None
         }
     }
 
@@ -617,11 +791,15 @@ impl CpuProcessor {
         if src.width() != dst.width() || src.height() != dst.height() {
             crate::bail!("Dimension mismatch between source and destination images.");
         }
+        let luts = self.bit_depth_luts_for(src.bit_depth(), dst.bit_depth());
         let w = src.width();
         let mut row = vec![[0.0f32; 4]; w];
         for y in 0..src.height() {
             src.read_row(y, &mut row);
-            self.apply_pixels(&mut row);
+            match luts {
+                Some(l) => l.apply(self, &mut row),
+                None => self.apply_pixels(&mut row),
+            }
             dst.write_row(y, &row);
         }
         Ok(())

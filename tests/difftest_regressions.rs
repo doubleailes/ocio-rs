@@ -297,3 +297,49 @@ fn optimized_processor_drops_metadata_when_ops_are_replaced() {
         .unwrap();
     assert!(!ctf.contains("urn:uuid:"), "{ctf}");
 }
+
+/// With an integer input, OCIO looks the input code values up in the first
+/// 1D LUT (here the fast forward LUT replacing the inverse LUT, with hue
+/// adjust) instead of interpolating it.
+#[test]
+fn integer_input_uses_lut_lookup() {
+    let p = file_processor(
+        "lut1d_1024_hue_adjust_test.ctf",
+        TransformDirection::Inverse,
+        Interpolation::Default,
+    )
+    .unwrap();
+    let cpu = p.optimized_cpu_processor_with_bit_depths(
+        BitDepth::UInt16,
+        BitDepth::UInt16,
+        OptimizationFlags::DEFAULT,
+    );
+    let mut src = [36494u16, 29041, 974, 36494];
+    let mut dst = [0u16; 4];
+    let si = PackedImageDesc::new(ImageData::U16(&mut src), 1, 1, 4).unwrap();
+    let mut di = PackedImageDesc::new(ImageData::U16(&mut dst), 1, 1, 4).unwrap();
+    cpu.apply_src_dst(&si, &mut di).unwrap();
+    drop(di);
+    // Value from OCIO (the interpolation gives 28849 for green).
+    assert_eq!(dst, [35168, 28850, 5056, 36494]);
+
+    // The look-up table values are sanitized: +inf becomes FLT_MAX.
+    let p = file_processor(
+        "lut3by1d_nan_infinity_example.clf",
+        TransformDirection::Forward,
+        Interpolation::Default,
+    )
+    .unwrap();
+    let cpu = p.optimized_cpu_processor_with_bit_depths(
+        BitDepth::UInt8,
+        BitDepth::F32,
+        OptimizationFlags::DEFAULT,
+    );
+    let mut src = [1u8, 254, 97, 255];
+    let mut dst = [0f32; 4];
+    let si = PackedImageDesc::new(ImageData::U8(&mut src), 1, 1, 4).unwrap();
+    let mut di = PackedImageDesc::new(ImageData::F32(&mut dst), 1, 1, 4).unwrap();
+    cpu.apply_src_dst(&si, &mut di).unwrap();
+    drop(di);
+    assert_eq!(dst, [0.0, 4.00326056e+36, f32::MAX, 1.0]);
+}

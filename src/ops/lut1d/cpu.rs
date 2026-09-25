@@ -27,7 +27,7 @@ pub fn order3(rgb: &[f32; 3]) -> (usize, usize, usize) {
 /// Apply the DW3 hue restoration: the middle channel keeps its relative
 /// position between the min and max channels.
 #[inline]
-fn hue_restore(rgb: &[f32; 3], rgb2: &mut [f32; 3]) {
+pub(crate) fn hue_restore(rgb: &[f32; 3], rgb2: &mut [f32; 3]) {
     let (min, mid, max) = order3(rgb);
     let orig_chroma = rgb[max] - rgb[min];
     let hue_factor = if orig_chroma == 0.0 {
@@ -113,12 +113,19 @@ pub(crate) struct ForwardRenderer {
 
 impl ForwardRenderer {
     fn new(lut: &Lut1DOpData) -> Self {
+        // Output scaling for 32f is 1.
+        Self::with_out_scale(lut, 1.0)
+    }
+
+    /// Renderer of a 32f input whose LUT values are scaled by `out_max`, the
+    /// maximum value of the output bit depth (the scaling done by the OCIO
+    /// renderers for an integer output; the result still has to be cast).
+    pub(crate) fn with_out_scale(lut: &Lut1DOpData, out_max: f32) -> Self {
         let dim = lut.array().length();
         let values = lut.array().values();
-        // Output scaling for 32f is 1.
         let make = |c: usize| {
             (0..dim)
-                .map(|i| sanitize_float(values[i * 3 + c] * 1.0))
+                .map(|i| sanitize_float(values[i * 3 + c] * out_max))
                 .collect::<Vec<f32>>()
         };
         Self {
@@ -158,7 +165,7 @@ impl ForwardRenderer {
         )
     }
 
-    fn apply(&self, pixels: &mut [Pixel]) {
+    pub(crate) fn apply(&self, pixels: &mut [Pixel]) {
         for p in pixels.iter_mut() {
             let rgb = [p[0], p[1], p[2]];
             let mut rgb2 = if self.half_domain {
@@ -450,7 +457,7 @@ impl InverseRenderer {
         }
     }
 
-    fn apply(&self, pixels: &mut [Pixel]) {
+    pub(crate) fn apply(&self, pixels: &mut [Pixel]) {
         for p in pixels.iter_mut() {
             let rgb = [p[0], p[1], p[2]];
             let mut rgb2 = if self.half_domain {

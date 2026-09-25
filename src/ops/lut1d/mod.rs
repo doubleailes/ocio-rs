@@ -12,7 +12,7 @@
 //! approximation is available through [`make_fast_lut1d_from_inverse`]
 //! (`OptimizationFlags::LUT_INV_FAST`).
 
-mod cpu;
+pub(crate) mod cpu;
 #[cfg(test)]
 mod tests;
 
