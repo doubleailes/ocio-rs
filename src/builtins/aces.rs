@@ -430,12 +430,11 @@ mod aces2_output {
         let matrix_to_ap1 = build_conversion_matrix(&ACES_AP0, &ACES_AP1, AdaptationMethod::None)?;
         add_matrix(ops, &matrix_to_ap1, FWD);
 
-        // The numerator is computed in float and the denominator in double, as in OCIO.
-        let upper_bound = (8.0f64
-            * (128.0f64
-                + 768.0f64
-                    * ((peak_luminance / 100.0f32).ln() as f64 / (10000.0f64 / 100.0f64).ln())))
-            as f32;
+        // Computed in single precision, as the OCIO build does (this matches
+        // the values produced by the C++ library).
+        let upper_bound = 8.0f32
+            * (128.0f32
+                + 768.0f32 * ((peak_luminance / 100.0f32).ln() / (10000.0f32 / 100.0f32).ln()));
         add_range(
             ops,
             Some(0.0),
