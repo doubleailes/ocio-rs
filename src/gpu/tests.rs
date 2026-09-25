@@ -1598,3 +1598,61 @@ fn clone_creator() {
     assert_eq!(c.function_name(), "f_n");
     assert_eq!(c.num_dynamic_properties(), 0);
 }
+
+/// GLSL 4.0 shader text of the `raw` to `c` processor of a config whose `c`
+/// color space is `transform` (from the reference).
+fn from_reference_glsl(transform: &str) -> String {
+    let config = format!(
+        "ocio_profile_version: 2.6\n\nroles:\n  default: raw\n\ncolorspaces:\n  - !<ColorSpace>\n    name: raw\n\n  - !<ColorSpace>\n    name: c\n    from_scene_reference: {transform}\n"
+    );
+    let config = Config::create_from_str(&config).unwrap();
+    let gpu = config
+        .get_processor("raw", "c")
+        .unwrap()
+        .default_gpu_processor()
+        .unwrap();
+    let mut desc = GpuShaderDesc::new();
+    desc.set_language(GpuLanguage::Glsl4_0);
+    gpu.extract_gpu_shader_info(&mut desc).unwrap();
+    desc.shader_text().to_string()
+}
+
+// The expected lines of the two tests below come from the C++ OCIO 2.6
+// library.
+
+#[test]
+fn camera_log_break_precision() {
+    let text = from_reference_glsl(
+        "!<LogCameraTransform> {base: 10, lin_side_offset: 0.1, lin_side_slope: 1.2, \
+         log_side_offset: 0.3, log_side_slope: 0.4, lin_side_break: 0.2}",
+    );
+    assert!(text.contains(
+        "    vec3 linear_segment_offset = vec3(-0.0100327656, -0.0100327656, -0.0100327656);\n"
+    ));
+
+    let text = from_reference_glsl(
+        "!<LogCameraTransform> {base: 10, lin_side_offset: 0.1, lin_side_slope: 1.2, \
+         log_side_offset: 0.3, log_side_slope: 0.4, lin_side_break: 0.2, linear_slope: 1.5, \
+         direction: inverse}",
+    );
+    assert!(text.contains("    vec3 log_break = vec3(0.112591565, 0.112591565, 0.112591565);\n"));
+    assert!(text.contains(
+        "    vec3 linear_segment_offset = vec3(-0.187408447, -0.187408447, -0.187408447);\n"
+    ));
+
+    let text = from_reference_glsl("!<BuiltinTransform> {style: SONY_SLOG3-SGAMUT3_to_ACES2065-1}");
+    assert!(text.contains("    vec3 log_break = vec3(0.167360991, 0.167360991, 0.167360991);\n"));
+    assert!(text.contains(
+        "    vec3 linear_segment_offset = vec3(0.092864126, 0.092864126, 0.092864126);\n"
+    ));
+}
+
+#[test]
+fn aces2_clamp_upper_bound_precision() {
+    let text = from_reference_glsl(
+        "!<BuiltinTransform> {style: \"ACES-OUTPUT - ACES2065-1_to_CIE-XYZ-D65 - HDR-300nit-P3-D65_2.0\"}",
+    );
+    assert!(text.contains(
+        "    outColor.rgb = min(vec3(3468.943359375, 3468.943359375, 3468.943359375), outColor.rgb);\n"
+    ));
+}

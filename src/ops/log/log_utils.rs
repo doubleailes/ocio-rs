@@ -286,9 +286,14 @@ pub fn get_linear_slope(params: &[f64], base: f64) -> f32 {
 
 /// Log side value of the break point of a camera log.
 pub fn get_log_side_break(params: &[f64], base: f64) -> f32 {
-    let mut log_side_break =
-        ((params[LIN_SIDE_SLOPE] * params[LIN_SIDE_BREAK] + params[LIN_SIDE_OFFSET]) as f32).log2();
-    log_side_break *= params[LOG_SIDE_SLOPE] as f32 / (base as f32).log2();
+    // Note: OCIO calls the C `log2(double)` here, so the logarithms are
+    // computed in double precision on float arguments.
+    let mut log_side_break = (((params[LIN_SIDE_SLOPE] * params[LIN_SIDE_BREAK]
+        + params[LIN_SIDE_OFFSET]) as f32) as f64)
+        .log2() as f32;
+    log_side_break = (log_side_break as f64
+        * (params[LOG_SIDE_SLOPE] as f32 as f64 / (base as f32 as f64).log2()))
+        as f32;
     log_side_break += params[LOG_SIDE_OFFSET] as f32;
     log_side_break
 }
