@@ -12,6 +12,11 @@
 //! let mut pixel = [0.18f32, 0.18, 0.18];
 //! cpu.apply_rgb(&mut pixel);
 //! ```
+//!
+//! Loading configs and converting colours on the CPU is always built. The
+//! LUT file formats (`file-formats`), `.ocioz` archives (`ocioz`), GPU shader
+//! generation (`gpu`) and the application helpers (`apphelpers`) are cargo
+//! features, all on by default (see the README).
 
 // Lints that conflict with a faithful port of the C++ numerics: float
 // literals are kept exactly as in OCIO, index loops mirror the original
@@ -33,15 +38,19 @@
 )]
 #![cfg_attr(test, allow(clippy::approx_constant))]
 
+#[cfg(feature = "apphelpers")]
 pub mod apphelpers;
+#[cfg(feature = "file-formats")]
 pub mod baker;
 pub mod builtins;
 pub mod config;
 pub mod context;
 pub mod dynamic_property;
 pub mod error;
+#[cfg(feature = "file-formats")]
 pub mod fileformats;
 pub mod format_metadata;
+#[cfg(feature = "gpu")]
 pub mod gpu;
 pub mod hash_utils;
 pub mod image_desc;
@@ -52,6 +61,7 @@ pub mod processor;
 pub mod transforms;
 pub mod types;
 
+#[cfg(feature = "file-formats")]
 pub use baker::Baker;
 pub use config::Config;
 pub use context::Context;
@@ -67,6 +77,7 @@ pub use types::*;
 /// Clear all the caches of the library (port of `ClearAllCaches`): the file
 /// transform cache (files are read again on the next use).
 pub fn clear_all_caches() {
+    #[cfg(feature = "file-formats")]
     fileformats::file_transform::clear_file_transform_caches();
 }
 

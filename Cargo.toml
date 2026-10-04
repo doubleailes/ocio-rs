@@ -8,6 +8,16 @@ repository = "https://github.com/doubleailes/ocio-rs"
 readme = "README.md"
 keywords = ["color", "ocio", "vfx", "lut", "aces"]
 categories = ["graphics", "multimedia::images"]
+# The published crate is the library alone: the test suites, their 13 MB of
+# data and the unit-test modules (all `#[cfg(test)]`) stay in the repository.
+exclude = [
+    "/.github",
+    "/tests",
+    "/tools",
+    "src/**/tests.rs",
+    "src/**/tests_*.rs",
+    "src/**/tests/",
+]
 
 [lib]
 name = "ocio"
@@ -19,9 +29,49 @@ md5 = "0.8"
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 regex = "1"
 yaml-rust2 = "0.10"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
+
+# Everything a host needs to load a config and convert colours on the CPU is
+# always built: the config reader and writer (the cache ids hash the written
+# config), the builtin configs and transforms, every CPU op, processors and
+# their optimisation, displays, views, looks and file rules. The features
+# below add what only some hosts need; `default` is all of them.
+[features]
+default = ["gpu", "file-formats", "ocioz", "apphelpers"]
+# GPU shader generation: `Processor::*_gpu_processor`, `ocio::gpu`.
+gpu = []
+# LUT and CDL file readers and writers (`ocio::fileformats`): a config's
+# `FileTransform`s, and the colour spaces, looks and views built on them, and
+# baking a processor into a LUT file (`ocio::Baker`, which every format
+# writer serves). Without it a `FileTransform` is an error when its processor
+# is built.
+file-formats = []
+# `.ocioz` config archives: reading them (`Config::create_from_file`) and
+# writing them (`Config::archive`). Archiving a config's LUTs needs
+# `file-formats` too.
+ocioz = ["dep:zip"]
+# The application helpers (`ocio::apphelpers`): menus, merging configs,
+# legacy viewing pipeline.
+apphelpers = []
 
 [dev-dependencies]
+
+# The integration tests that need an optional feature (the rest run with any).
+[[test]]
+name = "apphelpers_menus"
+required-features = ["apphelpers"]
+
+[[test]]
+name = "apphelpers_pipeline"
+required-features = ["apphelpers"]
+
+[[test]]
+name = "config_ocioz_archive"
+required-features = ["ocioz", "file-formats"]
+
+[[test]]
+name = "difftest_regressions"
+required-features = ["file-formats"]
 
 [workspace]
 members = [".", "tools"]

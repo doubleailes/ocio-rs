@@ -9,10 +9,22 @@
 use super::utils::compare;
 use super::Config;
 use crate::error::{Error, Result};
-use crate::fileformats::FormatRegistry;
 use crate::types::{OCIO_CONFIG_DEFAULT_FILE_EXT, OCIO_CONFIG_DEFAULT_NAME};
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
+
+/// True for the extensions of the LUT files an archive takes along: every
+/// readable format's. Without the `file-formats` feature no LUT can be read,
+/// so none is archived.
+fn is_lut_extension(ext: &str) -> bool {
+    #[cfg(feature = "file-formats")]
+    return crate::fileformats::FormatRegistry::instance().is_format_extension_supported(ext);
+    #[cfg(not(feature = "file-formats"))]
+    {
+        let _ = ext;
+        false
+    }
+}
 
 /// Maximum size of an archive entry (256 MB).
 const MAX_ENTRY_SIZE: u64 = 256 * 1024 * 1024;
@@ -216,7 +228,7 @@ fn add_supported_files<W: Write + std::io::Seek>(
                 Some(i) if i > 0 => name[i + 1..].to_string(),
                 _ => String::new(),
             };
-            if !ext.is_empty() && FormatRegistry::instance().is_format_extension_supported(&ext) {
+            if !ext.is_empty() && is_lut_extension(&ext) {
                 let rel = p
                     .strip_prefix(root)
                     .unwrap_or(&p)

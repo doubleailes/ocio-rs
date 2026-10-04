@@ -936,6 +936,10 @@ fn color_space_helpers_add_color_space() {
 // DisplayViewHelpers
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn display_view_helpers_basic() {
     let _l = lock();
     let cfg = category_config();

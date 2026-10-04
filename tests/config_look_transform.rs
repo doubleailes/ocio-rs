@@ -230,6 +230,10 @@ colorspaces:
 "#;
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn look_transform_build_look_options_ops() {
     use TransformDirection::{Forward, Inverse};
     let config = Config::create_from_str(LOOK_OPTIONS_CONFIG).unwrap();

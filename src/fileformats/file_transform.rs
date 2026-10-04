@@ -21,9 +21,7 @@ use crate::error::{Error, Result};
 use crate::ops::noop::create_file_no_op;
 use crate::ops::OpVec;
 use crate::transforms::build::build_ops;
-use crate::transforms::{
-    BuildOps, CdlTransform, FileTransform, GroupTransform, Transform, Validate,
-};
+use crate::transforms::{BuildOps, CdlTransform, FileTransform, GroupTransform, Transform};
 use crate::types::{CdlStyle, Interpolation, TransformDirection, OCIO_DISABLE_ALL_CACHES};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -31,18 +29,6 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 // ---------------------------------------------------------------------------
 // Validation and format queries.
-
-impl Validate for FileTransform {
-    fn validate(&self) -> Result<()> {
-        // NB: Not validating the interpolation since v1 configs such as the
-        // spi examples use interpolation=unknown. So that is a legal usage,
-        // even if it makes no sense.
-        if self.src.is_empty() {
-            crate::bail!("FileTransform: empty file path");
-        }
-        Ok(())
-    }
-}
 
 impl FileTransform {
     /// Number of file formats that can be read (port of
@@ -577,6 +563,7 @@ mod tests {
     use super::*;
     use crate::fileformats::FILEFORMAT_CLF;
     use crate::format_metadata::FormatMetadata;
+    use crate::transforms::Validate;
 
     fn test_files_dir() -> String {
         concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/files").to_string()

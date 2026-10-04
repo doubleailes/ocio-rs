@@ -388,6 +388,10 @@ fn config_config_context_cacheids() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn config_config_context_cacheids_processors() {
     cacheids(true);
 }

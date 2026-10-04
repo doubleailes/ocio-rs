@@ -102,3 +102,86 @@ impl BuildOps for GroupTransform {
         Ok(())
     }
 }
+
+// ---------------------------------------------------------------------------
+// FileTransform: validated here whatever the features; its ops are built by
+// `crate::fileformats::file_transform`, or refused without `file-formats`.
+
+use crate::transforms::FileTransform;
+
+impl Validate for FileTransform {
+    fn validate(&self) -> Result<()> {
+        // NB: Not validating the interpolation since v1 configs such as the
+        // spi examples use interpolation=unknown. So that is a legal usage,
+        // even if it makes no sense.
+        if self.src.is_empty() {
+            crate::bail!("FileTransform: empty file path");
+        }
+        Ok(())
+    }
+}
+
+/// Without the `file-formats` feature no file can be read: a config that
+/// uses a `FileTransform` still loads, and the processors that need one are
+/// an error.
+#[cfg(not(feature = "file-formats"))]
+impl BuildOps for FileTransform {
+    fn build_ops(
+        &self,
+        _ops: &mut OpVec,
+        _config: &Config,
+        context: &Context,
+        _dir: TransformDirection,
+    ) -> Result<()> {
+        if self.src.is_empty() {
+            crate::bail!("The transform file has not been specified.");
+        }
+        // A file that cannot be located is the same error with the feature.
+        let filepath = context.resolve_file_location(&self.src)?;
+        crate::bail!(
+            "The transform file: {filepath} cannot be read: the ocio crate was built without \
+             its `file-formats` feature."
+        )
+    }
+}
+
+/// The format queries without the `file-formats` feature: no format is
+/// readable.
+#[cfg(not(feature = "file-formats"))]
+impl FileTransform {
+    /// Number of file formats that can be read: none.
+    pub fn num_formats() -> usize {
+        0
+    }
+
+    /// Name of the readable format at `index`: always `""`.
+    pub fn format_name_by_index(_index: usize) -> &'static str {
+        ""
+    }
+
+    /// Extension of the readable format at `index`: always `""`.
+    pub fn format_extension_by_index(_index: usize) -> &'static str {
+        ""
+    }
+
+    /// True if a format handles the extension: never.
+    pub fn is_format_extension_supported(_extension: &str) -> bool {
+        false
+    }
+}
+
+/// Loading a CDL file without the `file-formats` feature: an error.
+#[cfg(not(feature = "file-formats"))]
+impl crate::transforms::CdlTransform {
+    /// Load a CDL from a `.cc`, `.ccc` or `.cdl` file: an error without the
+    /// `file-formats` feature.
+    pub fn create_from_file(src: &str, _ccc_id: &str) -> Result<crate::transforms::CdlTransform> {
+        crate::bail!("{src}: the ocio crate was built without its `file-formats` feature.")
+    }
+
+    /// Load all the CDLs of a `.cc`, `.ccc` or `.cdl` file: an error without
+    /// the `file-formats` feature.
+    pub fn create_group_from_file(src: &str) -> Result<GroupTransform> {
+        crate::bail!("{src}: the ocio crate was built without its `file-formats` feature.")
+    }
+}

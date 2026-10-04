@@ -40,6 +40,10 @@ fn config_context_variable_with_sanity_check() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn config_context_variable_with_sanity_check_processor() {
     sanity_check(true);
 }
@@ -400,6 +404,10 @@ fn config_context_variable_with_search_path_v1_validation() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn config_context_variable_with_search_path_v1() {
     let _lock = env_lock();
     let _g = EnvGuard::set("ENV1", None);
@@ -490,6 +498,10 @@ fn config_context_variable_with_search_path_v2_validation() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn config_context_variable_with_search_path_v2() {
     let _lock = env_lock();
     let _g = EnvGuard::set("ENV1", None);
