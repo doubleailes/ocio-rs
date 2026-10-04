@@ -22,6 +22,25 @@ jobs:
       - run: cargo build --all-targets
       - run: cargo test --all-targets
 
+  features:
+    name: Features
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      # The core alone, then each optional feature on its own: every
+      # combination a host is likely to pick must build, lint and pass.
+      - run: cargo clippy --lib --tests --no-default-features -- -D warnings
+      - run: cargo test --no-default-features
+      - run: |
+          for f in file-formats ocioz gpu apphelpers; do
+            cargo clippy --lib --tests --no-default-features --features "$f" -- -D warnings
+            cargo test --no-default-features --features "$f"
+          done
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

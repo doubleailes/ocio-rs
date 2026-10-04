@@ -19,6 +19,10 @@ fn first_matrix_value(config: &Config, ctx: &crate::Context, src: &str, dst: &st
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn merge_configs_merges_with_ociom_file() {
     {
         let ociom_path = merge_file("merged1/merged1.ociom");
@@ -226,6 +230,10 @@ fn merge_configs_merges_with_ociom_file() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "ocioz"),
+    ignore = "reads an OCIOZ archive: needs the `ocioz` feature"
+)]
 fn merge_configs_merges_with_ocioz_file() {
     let archive = format!(
         "{}/configs/context_test1/context_test1_linux.ocioz",

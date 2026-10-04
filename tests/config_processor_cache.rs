@@ -49,6 +49,10 @@ fn load(s: &str) -> Config {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn config_context_variables_typical_use_cases() {
     let _lock = env_lock();
     let dir = data_file("");

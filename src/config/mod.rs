@@ -10,6 +10,7 @@ mod api_display;
 mod api_processor;
 mod api_spaces;
 mod api_validate;
+#[cfg(feature = "ocioz")]
 pub mod archive;
 pub mod colorspace;
 pub mod config_utils;
@@ -172,6 +173,7 @@ pub struct Config {
     processor_cache: Mutex<ProcessorCache>,
     env_disable_processor_cache: bool,
 
+    #[cfg(feature = "ocioz")]
     archive: Option<archive::OciozArchive>,
 }
 
@@ -225,6 +227,7 @@ impl Clone for Config {
             // The processor cache is not copied.
             processor_cache: Mutex::new(ProcessorCache::default()),
             env_disable_processor_cache: self.env_disable_processor_cache,
+            #[cfg(feature = "ocioz")]
             archive: self.archive.clone(),
         }
     }
@@ -367,6 +370,7 @@ impl Config {
             processor_cache: Mutex::new(ProcessorCache::default()),
             env_disable_processor_cache: env_present(OCIO_DISABLE_ALL_CACHES)
                 || env_present(OCIO_DISABLE_PROCESSOR_CACHES),
+            #[cfg(feature = "ocioz")]
             archive: None,
         }
     }
@@ -416,8 +420,16 @@ impl Config {
         let data = std::fs::read(path)
             .map_err(|_| Error::msg(format!("Error could not read '{path}' OCIO profile.")))?;
         if data.len() >= 2 && data[0] == b'P' && data[1] == b'K' {
-            let archive = archive::OciozArchive::open(path)?;
-            return Config::create_from_archive(archive);
+            #[cfg(feature = "ocioz")]
+            {
+                let archive = archive::OciozArchive::open(path)?;
+                return Config::create_from_archive(archive);
+            }
+            #[cfg(not(feature = "ocioz"))]
+            return Err(Error::msg(format!(
+                "'{path}' is an OCIOZ archive, and the ocio crate was built without \
+                 its `ocioz` feature."
+            )));
         }
         let text = String::from_utf8_lossy(&data);
         Config::read(&text, Some(path))
@@ -429,6 +441,7 @@ impl Config {
     }
 
     /// Load a config stored in an OCIOZ archive.
+    #[cfg(feature = "ocioz")]
     pub fn create_from_archive(archive: archive::OciozArchive) -> Result<Config> {
         let text = archive.config_data()?;
         let mut config = Config::read(&text, Some(yaml::ARCHIVE_FILENAME))?;
