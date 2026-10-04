@@ -27,9 +27,10 @@ Facts that pin the snapshot:
   and CTF version 2.6 is current (needed by HMJ, #2336).
 * The built-in configs stop at `v4.0.0_aces-v2.0_ocio-v2.5` (the `v5.0.0` ones
   arrive in #2353, after the snapshot).
-* `OCIO_VERSION` in `src/lib.rs` is still `"2.5.0"`, although upstream `main`
-  reports `2.6.0` since #2266 (2026-03-04). Bump it to `"2.6.0"` once the
-  missing commits below are ported.
+* `OCIO_VERSION` in `src/lib.rs` is `"2.5.2"`: the latest release whose
+  library changes are all ported (see [2.5.x patch releases](#25x-patch-releases)).
+  Upstream `main` already reports `2.6.0` (since #2266, 2026-03-04), but the
+  port must not claim 2.6.0 until the commits listed below are ported.
 
 ### 2.5.x patch releases
 
