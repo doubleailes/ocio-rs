@@ -31,4 +31,6 @@ Design choices:
   has format-specific op building.
 * GPU shader generation is ported (`src/gpu`, `src/ops/*/gpu.rs`): shader text
   for every `GpuLanguage` (GLSL, GLSL ES, Vulkan GLSL, HLSL, MSL, Cg, OSL);
-  no GPU execution backend.
+  no GPU execution backend. As in OCIO, OSL has no texture support, so 1D / 3D
+  LUT ops are rejected: a processor containing one returns an error when OSL
+  shader text is requested.
