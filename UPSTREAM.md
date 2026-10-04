@@ -31,6 +31,16 @@ Facts that pin the snapshot:
   reports `2.6.0` since #2266 (2026-03-04). Bump it to `"2.6.0"` once the
   missing commits below are ported.
 
+### 2.5.x patch releases
+
+`v2.5.1` ([`004f800`](https://github.com/AcademySoftwareFoundation/OpenColorIO/commit/004f80009653fa322c1133ba2c57b8ed526599c9))
+and `v2.5.2` ([`c52966a`](https://github.com/AcademySoftwareFoundation/OpenColorIO/commit/c52966a6677723d5bd2dbef0ccec3fed9cbc3790))
+live on a release branch, not on `main`. Their library changes are all
+cherry-picks of `main` PRs already ported (#2206, #2224, #2227, #2231, #2204,
+#2270, #2276, #2281, #2307, #2308), plus two branch-only commits that are also
+covered: `08a51c6` (GradingTone `MaxSCTol = MaxSC + Error`, from #2282) and
+`b27be86` (C++ `#include` build fix, N/A). Nothing from 2.5.x is missing.
+
 ## Missing for v2.6.0
 
 Upstream commits between the snapshot and `v2.6.0` (`git log 93878f9..v2.6.0`):
