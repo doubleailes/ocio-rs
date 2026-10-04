@@ -40,5 +40,5 @@ ocio = "0.1"
 ```
 
 With no features, a clean release build of the library takes 24 s instead of
-39 s (the `ocio` crate alone: 12.5 s instead of 25 s), pulls in 13 fewer
+39 s (the `ocio` crate alone: 13 s instead of 25 s), pulls in 13 fewer
 crates, and its `.rlib` is 10.9 MB instead of 18.9 MB (4 cores, Rust 1.97).
