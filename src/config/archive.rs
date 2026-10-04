@@ -12,6 +12,8 @@ use crate::error::{Error, Result};
 use crate::types::{OCIO_CONFIG_DEFAULT_FILE_EXT, OCIO_CONFIG_DEFAULT_NAME};
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// True for the extensions of the LUT files an archive takes along: every
 /// readable format's. Without the `file-formats` feature no LUT can be read,
@@ -158,14 +160,47 @@ impl OciozArchive {
             md5::compute(format!("{abs}{stamp}{}", meta.len()).as_bytes())
         );
         let dir = std::env::temp_dir().join(format!("ocio-ocioz-{id}"));
-        let dir_str = dir.to_string_lossy().replace('\\', "/");
-        if !dir.join(".complete").exists() {
-            extract_ocioz_archive(&self.path, &dir_str)?;
-            std::fs::write(dir.join(".complete"), b"")?;
-        }
-        config.set_working_dir(&dir_str);
+        let dir = if dir.join(".complete").exists() {
+            dir
+        } else {
+            extract_atomically(&self.path, dir)?
+        };
+        config.set_working_dir(&dir.to_string_lossy().replace('\\', "/"));
         Ok(())
     }
+}
+
+/// Extract the archive so that no loader ever sees it partly written: the
+/// files go to a private staging directory, marked complete, then renamed to
+/// `dir`. Returns the directory to use: `dir`, also when another loader
+/// (thread or process) renamed its own copy there first, or the staging
+/// directory when `dir` holds an incomplete extraction (interrupted, or by
+/// an older version writing in place), which is left alone.
+fn extract_atomically(archive_path: &str, dir: PathBuf) -> Result<PathBuf> {
+    static STAGING_ID: AtomicUsize = AtomicUsize::new(0);
+    let n = STAGING_ID.fetch_add(1, Ordering::Relaxed);
+    let mut staging = dir.clone().into_os_string();
+    staging.push(format!(".{}-{n}.tmp", std::process::id()));
+    let staging = PathBuf::from(staging);
+    let _ = std::fs::remove_dir_all(&staging);
+
+    let staged = extract_ocioz_archive(archive_path, &staging.to_string_lossy())
+        .and_then(|()| std::fs::write(staging.join(".complete"), b"").map_err(Error::from));
+    if let Err(e) = staged {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Err(e);
+    }
+
+    // Renaming onto a directory that is not empty fails on every platform:
+    // a directory already at `dir` is never replaced.
+    if std::fs::rename(&staging, &dir).is_ok() {
+        return Ok(dir);
+    }
+    if dir.join(".complete").exists() {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Ok(dir);
+    }
+    Ok(staging)
 }
 
 /// Extract all the files of an OCIOZ archive into `destination`.

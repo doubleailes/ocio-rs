@@ -67,7 +67,7 @@ required-features = ["apphelpers"]
 
 [[test]]
 name = "config_ocioz_archive"
-required-features = ["ocioz", "file-formats"]
+required-features = ["ocioz"]
 
 [[test]]
 name = "difftest_regressions"
