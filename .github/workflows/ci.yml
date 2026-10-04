@@ -31,8 +31,8 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      # The core alone, then each optional feature on its own: every
-      # combination a host is likely to pick must build, lint and pass.
+      # The core alone, then each optional feature on its own: the gating
+      # must hold whichever features a host turns off.
       - run: cargo clippy --lib --tests --no-default-features -- -D warnings
       - run: cargo test --no-default-features
       - run: |

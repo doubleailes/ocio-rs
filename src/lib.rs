@@ -16,7 +16,8 @@
 //! Loading configs and converting colours on the CPU is always built. The
 //! LUT file formats (`file-formats`), `.ocioz` archives (`ocioz`), GPU shader
 //! generation (`gpu`) and the application helpers (`apphelpers`) are cargo
-//! features, all on by default (see the README).
+//! features, all on by default: a host that needs only some of them sets
+//! `default-features = false` and lists those (see the README).
 
 // Lints that conflict with a faithful port of the C++ numerics: float
 // literals are kept exactly as in OCIO, index loops mirror the original

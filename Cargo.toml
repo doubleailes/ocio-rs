@@ -8,7 +8,7 @@ repository = "https://github.com/doubleailes/ocio-rs"
 readme = "README.md"
 keywords = ["color", "ocio", "vfx", "lut", "aces"]
 categories = ["graphics", "multimedia::images"]
-# The published crate is the library alone: the test suites, their 13 MB of
+# The published crate is the library alone: the test suites, their 14 MB of
 # data and the unit-test modules (all `#[cfg(test)]`) stay in the repository.
 exclude = [
     "/.github",
