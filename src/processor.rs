@@ -57,8 +57,10 @@ pub struct Processor {
     transform_metadata: Vec<FormatMetadata>,
     /// The ops including the no-ops (e.g. the GPU allocations), needed by the
     /// legacy GPU processor.
+    #[cfg(feature = "gpu")]
     legacy_ops: OpVec,
     /// Cache of the GPU processors by optimization flags.
+    #[cfg(feature = "gpu")]
     gpu_cache: crate::gpu::processor::GpuProcessorCache,
 }
 
@@ -70,11 +72,16 @@ impl Processor {
             metadata: ProcessorMetadata::new(),
             format_metadata: FormatMetadata::default(),
             transform_metadata: Vec::new(),
+            #[cfg(feature = "gpu")]
             legacy_ops: OpVec::new(),
+            #[cfg(feature = "gpu")]
             gpu_cache: Default::default(),
         };
         p.set_ops(ops);
-        p.legacy_ops = p.ops.clone();
+        #[cfg(feature = "gpu")]
+        {
+            p.legacy_ops = p.ops.clone();
+        }
         p
     }
 
@@ -244,6 +251,7 @@ fn is_no_op_type(op: &OpRc) -> bool {
 }
 
 // GPU processors (port of the GPU parts of `Processor.cpp`).
+#[cfg(feature = "gpu")]
 impl Processor {
     fn gpu_processor(
         &self,

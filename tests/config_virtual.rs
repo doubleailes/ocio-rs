@@ -637,6 +637,10 @@ fn look_fallback_config() -> String {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn config_look_fallback() {
     let _lock = env_lock();
     let _g = EnvGuard::set("LOOK_CDL", Some("cdl_test1"));
@@ -656,6 +660,10 @@ fn config_look_fallback() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "ocioz"),
+    ignore = "reads an OCIOZ archive: needs the `ocioz` feature"
+)]
 fn config_create_from_archive() {
     let _lock = env_lock();
     for name in ["context_test1_windows.ocioz", "context_test1_linux.ocioz"] {
@@ -679,6 +687,10 @@ fn config_create_from_archive() {
 }
 
 #[test]
+#[cfg_attr(
+    not(all(feature = "ocioz", feature = "file-formats")),
+    ignore = "reads the LUTs of an OCIOZ archive: needs the `ocioz` and `file-formats` features"
+)]
 fn config_create_from_archive_processors() {
     let _lock = env_lock();
     for name in ["context_test1_windows.ocioz", "context_test1_linux.ocioz"] {

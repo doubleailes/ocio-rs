@@ -521,6 +521,10 @@ fn cs1_to_cs2_shader(
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn metal_support3() {
     // The unit test validates a single 1D LUT.
     let config =
@@ -589,6 +593,10 @@ fn metal_support3() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn metal_support4() {
     // The unit test validates a single 3D LUT.
     let config =
@@ -653,6 +661,10 @@ fn metal_support4() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn metal_support5() {
     // The unit test validates a single 1D LUT needing an helper method.
     let config =
@@ -730,6 +742,10 @@ fn metal_support5() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn metal_support6() {
     // The unit test validates several arbitrary luts.
     let config = cs1_cs2_config(
@@ -1217,6 +1233,10 @@ fn metal_support9() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn vulkan_support() {
     let config = Config::create();
     let ft = FileTransform {
@@ -1566,6 +1586,10 @@ fn dynamic_property_uniforms() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn osl_unsupported_luts() {
     let config =
         cs1_cs2_config("    from_scene_reference: !<FileTransform> {src: lut1d_green.ctf}\n");

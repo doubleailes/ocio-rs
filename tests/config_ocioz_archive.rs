@@ -171,6 +171,51 @@ fn ocioz_load_archives() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads the LUTs of an OCIOZ archive: needs the `file-formats` feature"
+)]
+fn ocioz_concurrent_loads_see_complete_luts() {
+    // Threads loading the same archive at once each extract its LUTs: none
+    // may read a LUT another one is still writing.
+    let _lock = env_lock();
+    let reference = Config::create_from_file(&archive_path("context_test1_linux.ocioz")).unwrap();
+    let names: Vec<String> = (0..reference.num_color_spaces())
+        .map(|i| reference.color_space_name_by_index(i).to_string())
+        .collect();
+    let buildable: Vec<String> = names
+        .iter()
+        .filter(|n| reference.get_processor(n, &names[0]).is_ok())
+        .cloned()
+        .collect();
+    assert!(buildable.len() > 1);
+
+    for round in 0..10 {
+        // A fresh copy: a new archive path is extracted again.
+        let dir = TempDir::new(&format!("concurrent{round}"));
+        let path = format!("{}/archive.ocioz", dir.path());
+        std::fs::copy(archive_path("context_test1_linux.ocioz"), &path).unwrap();
+
+        let barrier = std::sync::Barrier::new(8);
+        std::thread::scope(|s| {
+            for _ in 0..8 {
+                s.spawn(|| {
+                    barrier.wait();
+                    let cfg = Config::create_from_file(&path).unwrap();
+                    for n in &buildable {
+                        cfg.get_processor(n, &names[0]).unwrap();
+                    }
+                });
+            }
+        });
+    }
+}
+
+#[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads the LUTs of an OCIOZ archive: needs the `file-formats` feature"
+)]
 fn ocioz_context_test_for_search_paths_and_filetransform_source_path() {
     for name in ["context_test1_windows.ocioz", "context_test1_linux.ocioz"] {
         let cfg = Config::create_from_file(&archive_path(name))
@@ -259,6 +304,10 @@ fn ocioz_archive_config_and_compare_to_original_no_processor() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads the LUTs of an OCIOZ archive: needs the `file-formats` feature"
+)]
 fn ocioz_archive_config_and_compare_to_original() {
     let config_path = archive_path("config.ocio");
     let _lock = env_lock();
@@ -303,6 +352,10 @@ fn ocioz_extract_config_and_compare_to_original_no_processor() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads the LUTs of an OCIOZ archive: needs the `file-formats` feature"
+)]
 fn ocioz_extract_config_and_compare_to_original() {
     let archive = archive_path("context_test1_windows.ocioz");
     let from_archive = Config::create_from_file(&archive).unwrap();

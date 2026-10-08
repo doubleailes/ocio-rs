@@ -29,6 +29,10 @@ fn config_is_colorspace_linear_validation() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn config_is_colorspace_linear() {
     let _lock = env_lock();
     let config = linear_config();
@@ -116,6 +120,10 @@ fn config_utils_processor_to_known_colorspace_errors() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "file-formats"),
+    ignore = "reads a LUT file: needs the `file-formats` feature"
+)]
 fn config_utils_processor_to_known_colorspace() {
     let _lock = env_lock();
     let mut cfg = known_config();
