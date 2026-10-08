@@ -11,7 +11,10 @@ categories = ["graphics", "multimedia::images"]
 exclude = [
     ".github",
     "tests",
-    "tools"
+    "tools",
+    "src/**/tests.rs",
+    "src/**/tests_*.rs",
+    "src/**/tests/",
 ]
 
 [lib]
