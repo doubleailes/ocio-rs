@@ -1,5 +1,8 @@
 # Porting notes
 
+The upstream C++ revision this port follows, and what is missing for the
+latest OCIO release, are recorded in [`UPSTREAM.md`](UPSTREAM.md).
+
 ## Architecture
 
 | OCIO (C++)                         | ocio-rs                                   |
@@ -26,4 +29,8 @@ Design choices:
   and `Op::is_identity`.
 * File formats implement `FileFormat` and produce a `GroupTransform`, so no format
   has format-specific op building.
-* GPU shader generation is not ported (CPU only).
+* GPU shader generation is ported (`src/gpu`, `src/ops/*/gpu.rs`): shader text
+  for every `GpuLanguage` (GLSL, GLSL ES, Vulkan GLSL, HLSL, MSL, Cg, OSL);
+  no GPU execution backend. As in OCIO, OSL has no texture support, so 1D / 3D
+  LUT ops are rejected: a processor containing one returns an error when OSL
+  shader text is requested.

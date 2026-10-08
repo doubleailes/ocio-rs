@@ -82,7 +82,8 @@ pub fn clear_all_caches() {
     fileformats::file_transform::clear_file_transform_caches();
 }
 
-/// Library version (matches the OCIO version this port tracks).
-pub const OCIO_VERSION: &str = "2.5.0";
+/// Library version: the latest OCIO release fully covered by this port
+/// (see `UPSTREAM.md`).
+pub const OCIO_VERSION: &str = "2.5.2";
 /// Version of this crate.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

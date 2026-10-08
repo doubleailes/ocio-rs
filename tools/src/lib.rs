@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn helpers() {
-        assert_eq!(version_hex(), 0x0205_0000);
+        assert_eq!(version_hex(), 0x0205_0200);
         assert_eq!(remove_extension("dir/archive.ocioz"), "dir/archive");
         assert_eq!(remove_extension("dir.x/archive"), "dir.x/archive");
         assert_eq!(remove_extension("a.b.c"), "a.b");
