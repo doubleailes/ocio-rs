@@ -8,6 +8,11 @@ repository = "https://github.com/doubleailes/ocio-rs"
 readme = "README.md"
 keywords = ["color", "ocio", "vfx", "lut", "aces"]
 categories = ["graphics", "multimedia::images"]
+exclude = [
+    ".github",
+    "tests",
+    "tools"
+]
 
 [lib]
 name = "ocio"
