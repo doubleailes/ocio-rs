@@ -22,3 +22,6 @@ target
 
 # Claude Code local state (agent worktrees)
 .claude/
+# pixi environments
+.pixi/*
+!.pixi/config.toml
