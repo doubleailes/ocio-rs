@@ -33,25 +33,38 @@ use crate::transforms::GroupTransform;
 use crate::types::Interpolation;
 use std::sync::OnceLock;
 
+/// Name of the CLF format.
 pub const FILEFORMAT_CLF: &str = "Academy/ASC Common LUT Format";
+/// Name of the CTF format (Autodesk Color Transform Format).
 pub const FILEFORMAT_CTF: &str = "Color Transform Format";
+/// Name of the `.cc` format (single ASC CDL).
 pub const FILEFORMAT_COLOR_CORRECTION: &str = "ColorCorrection";
+/// Name of the `.ccc` format (ASC CDL collection).
 pub const FILEFORMAT_COLOR_CORRECTION_COLLECTION: &str = "ColorCorrectionCollection";
+/// Name of the `.cdl` format (ASC color decision list).
 pub const FILEFORMAT_COLOR_DECISION_LIST: &str = "ColorDecisionList";
 
 /// Format capability bits.
 pub mod capability {
+    /// No capability.
     pub const NONE: u32 = 0;
+    /// The format can be read.
     pub const READ: u32 = 1;
+    /// The format can be baked by a `Baker`.
     pub const BAKE: u32 = 2;
+    /// A group transform can be written to the format.
     pub const WRITE: u32 = 4;
 }
 
 /// Bake capability bits.
 pub mod bake_capability {
+    /// No bake capability.
     pub const NONE: u32 = 0;
+    /// Bakes a 3D LUT.
     pub const LUT3D: u32 = 1;
+    /// Bakes a 1D LUT.
     pub const LUT1D: u32 = 2;
+    /// Bakes a 1D shaper LUT followed by a 3D LUT.
     pub const LUT1D_3D: u32 = 4;
 }
 
@@ -81,6 +94,7 @@ pub struct CachedFile {
 }
 
 impl CachedFile {
+    /// A cached file holding `group` (not a CDL collection).
     pub fn new(group: GroupTransform) -> Self {
         Self {
             group,
@@ -216,10 +230,12 @@ impl FormatRegistry {
             .collect()
     }
 
+    /// Number of formats having the capability.
     pub fn num_formats(&self, cap: u32) -> usize {
         self.format_infos(cap).len()
     }
 
+    /// True if a readable format uses `ext` (case insensitive, leading dot optional).
     pub fn is_format_extension_supported(&self, ext: &str) -> bool {
         let ext = ext.trim_start_matches('.').to_ascii_lowercase();
         self.format_infos(capability::READ)

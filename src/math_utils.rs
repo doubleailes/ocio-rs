@@ -18,10 +18,12 @@ pub fn is_scalar_equal_to_one(v: f64) -> bool {
     (v - 1.0).abs() < FLTMIN as f64
 }
 
+/// True if all the values are (nearly) zero.
 pub fn is_vec_equal_to_zero(v: &[f64]) -> bool {
     v.iter().all(|&x| is_scalar_equal_to_zero(x))
 }
 
+/// True if all the values are (nearly) one.
 pub fn is_vec_equal_to_one(v: &[f64]) -> bool {
     v.iter().all(|&x| is_scalar_equal_to_one(x))
 }
@@ -67,6 +69,7 @@ pub fn clamp(v: f64, lo: f64, hi: f64) -> f64 {
     }
 }
 
+/// Linear interpolation between `a` and `b`.
 pub fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a + (b - a) * t
 }
@@ -227,6 +230,7 @@ pub fn half_to_f32(bits: u16) -> f32 {
     half::f16::from_bits(bits).to_f32()
 }
 
+/// Bits of the half float nearest to `v`.
 pub fn f32_to_half_bits(v: f32) -> u16 {
     half::f16::from_f32(v).to_bits()
 }

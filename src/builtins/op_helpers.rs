@@ -170,10 +170,15 @@ pub fn add_log(ops: &mut TransformVec, base: f64, dir: TransformDirection) {
 /// all three channels).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LogCameraParams {
+    /// Log base.
     pub base: f64,
+    /// Slope applied on the log side.
     pub log_side_slope: f64,
+    /// Offset applied on the log side.
     pub log_side_offset: f64,
+    /// Slope applied on the linear side.
     pub lin_side_slope: f64,
+    /// Offset applied on the linear side.
     pub lin_side_offset: f64,
     /// `None` for a pure log affine curve (no linear segment).
     pub lin_side_break: Option<f64>,

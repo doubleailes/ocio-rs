@@ -19,14 +19,23 @@ use crate::types::{OptimizationFlags, TransformDirection};
 /// Bakes a color transform from a config into a LUT file.
 #[derive(Debug, Clone, Default)]
 pub struct Baker {
+    /// Config the color spaces, looks and displays are taken from.
     pub config: Option<Config>,
+    /// Name of the LUT output format.
     pub format: String,
+    /// Metadata written by the formats that support it.
     pub metadata: FormatMetadata,
+    /// Input color space of the baked transform.
     pub input_space: String,
+    /// Optional color space used for the shaper LUT (empty for none).
     pub shaper_space: String,
+    /// Optional looks to apply (a look string, e.g. `"foo, +bar"`).
     pub looks: String,
+    /// Target color space (not to be used with a display / view).
     pub target_space: String,
+    /// Display to bake (used with `view`, instead of a target space).
     pub display: String,
+    /// View to bake (used with `display`, instead of a target space).
     pub view: String,
     /// `None` means format default.
     pub shaper_size: Option<usize>,
