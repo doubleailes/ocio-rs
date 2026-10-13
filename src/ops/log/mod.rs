@@ -437,41 +437,69 @@ const LOG10_2: f32 = std::f64::consts::LOG10_2 as f32;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LogRenderer {
     /// `log2(max(x, FLT_MIN)) * scale`.
-    Log { scale: f32 },
+    Log {
+        /// `1 / log2(base)`.
+        scale: f32,
+    },
     /// `exp2(x * log2(base))`.
-    AntiLog { log2_base: f32 },
+    AntiLog {
+        /// `log2(base)`.
+        log2_base: f32,
+    },
     /// Lin to log.
     Lin2Log {
+        /// Lin side slope.
         m: [f32; 3],
+        /// Lin side offset.
         b: [f32; 3],
+        /// Log side slope divided by `log2(base)`.
         klog: [f32; 3],
+        /// Log side offset.
         kb: [f32; 3],
     },
     /// Log to lin.
     Log2Lin {
+        /// `log2(base)` divided by the log side slope.
         kinv: [f32; 3],
+        /// Negated log side offset.
         minuskb: [f32; 3],
+        /// Negated lin side offset.
         minusb: [f32; 3],
+        /// Inverse of the lin side slope.
         minv: [f32; 3],
     },
     /// Camera lin to log.
     CameraLin2Log {
+        /// Lin side slope.
         m: [f32; 3],
+        /// Lin side offset.
         b: [f32; 3],
+        /// Log side slope divided by `log2(base)`.
         klog: [f32; 3],
+        /// Log side offset.
         kb: [f32; 3],
+        /// Lin side break, below which the linear segment is used.
         linb: [f32; 3],
+        /// Slope of the linear segment.
         linear_slope: [f32; 3],
+        /// Offset of the linear segment.
         linear_offset: [f32; 3],
     },
     /// Camera log to lin.
     CameraLog2Lin {
+        /// `log2(base)` divided by the log side slope.
         kinv: [f32; 3],
+        /// Negated log side offset.
         minuskb: [f32; 3],
+        /// Negated lin side offset.
         minusb: [f32; 3],
+        /// Inverse of the lin side slope.
         minv: [f32; 3],
+        /// Log side break, below which the linear segment is used.
         log_side_break: [f32; 3],
+        /// Inverse of the linear segment slope.
         linsinv: [f32; 3],
+        /// Negated linear segment offset.
         minuslino: [f32; 3],
     },
 }

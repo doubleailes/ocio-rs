@@ -32,6 +32,7 @@
     clippy::ptr_arg
 )]
 #![cfg_attr(test, allow(clippy::approx_constant))]
+#![warn(missing_docs)]
 
 pub mod apphelpers;
 pub mod baker;

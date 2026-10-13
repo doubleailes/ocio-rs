@@ -197,10 +197,12 @@ impl Lut3DArray {
         self.length * self.length * self.length * 3
     }
 
+    /// The LUT values (RGB triplets, blue fastest).
     pub fn values(&self) -> &[f32] {
         &self.values
     }
 
+    /// The LUT values, mutable.
     pub fn values_mut(&mut self) -> &mut Vec<f32> {
         &mut self.values
     }
@@ -345,6 +347,7 @@ impl Lut3DOpData {
         }
     }
 
+    /// The requested interpolation.
     pub fn interpolation(&self) -> Interpolation {
         self.interpolation
     }
@@ -364,6 +367,7 @@ impl Lut3DOpData {
         }
     }
 
+    /// Set the interpolation.
     pub fn set_interpolation(&mut self, interpolation: Interpolation) {
         self.interpolation = interpolation;
     }
@@ -380,18 +384,22 @@ impl Lut3DOpData {
         )
     }
 
+    /// The direction.
     pub fn direction(&self) -> TransformDirection {
         self.direction
     }
 
+    /// Set the direction.
     pub fn set_direction(&mut self, dir: TransformDirection) {
         self.direction = dir;
     }
 
+    /// The LUT values.
     pub fn array(&self) -> &Lut3DArray {
         &self.array
     }
 
+    /// The LUT values, mutable.
     pub fn array_mut(&mut self) -> &mut Lut3DArray {
         &mut self.array
     }
@@ -487,18 +495,22 @@ impl Lut3DOpData {
         self.direction != other.direction && self.array == other.array
     }
 
+    /// The original scaling of the LUT values.
     pub fn file_output_bit_depth(&self) -> BitDepth {
         self.file_out_bit_depth
     }
 
+    /// Record the original scaling of the LUT values.
     pub fn set_file_output_bit_depth(&mut self, bd: BitDepth) {
         self.file_out_bit_depth = bd;
     }
 
+    /// The format metadata.
     pub fn format_metadata(&self) -> &FormatMetadata {
         &self.metadata
     }
 
+    /// The format metadata, mutable.
     pub fn format_metadata_mut(&mut self) -> &mut FormatMetadata {
         &mut self.metadata
     }

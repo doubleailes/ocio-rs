@@ -26,7 +26,9 @@ pub struct KnotsCoefs {
     pub coefs: Vec<f32>,
     /// Packed knots of all the curves (`MAX_NUM_KNOTS` long).
     pub knots: Vec<f32>,
+    /// Number of coefficients used in `coefs`.
     pub num_coefs: i32,
+    /// Number of knots used in `knots`.
     pub num_knots: i32,
 }
 

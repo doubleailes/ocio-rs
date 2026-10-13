@@ -76,18 +76,23 @@ impl GradingRgbCurveOp {
         }
     }
 
+    /// The grading style.
     pub fn style(&self) -> GradingStyle {
         self.style
     }
+    /// The direction.
     pub fn direction(&self) -> TransformDirection {
         self.direction
     }
+    /// True if the lin-to-log conversion of the lin style is bypassed.
     pub fn bypass_lin_to_log(&self) -> bool {
         self.bypass_lin_to_log
     }
+    /// The format metadata.
     pub fn metadata(&self) -> &FormatMetadata {
         &self.metadata
     }
+    /// Set the format metadata.
     pub fn set_metadata(&mut self, metadata: FormatMetadata) {
         self.metadata = metadata;
     }
@@ -334,12 +339,15 @@ impl GradingRgbCurveTransform {
         self.value.curve(c).slopes_are_default()
     }
 
+    /// True if the created op holds a dynamic property.
     pub fn is_dynamic(&self) -> bool {
         self.dynamic
     }
+    /// Make the created op hold a dynamic property.
     pub fn make_dynamic(&mut self) {
         self.dynamic = true;
     }
+    /// Make the created op static.
     pub fn make_non_dynamic(&mut self) {
         self.dynamic = false;
     }

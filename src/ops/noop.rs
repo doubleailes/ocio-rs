@@ -17,7 +17,9 @@ pub enum MarkerKind {
 /// A no-op carrying metadata for `ProcessorMetadata`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MarkerNoOp {
+    /// Whether this marks a file or a look.
     pub kind: MarkerKind,
+    /// The file name or the look name.
     pub value: String,
 }
 
@@ -69,6 +71,7 @@ pub fn create_look_no_op(ops: &mut OpVec, look: &str) {
 /// the op list, e.g. the CLF/CTF `ProcessList` information).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MetadataNoOp {
+    /// The format metadata carried by the op.
     pub metadata: crate::format_metadata::FormatMetadata,
 }
 

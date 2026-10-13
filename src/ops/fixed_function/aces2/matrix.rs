@@ -184,6 +184,7 @@ pub fn invert_f33(mat33: &M33f) -> Result<M33f> {
 /// CIE xy chromaticity coordinates.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Chromaticities {
+    /// The `x` and `y` coordinates.
     pub xy: [f64; 2],
 }
 
@@ -197,9 +198,13 @@ impl Chromaticities {
 /// Chromaticities of the red, green and blue primaries and of the white.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Primaries {
+    /// Red primary.
     pub red: Chromaticities,
+    /// Green primary.
     pub grn: Chromaticities,
+    /// Blue primary.
     pub blu: Chromaticities,
+    /// White point.
     pub wht: Chromaticities,
 }
 

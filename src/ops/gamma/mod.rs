@@ -648,19 +648,40 @@ pub fn compute_params_rev(p: &[f64]) -> RendererParams {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GammaRenderer {
     /// `pow(max(0, x), g)`.
-    Basic { gamma: [f32; 4] },
+    Basic {
+        /// Exponent per channel (RGBA).
+        gamma: [f32; 4],
+    },
     /// `sign(x) * pow(|x|, g)`.
-    BasicMirror { gamma: [f32; 4] },
+    BasicMirror {
+        /// Exponent per channel (RGBA).
+        gamma: [f32; 4],
+    },
     /// `x > 0 ? pow(x, g) : x`.
-    BasicPassThru { gamma: [f32; 4] },
+    BasicPassThru {
+        /// Exponent per channel (RGBA).
+        gamma: [f32; 4],
+    },
     /// Forward moncurve.
-    MoncurveFwd { params: [RendererParams; 4] },
+    MoncurveFwd {
+        /// Moncurve coefficients per channel (RGBA).
+        params: [RendererParams; 4],
+    },
     /// Reverse moncurve.
-    MoncurveRev { params: [RendererParams; 4] },
+    MoncurveRev {
+        /// Moncurve coefficients per channel (RGBA).
+        params: [RendererParams; 4],
+    },
     /// Forward mirrored moncurve.
-    MoncurveMirrorFwd { params: [RendererParams; 4] },
+    MoncurveMirrorFwd {
+        /// Moncurve coefficients per channel (RGBA).
+        params: [RendererParams; 4],
+    },
     /// Reverse mirrored moncurve.
-    MoncurveMirrorRev { params: [RendererParams; 4] },
+    MoncurveMirrorRev {
+        /// Moncurve coefficients per channel (RGBA).
+        params: [RendererParams; 4],
+    },
 }
 
 #[inline]
