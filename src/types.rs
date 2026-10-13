@@ -35,15 +35,21 @@ pub fn bool_from_string(s: &str) -> bool {
 /// Logging verbosity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub enum LoggingLevel {
+    /// No logging.
     None = 0,
+    /// Only warnings.
     Warning = 1,
+    /// Informational messages (default).
     #[default]
     Info = 2,
+    /// Debug messages.
     Debug = 3,
+    /// Unrecognized level.
     Unknown = 255,
 }
 
 impl LoggingLevel {
+    /// Lowercase name (`"none"`, `"warning"`, `"info"`, `"debug"`, `"unknown"`).
     pub fn as_str(&self) -> &'static str {
         match self {
             LoggingLevel::None => "none",
@@ -53,6 +59,7 @@ impl LoggingLevel {
             LoggingLevel::Unknown => "unknown",
         }
     }
+    /// Parse a name or its numeric value `"0"`..`"3"` (case insensitive); anything else is `Unknown`.
     pub fn from_str_lossy(s: &str) -> Self {
         match s.to_ascii_lowercase().as_str() {
             "0" | "none" => LoggingLevel::None,
@@ -68,71 +75,91 @@ impl_display_as_str!(LoggingLevel);
 /// Scene vs display referred reference space.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ReferenceSpaceType {
+    /// Scene-referred reference space (default).
     #[default]
     Scene,
+    /// Display-referred reference space.
     Display,
 }
 
 /// Which reference space to search in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum SearchReferenceSpaceType {
+    /// Search the scene-referred reference space (default).
     #[default]
     Scene,
+    /// Search the display-referred reference space.
     Display,
+    /// Search both reference spaces.
     All,
 }
 
 /// Color space visibility filter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ColorSpaceVisibility {
+    /// Only active color spaces (default).
     #[default]
     Active,
+    /// Only inactive color spaces.
     Inactive,
+    /// All color spaces.
     All,
 }
 
 /// Named transform visibility filter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum NamedTransformVisibility {
+    /// Only active named transforms (default).
     #[default]
     Active,
+    /// Only inactive named transforms.
     Inactive,
+    /// All named transforms.
     All,
 }
 
 /// Shared vs display-defined views.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ViewType {
+    /// Views from the shared `views` list (default).
     #[default]
     Shared,
+    /// Views defined directly under a display.
     DisplayDefined,
 }
 
 /// Direction of a color space transform relative to the reference space.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ColorSpaceDirection {
+    /// From the color space to the reference space (default).
     #[default]
     ToReference,
+    /// From the reference space to the color space.
     FromReference,
 }
 
 /// Direction of a view transform relative to the reference space.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ViewTransformDirection {
+    /// From the view transform's space to the reference space (default).
     #[default]
     ToReference,
+    /// From the reference space to the view transform's space.
     FromReference,
 }
 
 /// Direction of a transform.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum TransformDirection {
+    /// Forward direction (default).
     #[default]
     Forward,
+    /// Inverse direction.
     Inverse,
 }
 
 impl TransformDirection {
+    /// Lowercase name, `"forward"` or `"inverse"`.
     pub fn as_str(&self) -> &'static str {
         match self {
             TransformDirection::Forward => "forward",
@@ -183,45 +210,76 @@ pub fn get_inverse_transform_direction(d: TransformDirection) -> TransformDirect
 /// Kind of transform.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TransformType {
+    /// `AllocationTransform`.
     Allocation,
+    /// `BuiltinTransform`.
     Builtin,
+    /// `CDLTransform`.
     Cdl,
+    /// `ColorSpaceTransform`.
     ColorSpace,
+    /// `DisplayViewTransform`.
     DisplayView,
+    /// `ExponentTransform`.
     Exponent,
+    /// `ExponentWithLinearTransform`.
     ExponentWithLinear,
+    /// `ExposureContrastTransform`.
     ExposureContrast,
+    /// `FileTransform`.
     File,
+    /// `FixedFunctionTransform`.
     FixedFunction,
+    /// `GradingHueCurveTransform`.
     GradingHueCurve,
+    /// `GradingPrimaryTransform`.
     GradingPrimary,
+    /// `GradingRGBCurveTransform`.
     GradingRgbCurve,
+    /// `GradingToneTransform`.
     GradingTone,
+    /// `GroupTransform`.
     Group,
+    /// `LogAffineTransform`.
     LogAffine,
+    /// `LogCameraTransform`.
     LogCamera,
+    /// `LogTransform`.
     Log,
+    /// `LookTransform`.
     Look,
+    /// `Lut1DTransform`.
     Lut1D,
+    /// `Lut3DTransform`.
     Lut3D,
+    /// `MatrixTransform`.
     Matrix,
+    /// `RangeTransform`.
     Range,
 }
 
 /// LUT interpolation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Interpolation {
+    /// Unrecognized interpolation (`"unknown"`).
     Unknown = 0,
+    /// Nearest neighbor (`"nearest"`).
     Nearest = 1,
+    /// Linear / trilinear (`"linear"`).
     Linear = 2,
+    /// Tetrahedral, 3D LUTs only (`"tetrahedral"`).
     Tetrahedral = 3,
+    /// Cubic (`"cubic"`).
     Cubic = 4,
+    /// Default interpolation of the LUT type (`"default"`).
     #[default]
     Default = 254,
+    /// Best available interpolation (`"best"`).
     Best = 255,
 }
 
 impl Interpolation {
+    /// Lowercase name, e.g. `"linear"` or `"tetrahedral"`.
     pub fn as_str(&self) -> &'static str {
         match self {
             Interpolation::Nearest => "nearest",
@@ -252,18 +310,28 @@ impl_display_as_str!(Interpolation);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum BitDepth {
     #[default]
+    /// Unknown bit depth (default, `"unknown"`).
     Unknown,
+    /// 8-bit unsigned integer (`"8ui"`).
     UInt8,
+    /// 10-bit unsigned integer (`"10ui"`).
     UInt10,
+    /// 12-bit unsigned integer (`"12ui"`).
     UInt12,
+    /// 14-bit unsigned integer (`"14ui"`).
     UInt14,
+    /// 16-bit unsigned integer (`"16ui"`).
     UInt16,
+    /// 32-bit unsigned integer (`"32ui"`).
     UInt32,
+    /// 16-bit half float (`"16f"`).
     F16,
+    /// 32-bit float (`"32f"`).
     F32,
 }
 
 impl BitDepth {
+    /// OCIO name of the bit depth, e.g. `"8ui"` or `"32f"`.
     pub fn as_str(&self) -> &'static str {
         match self {
             BitDepth::UInt8 => "8ui",
@@ -277,6 +345,7 @@ impl BitDepth {
             BitDepth::Unknown => "unknown",
         }
     }
+    /// Parse an OCIO bit depth name (case insensitive); anything else is `Unknown`.
     pub fn from_str_lossy(s: &str) -> Self {
         match s.to_ascii_lowercase().as_str() {
             "8ui" => BitDepth::UInt8,
@@ -290,6 +359,7 @@ impl BitDepth {
             _ => BitDepth::Unknown,
         }
     }
+    /// True for `F16` and `F32`.
     pub fn is_float(&self) -> bool {
         matches!(self, BitDepth::F16 | BitDepth::F32)
     }
@@ -325,24 +395,33 @@ impl_display_as_str!(BitDepth);
 /// Hue adjustment for 1D LUTs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Lut1DHueAdjust {
+    /// No hue adjustment (default).
     #[default]
     None,
+    /// `HUE_DW3`: restore the hue after per-channel LUT application.
     Dw3,
+    /// `HUE_WYPN`: hue adjustment variant (not implemented; rejected by the Lut1D op).
     Wypn,
 }
 
 /// Channel ordering of packed images.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ChannelOrdering {
+    /// R, G, B, A (default).
     #[default]
     Rgba,
+    /// B, G, R, A.
     Bgra,
+    /// A, B, G, R.
     Abgr,
+    /// R, G, B (no alpha).
     Rgb,
+    /// B, G, R (no alpha).
     Bgr,
 }
 
 impl ChannelOrdering {
+    /// Number of channels per pixel (3 for `Rgb`/`Bgr`, otherwise 4).
     pub fn num_channels(&self) -> usize {
         match self {
             ChannelOrdering::Rgb | ChannelOrdering::Bgr => 3,
@@ -354,13 +433,17 @@ impl ChannelOrdering {
 /// Allocation for `AllocationTransform`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Allocation {
+    /// Unrecognized allocation (`"unknown"`).
     Unknown,
+    /// Uniform allocation (default, `"uniform"`).
     #[default]
     Uniform,
+    /// Base 2 logarithmic allocation (`"lg2"`).
     Lg2,
 }
 
 impl Allocation {
+    /// Lowercase name, `"uniform"`, `"lg2"` or `"unknown"`.
     pub fn as_str(&self) -> &'static str {
         match self {
             Allocation::Uniform => "uniform",
@@ -368,6 +451,7 @@ impl Allocation {
             Allocation::Unknown => "unknown",
         }
     }
+    /// Parse `"uniform"` / `"lg2"` (case insensitive); anything else is `Unknown`.
     pub fn from_str_lossy(s: &str) -> Self {
         match s.to_ascii_lowercase().as_str() {
             "uniform" => Allocation::Uniform,
@@ -381,20 +465,31 @@ impl_display_as_str!(Allocation);
 /// GPU shading languages (kept for API compatibility).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum GpuLanguage {
+    /// Nvidia Cg (`"cg"`).
     Cg,
+    /// GLSL 1.2 (`"glsl_1.2"`).
     Glsl1_2,
+    /// GLSL 1.3 (`"glsl_1.3"`).
     Glsl1_3,
+    /// GLSL 4.0 (default, `"glsl_4.0"`).
     #[default]
     Glsl4_0,
+    /// GLSL 4.6 for Vulkan (`"glsl_vk_4.6"`).
     GlslVk4_6,
+    /// HLSL shader model 5.0 (`"hlsl_sm_5.0"`).
     HlslSm5_0,
+    /// Open Shading Language 1 (`"osl_1"`).
     Osl1,
+    /// GLSL ES 1.0 (`"glsl_es_1.0"`).
     GlslEs1_0,
+    /// GLSL ES 3.0 (`"glsl_es_3.0"`).
     GlslEs3_0,
+    /// Metal Shading Language 2.0 (`"msl_2"`).
     Msl2_0,
 }
 
 impl GpuLanguage {
+    /// OCIO name of the language, e.g. `"glsl_4.0"`.
     pub fn as_str(&self) -> &'static str {
         match self {
             GpuLanguage::Cg => "cg",
@@ -409,6 +504,7 @@ impl GpuLanguage {
             GpuLanguage::Osl1 => "osl_1",
         }
     }
+    /// Parse an OCIO language name (case insensitive); errors on unknown names.
     pub fn parse(s: &str) -> Result<Self> {
         Ok(match s.to_ascii_lowercase().as_str() {
             "cg" => GpuLanguage::Cg,
@@ -434,13 +530,17 @@ impl_display_as_str!(GpuLanguage);
 /// How environment variables are loaded into a context.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum EnvironmentMode {
+    /// Unrecognized mode (`"unknown"`).
     Unknown,
+    /// Load only the variables declared in the config (default, `"loadpredefined"`).
     #[default]
     LoadPredefined,
+    /// Load all environment variables (`"loadall"`).
     LoadAll,
 }
 
 impl EnvironmentMode {
+    /// Lowercase name, `"loadpredefined"`, `"loadall"` or `"unknown"`.
     pub fn as_str(&self) -> &'static str {
         match self {
             EnvironmentMode::LoadPredefined => "loadpredefined",
@@ -448,6 +548,7 @@ impl EnvironmentMode {
             EnvironmentMode::Unknown => "unknown",
         }
     }
+    /// Parse `"loadpredefined"` / `"loadall"` (case insensitive); anything else is `Unknown`.
     pub fn from_str_lossy(s: &str) -> Self {
         match s.to_ascii_lowercase().as_str() {
             "loadpredefined" => EnvironmentMode::LoadPredefined,
@@ -461,18 +562,22 @@ impl_display_as_str!(EnvironmentMode);
 /// Clamping behavior of a `RangeTransform`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum RangeStyle {
+    /// Scale and offset without clamping (`"noClamp"`).
     NoClamp,
+    /// Clamp to the output range (default, `"Clamp"`).
     #[default]
     Clamp,
 }
 
 impl RangeStyle {
+    /// CLF style name, `"noClamp"` or `"Clamp"`.
     pub fn as_str(&self) -> &'static str {
         match self {
             RangeStyle::NoClamp => "noClamp",
             RangeStyle::Clamp => "Clamp",
         }
     }
+    /// Parse `"noClamp"` / `"Clamp"` (case insensitive); errors otherwise.
     pub fn parse(s: &str) -> Result<Self> {
         match s.to_ascii_lowercase().as_str() {
             "noclamp" => Ok(RangeStyle::NoClamp),
@@ -487,33 +592,58 @@ impl_display_as_str!(RangeStyle);
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FixedFunctionStyle {
+    /// ACES 0.3/0.7 red modifier (`"ACES_RedMod03"`).
     AcesRedMod03,
+    /// ACES 1.0 red modifier (`"ACES_RedMod10"`).
     AcesRedMod10,
+    /// ACES 0.3/0.7 glow (`"ACES_Glow03"`).
     AcesGlow03,
+    /// ACES 1.0 glow (`"ACES_Glow10"`).
     AcesGlow10,
+    /// ACES 1.0 dark to dim surround (`"ACES_DarkToDim10"`).
     AcesDarkToDim10,
+    /// Rec.2100 surround correction (`"REC2100_Surround"`).
     Rec2100Surround,
+    /// RGB to HSV (`"RGB_TO_HSV"`).
     RgbToHsv,
+    /// CIE XYZ to xyY (`"XYZ_TO_xyY"`).
     XyzToXyy,
+    /// CIE XYZ to u'v'Y (`"XYZ_TO_uvY"`).
     XyzToUvy,
+    /// CIE XYZ to L*u*v* (`"XYZ_TO_LUV"`).
     XyzToLuv,
+    /// ACES 0.2 gamut mapping (`"ACES_GamutMap02"`).
     AcesGamutMap02,
+    /// ACES 0.7 gamut mapping (`"ACES_GamutMap07"`).
     AcesGamutMap07,
+    /// ACES 1.3 reference gamut compression (`"ACES_GamutComp13"`).
     AcesGamutComp13,
+    /// Linear to SMPTE ST 2084 PQ (`"Lin_TO_PQ"`).
     LinToPq,
+    /// Linear to gamma/log curve (`"Lin_TO_GammaLog"`).
     LinToGammaLog,
+    /// Linear to double log curve (`"Lin_TO_DoubleLog"`).
     LinToDoubleLog,
+    /// ACES 2 output transform (`"ACES2_OutputTransform"`).
     AcesOutputTransform20,
+    /// ACES 2 RGB to JMh (`"ACES2_RGB_TO_JMh"`).
     AcesRgbToJmh20,
+    /// ACES 2 tonescale and chroma compression (`"ACES2_TonescaleCompress"`).
     AcesTonescaleCompress20,
+    /// ACES 2 gamut compression (`"ACES2_GamutCompress"`).
     AcesGamutCompress20,
+    /// ACES 2 RGB to HMJ (`"ACES2_RGB_TO_HMJ"`).
     AcesRgbToHmj20,
+    /// RGB to HSY for linear encodings (`"RGB_TO_HSY_LIN"`).
     RgbToHsyLin,
+    /// RGB to HSY for log encodings (`"RGB_TO_HSY_LOG"`).
     RgbToHsyLog,
+    /// RGB to HSY for video encodings (`"RGB_TO_HSY_VID"`).
     RgbToHsyVid,
 }
 
 impl FixedFunctionStyle {
+    /// CLF style name, e.g. `"ACES_RedMod10"` or `"RGB_TO_HSV"`.
     pub fn as_str(&self) -> &'static str {
         use FixedFunctionStyle::*;
         match self {
@@ -543,6 +673,7 @@ impl FixedFunctionStyle {
             AcesGamutMap07 => "ACES_GamutMap07",
         }
     }
+    /// Parse a CLF style name (case insensitive); errors on unknown names.
     pub fn parse(s: &str) -> Result<Self> {
         use FixedFunctionStyle::*;
         Ok(match s.to_ascii_lowercase().as_str() {
@@ -581,13 +712,17 @@ impl_display_as_str!(FixedFunctionStyle);
 /// Exposure/contrast styles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ExposureContrastStyle {
+    /// Linear (scene-linear) style (default, `"linear"`).
     #[default]
     Linear,
+    /// Video (gamma-encoded) style (`"video"`).
     Video,
+    /// Logarithmic style (`"log"`).
     Logarithmic,
 }
 
 impl ExposureContrastStyle {
+    /// Lowercase name, `"linear"`, `"video"` or `"log"`.
     pub fn as_str(&self) -> &'static str {
         match self {
             ExposureContrastStyle::Video => "video",
@@ -595,6 +730,7 @@ impl ExposureContrastStyle {
             ExposureContrastStyle::Linear => "linear",
         }
     }
+    /// Parse `"linear"` / `"video"` / `"log"` (case insensitive); errors otherwise.
     pub fn parse(s: &str) -> Result<Self> {
         match s.to_ascii_lowercase().as_str() {
             "linear" => Ok(ExposureContrastStyle::Linear),
@@ -611,6 +747,7 @@ impl_display_as_str!(ExposureContrastStyle);
 /// CDL styles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum CdlStyle {
+    /// ASC CDL with clamping to [0, 1] (`"asc"`).
     Asc,
     /// Default style of `CDLTransform` (`CDL_TRANSFORM_DEFAULT`).
     #[default]
@@ -618,12 +755,14 @@ pub enum CdlStyle {
 }
 
 impl CdlStyle {
+    /// Lowercase/CLF name, `"asc"` or `"noClamp"`.
     pub fn as_str(&self) -> &'static str {
         match self {
             CdlStyle::Asc => "asc",
             CdlStyle::NoClamp => "noClamp",
         }
     }
+    /// Parse `"asc"` / `"noClamp"` (case insensitive); errors otherwise.
     pub fn parse(s: &str) -> Result<Self> {
         match s.to_ascii_lowercase().as_str() {
             "asc" => Ok(CdlStyle::Asc),
@@ -637,14 +776,19 @@ impl_display_as_str!(CdlStyle);
 /// Negative value handling for exponent transforms.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum NegativeStyle {
+    /// Clamp negative values to zero (default, `"clamp"`).
     #[default]
     Clamp,
+    /// Mirror the curve around the origin (`"mirror"`).
     Mirror,
+    /// Pass negative values through unchanged (`"pass_thru"`).
     PassThru,
+    /// Linear segment for negative values (`"linear"`).
     Linear,
 }
 
 impl NegativeStyle {
+    /// Lowercase name, e.g. `"clamp"` or `"pass_thru"`.
     pub fn as_str(&self) -> &'static str {
         match self {
             NegativeStyle::Clamp => "clamp",
@@ -653,6 +797,7 @@ impl NegativeStyle {
             NegativeStyle::Linear => "linear",
         }
     }
+    /// Parse `"clamp"` / `"mirror"` / `"pass_thru"` / `"linear"` (case insensitive); errors otherwise.
     pub fn parse(s: &str) -> Result<Self> {
         match s.to_ascii_lowercase().as_str() {
             "mirror" => Ok(NegativeStyle::Mirror),
@@ -668,13 +813,17 @@ impl_display_as_str!(NegativeStyle);
 /// Grading styles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum GradingStyle {
+    /// Logarithmic style (default, `"log"`).
     #[default]
     Log,
+    /// Linear style (`"linear"`).
     Lin,
+    /// Video style (`"video"`).
     Video,
 }
 
 impl GradingStyle {
+    /// Lowercase name, `"log"`, `"linear"` or `"video"`.
     pub fn as_str(&self) -> &'static str {
         match self {
             GradingStyle::Lin => "linear",
@@ -682,6 +831,7 @@ impl GradingStyle {
             GradingStyle::Video => "video",
         }
     }
+    /// Parse `"log"` / `"linear"` / `"video"` (case insensitive); errors otherwise.
     pub fn parse(s: &str) -> Result<Self> {
         match s.to_ascii_lowercase().as_str() {
             "linear" => Ok(GradingStyle::Lin),
@@ -696,25 +846,37 @@ impl_display_as_str!(GradingStyle);
 /// Types of dynamic properties.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DynamicPropertyType {
+    /// Exposure of an `ExposureContrastTransform`.
     Exposure,
+    /// Contrast of an `ExposureContrastTransform`.
     Contrast,
+    /// Gamma of an `ExposureContrastTransform`.
     Gamma,
+    /// Values of a `GradingPrimaryTransform`.
     GradingPrimary,
+    /// Curves of a `GradingRGBCurveTransform`.
     GradingRgbCurve,
+    /// Values of a `GradingToneTransform`.
     GradingTone,
+    /// Curves of a `GradingHueCurveTransform`.
     GradingHueCurve,
 }
 
 /// RGB curve selector.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RgbCurveType {
+    /// Red channel curve.
     Red = 0,
+    /// Green channel curve.
     Green = 1,
+    /// Blue channel curve.
     Blue = 2,
+    /// Master curve applied to all channels.
     Master = 3,
 }
 
 impl RgbCurveType {
+    /// All curve types, in index order.
     pub const ALL: [RgbCurveType; 4] = [
         RgbCurveType::Red,
         RgbCurveType::Green,
@@ -726,17 +888,26 @@ impl RgbCurveType {
 /// Hue curve selector.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HueCurveType {
+    /// Hue as a function of hue.
     HueHue = 0,
+    /// Saturation as a function of hue.
     HueSat,
+    /// Luminance as a function of hue.
     HueLum,
+    /// Saturation as a function of luminance.
     LumSat,
+    /// Saturation as a function of saturation.
     SatSat,
+    /// Luminance as a function of luminance.
     LumLum,
+    /// Luminance as a function of saturation.
     SatLum,
+    /// Hue-dependent effect curve (`HUE_FX`).
     HueFx,
 }
 
 impl HueCurveType {
+    /// All curve types, in index order.
     pub const ALL: [HueCurveType; 8] = [
         HueCurveType::HueHue,
         HueCurveType::HueSat,
@@ -752,7 +923,9 @@ impl HueCurveType {
 /// RGB to HSY conversion used by the hue curve transform.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum HsyTransformStyle {
+    /// No conversion; the curves operate on the input values directly.
     None,
+    /// HSY conversion (default).
     #[default]
     Hsy1,
 }
@@ -760,12 +933,18 @@ pub enum HsyTransformStyle {
 /// B-spline curve type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum BSplineType {
+    /// Standard B-spline (default).
     #[default]
     BSpline,
+    /// Diagonal B-spline (identity is y = x).
     DiagonalBSpline,
+    /// Hue-hue B-spline (periodic, identity is y = x).
     HueHueBSpline,
+    /// Periodic B-spline with identity value 1.
     Periodic1BSpline,
+    /// Periodic B-spline with identity value 0.
     Periodic0BSpline,
+    /// Horizontal B-spline with identity value 1.
     Horizontal1BSpline,
 }
 
@@ -774,30 +953,54 @@ pub enum BSplineType {
 pub struct OptimizationFlags(pub u32);
 
 impl OptimizationFlags {
+    /// No optimization.
     pub const NONE: Self = Self(0x0000_0000);
+    /// Remove identity ops.
     pub const IDENTITY: Self = Self(0x0000_0001);
+    /// Remove identity gamma ops.
     pub const IDENTITY_GAMMA: Self = Self(0x0000_0002);
+    /// Remove pairs of inverse CDL ops.
     pub const PAIR_IDENTITY_CDL: Self = Self(0x0000_0040);
+    /// Remove pairs of inverse exposure/contrast ops.
     pub const PAIR_IDENTITY_EXPOSURE_CONTRAST: Self = Self(0x0000_0080);
+    /// Remove pairs of inverse fixed function ops.
     pub const PAIR_IDENTITY_FIXED_FUNCTION: Self = Self(0x0000_0100);
+    /// Remove pairs of inverse gamma ops.
     pub const PAIR_IDENTITY_GAMMA: Self = Self(0x0000_0200);
+    /// Remove pairs of inverse 1D LUT ops.
     pub const PAIR_IDENTITY_LUT1D: Self = Self(0x0000_0400);
+    /// Remove pairs of inverse 3D LUT ops.
     pub const PAIR_IDENTITY_LUT3D: Self = Self(0x0000_0800);
+    /// Remove pairs of inverse log ops.
     pub const PAIR_IDENTITY_LOG: Self = Self(0x0000_1000);
+    /// Remove pairs of inverse grading ops.
     pub const PAIR_IDENTITY_GRADING: Self = Self(0x0000_2000);
+    /// Compose adjacent exponent ops.
     pub const COMP_EXPONENT: Self = Self(0x0004_0000);
+    /// Compose adjacent gamma ops.
     pub const COMP_GAMMA: Self = Self(0x0008_0000);
+    /// Compose adjacent matrix ops.
     pub const COMP_MATRIX: Self = Self(0x0010_0000);
+    /// Compose adjacent 1D LUT ops.
     pub const COMP_LUT1D: Self = Self(0x0020_0000);
+    /// Compose adjacent 3D LUT ops.
     pub const COMP_LUT3D: Self = Self(0x0040_0000);
+    /// Compose adjacent range ops.
     pub const COMP_RANGE: Self = Self(0x0080_0000);
+    /// Replace a separable prefix of ops with a 1D LUT.
     pub const COMP_SEPARABLE_PREFIX: Self = Self(0x0100_0000);
+    /// Use a fast approximation for inverse LUTs.
     pub const LUT_INV_FAST: Self = Self(0x0200_0000);
+    /// Use fast approximations of log, exp and pow.
     pub const FAST_LOG_EXP_POW: Self = Self(0x0400_0000);
+    /// Simplify ops (e.g. replace complex ops by simpler equivalents).
     pub const SIMPLIFY_OPS: Self = Self(0x0800_0000);
+    /// Bake dynamic properties as static values.
     pub const NO_DYNAMIC_PROPERTIES: Self = Self(0x1000_0000);
+    /// All optimizations.
     pub const ALL: Self = Self(0xFFFF_FFFF);
 
+    /// Optimizations that do not change the result.
     pub const LOSSLESS: Self = Self(
         Self::IDENTITY.0
             | Self::IDENTITY_GAMMA.0
@@ -815,6 +1018,7 @@ impl OptimizationFlags {
             | Self::COMP_RANGE.0
             | Self::SIMPLIFY_OPS.0,
     );
+    /// Lossless plus near-lossless approximations (the default).
     pub const VERY_GOOD: Self = Self(
         Self::LOSSLESS.0
             | Self::COMP_LUT1D.0
@@ -822,8 +1026,11 @@ impl OptimizationFlags {
             | Self::FAST_LOG_EXP_POW.0
             | Self::COMP_SEPARABLE_PREFIX.0,
     );
+    /// `VERY_GOOD` plus 3D LUT composition.
     pub const GOOD: Self = Self(Self::VERY_GOOD.0 | Self::COMP_LUT3D.0);
+    /// All optimizations.
     pub const DRAFT: Self = Self::ALL;
+    /// Default optimization level (`VERY_GOOD`).
     pub const DEFAULT: Self = Self::VERY_GOOD;
 
     /// True if every bit of `other` is set in `self`.
@@ -868,9 +1075,13 @@ impl std::ops::Not for OptimizationFlags {
 pub struct ProcessorCacheFlags(pub u32);
 
 impl ProcessorCacheFlags {
+    /// Caching disabled.
     pub const OFF: Self = Self(0x00);
+    /// Processor caching enabled.
     pub const ENABLED: Self = Self(0x01);
+    /// Share dynamic properties between cached processors.
     pub const SHARE_DYN_PROPERTIES: Self = Self(0x02);
+    /// Caching enabled with shared dynamic properties.
     pub const DEFAULT: Self = Self(0x03);
 }
 
@@ -883,41 +1094,75 @@ impl Default for ProcessorCacheFlags {
 // ---------------------------------------------------------------------------
 // Constants
 
+/// Environment variable naming the config file (`OCIO`).
 pub const OCIO_CONFIG_ENVVAR: &str = "OCIO";
+/// Environment variable overriding the active displays.
 pub const OCIO_ACTIVE_DISPLAYS_ENVVAR: &str = "OCIO_ACTIVE_DISPLAYS";
+/// Environment variable overriding the active views.
 pub const OCIO_ACTIVE_VIEWS_ENVVAR: &str = "OCIO_ACTIVE_VIEWS";
+/// Environment variable overriding the inactive color spaces.
 pub const OCIO_INACTIVE_COLORSPACES_ENVVAR: &str = "OCIO_INACTIVE_COLORSPACES";
+/// Environment variable overriding the optimization flags.
 pub const OCIO_OPTIMIZATION_FLAGS_ENVVAR: &str = "OCIO_OPTIMIZATION_FLAGS";
+/// Environment variable listing the user categories.
 pub const OCIO_USER_CATEGORIES_ENVVAR: &str = "OCIO_USER_CATEGORIES";
+/// Environment variable setting the logging level.
 pub const OCIO_LOGGING_LEVEL_ENVVAR: &str = "OCIO_LOGGING_LEVEL";
 
+/// Default config file name, without extension.
 pub const OCIO_CONFIG_DEFAULT_NAME: &str = "config";
+/// Config file extension.
 pub const OCIO_CONFIG_DEFAULT_FILE_EXT: &str = ".ocio";
+/// Config archive file extension.
 pub const OCIO_CONFIG_ARCHIVE_FILE_EXT: &str = ".ocioz";
+/// View name placeholder replaced by the display name.
 pub const OCIO_VIEW_USE_DISPLAY_NAME: &str = "<USE_DISPLAY_NAME>";
+/// URI prefix of built-in configs.
 pub const OCIO_BUILTIN_URI_PREFIX: &str = "ocio://";
 
+/// Environment variable disabling all caches.
 pub const OCIO_DISABLE_ALL_CACHES: &str = "OCIO_DISABLE_ALL_CACHES";
+/// Environment variable disabling processor caches.
 pub const OCIO_DISABLE_PROCESSOR_CACHES: &str = "OCIO_DISABLE_PROCESSOR_CACHES";
+/// Environment variable disabling the cache fallback.
 pub const OCIO_DISABLE_CACHE_FALLBACK: &str = "OCIO_DISABLE_CACHE_FALLBACK";
 
+/// Default role.
 pub const ROLE_DEFAULT: &str = "default";
+/// Reference role.
 pub const ROLE_REFERENCE: &str = "reference";
+/// Data (non-color) role.
 pub const ROLE_DATA: &str = "data";
+/// Color picking role.
 pub const ROLE_COLOR_PICKING: &str = "color_picking";
+/// Scene-linear role.
 pub const ROLE_SCENE_LINEAR: &str = "scene_linear";
+/// Compositing log role.
 pub const ROLE_COMPOSITING_LOG: &str = "compositing_log";
+/// Color timing role.
 pub const ROLE_COLOR_TIMING: &str = "color_timing";
+/// Texture painting role.
 pub const ROLE_TEXTURE_PAINT: &str = "texture_paint";
+/// Matte painting role.
 pub const ROLE_MATTE_PAINT: &str = "matte_paint";
+/// Rendering role.
 pub const ROLE_RENDERING: &str = "rendering";
+/// Scene-referred interchange role (ACES2065-1).
 pub const ROLE_INTERCHANGE_SCENE: &str = "aces_interchange";
+/// Display-referred interchange role (CIE XYZ D65).
 pub const ROLE_INTERCHANGE_DISPLAY: &str = "cie_xyz_d65_interchange";
 
+/// Metadata key for a description.
 pub const METADATA_DESCRIPTION: &str = "Description";
+/// Metadata key for info.
 pub const METADATA_INFO: &str = "Info";
+/// Metadata key for the input descriptor.
 pub const METADATA_INPUT_DESCRIPTOR: &str = "InputDescriptor";
+/// Metadata key for the output descriptor.
 pub const METADATA_OUTPUT_DESCRIPTOR: &str = "OutputDescriptor";
+/// Metadata attribute for a name.
 pub const METADATA_NAME: &str = "name";
+/// Metadata attribute for an id.
 pub const METADATA_ID: &str = "id";
+/// Metadata element for an id.
 pub const METADATA_ID_ELEMENT: &str = "Id";
