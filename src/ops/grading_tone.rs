@@ -19,9 +19,13 @@ use std::sync::Arc;
 /// Channel of a [`GradingRgbmsw`] (port of `RGBMChannel`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RgbmChannel {
+    /// Red.
     R = 0,
+    /// Green.
     G = 1,
+    /// Blue.
     B = 2,
+    /// Master.
     M = 3,
 }
 
@@ -50,40 +54,63 @@ pub fn channel_value(value: &GradingRgbmsw, channel: RgbmChannel) -> f32 {
 #[derive(Debug, Clone, PartialEq)]
 pub struct GradingTonePreRender {
     // Values used by CPU & GPU.
+    /// Start of the shadows (kept above the pivot).
     pub shadows_start: f64,
+    /// Pivot of the shadows (the `width` of the control).
     pub shadows_width: f64,
+    /// Start of the highlights (kept below the pivot).
     pub highlights_start: f64,
+    /// Pivot of the highlights (the `width` of the control).
     pub highlights_width: f64,
+    /// Start of the blacks, after the shadows adjustment.
     pub blacks_start: f64,
+    /// Width of the blacks, after the shadows adjustment.
     pub blacks_width: f64,
+    /// Start of the whites, after the highlights adjustment.
     pub whites_start: f64,
+    /// Width of the whites, after the highlights adjustment.
     pub whites_width: f64,
 
     // Arrays only used by CPU.
+    /// Midtones spline knot x values, per channel (R, G, B, M).
     pub mid_x: [[f32; 6]; 4],
+    /// Midtones spline knot y values, per channel.
     pub mid_y: [[f32; 6]; 4],
+    /// Midtones spline knot slopes, per channel.
     pub mid_m: [[f32; 6]; 4],
 
+    /// Highlights (`[0]`) and shadows (`[1]`) curve x values, per channel.
     pub hs_x: [[[f32; 3]; 4]; 2],
+    /// Highlights and shadows curve y values, per channel.
     pub hs_y: [[[f32; 3]; 4]; 2],
     /// m1 not used, `hs_m[][][1]` is m2.
     pub hs_m: [[[f32; 2]; 4]; 2],
 
+    /// Whites (`[0]`) and blacks (`[1]`) curve x values, per channel.
     pub wb_x: [[[f32; 2]; 4]; 2],
+    /// Whites and blacks curve y values, per channel.
     pub wb_y: [[[f32; 2]; 4]; 2],
+    /// Whites and blacks curve slopes, per channel.
     pub wb_m: [[[f32; 2]; 4]; 2],
+    /// Whites and blacks gain (mean of the end slopes, slope increasing case),
+    /// per channel.
     pub wb_gain: [[f32; 4]; 2],
 
     /// Top/bottom, 4 values.
     pub sc_x: [[f32; 4]; 2],
+    /// S-contrast top/bottom curve y values.
     pub sc_y: [[f32; 4]; 2],
     /// m0 & m3.
     pub sc_m: [[f32; 2]; 2],
 
     // Values changing with the style.
+    /// Top of the tonal range (depends on the style).
     pub top: f32,
+    /// Top of the s-contrast curve (depends on the style).
     pub top_sc: f32,
+    /// Bottom of the tonal range (depends on the style).
     pub bottom: f32,
+    /// S-contrast pivot (depends on the style).
     pub pivot: f32,
 
     /// Do not apply the op if all params are identity.
@@ -1242,15 +1269,19 @@ impl GradingToneOp {
         }
     }
 
+    /// The grading style.
     pub fn style(&self) -> GradingStyle {
         self.style
     }
+    /// The direction.
     pub fn direction(&self) -> TransformDirection {
         self.direction
     }
+    /// The format metadata.
     pub fn metadata(&self) -> &FormatMetadata {
         &self.metadata
     }
+    /// Set the format metadata.
     pub fn set_metadata(&mut self, metadata: FormatMetadata) {
         self.metadata = metadata;
     }
@@ -1446,12 +1477,15 @@ impl GradingToneTransform {
         Ok(())
     }
 
+    /// True if the created op holds a dynamic property.
     pub fn is_dynamic(&self) -> bool {
         self.dynamic
     }
+    /// Make the created op hold a dynamic property.
     pub fn make_dynamic(&mut self) {
         self.dynamic = true;
     }
+    /// Make the created op static.
     pub fn make_non_dynamic(&mut self) {
         self.dynamic = false;
     }

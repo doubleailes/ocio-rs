@@ -389,14 +389,27 @@ fn mult_vec(m: &[f64; 16], v: &[f64; 4]) -> [f64; 4] {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MatrixRenderer {
     /// Diagonal matrix, no offset.
-    Scale { scale: [f32; 4] },
+    Scale {
+        /// Diagonal of the matrix (RGBA).
+        scale: [f32; 4],
+    },
     /// Diagonal matrix with offsets.
-    ScaleWithOffset { scale: [f32; 4], offset: [f32; 4] },
+    ScaleWithOffset {
+        /// Diagonal of the matrix (RGBA).
+        scale: [f32; 4],
+        /// Offset added after scaling (RGBA).
+        offset: [f32; 4],
+    },
     /// Full matrix, no offset (columns of the matrix).
-    Matrix { columns: [[f32; 4]; 4] },
+    Matrix {
+        /// Columns of the matrix.
+        columns: [[f32; 4]; 4],
+    },
     /// Full matrix with offsets.
     MatrixWithOffset {
+        /// Columns of the matrix.
         columns: [[f32; 4]; 4],
+        /// Offset added after the matrix (RGBA).
         offset: [f32; 4],
     },
 }

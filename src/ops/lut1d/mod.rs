@@ -142,7 +142,12 @@ pub enum IdentityReplacement {
     /// matrix, which is a no-op).
     NoOp,
     /// A clamp to `[min, max]` (OCIO uses a `RangeOpData(min, max, min, max)`).
-    Clamp { min: f64, max: f64 },
+    Clamp {
+        /// Lower bound.
+        min: f64,
+        /// Upper bound.
+        max: f64,
+    },
 }
 
 /// Build the ops of a clamping range `[min, max] -> [min, max]`. Returns
@@ -596,6 +601,7 @@ impl Lut1DOpData {
         Interpolation::Linear
     }
 
+    /// Set the interpolation.
     pub fn set_interpolation(&mut self, interpolation: Interpolation) {
         self.interpolation = interpolation;
     }
@@ -611,10 +617,12 @@ impl Lut1DOpData {
         )
     }
 
+    /// The direction.
     pub fn direction(&self) -> TransformDirection {
         self.direction
     }
 
+    /// Set the direction.
     pub fn set_direction(&mut self, dir: TransformDirection) {
         self.direction = dir;
     }
@@ -692,6 +700,7 @@ impl Lut1DOpData {
         self.half_flags.is_input_half_domain()
     }
 
+    /// Set whether the LUT is indexed by half float codes.
     pub fn set_input_half_domain(&mut self, is_half_domain: bool) {
         if is_half_domain {
             self.half_flags.0 |= HalfFlags::INPUT_HALF_CODE.0;
@@ -700,10 +709,12 @@ impl Lut1DOpData {
         }
     }
 
+    /// True if the LUT values are (originally) raw half float codes.
     pub fn is_output_raw_halfs(&self) -> bool {
         self.half_flags.is_output_raw_halfs()
     }
 
+    /// Set whether the LUT values are raw half float codes.
     pub fn set_output_raw_halfs(&mut self, is_raw_halfs: bool) {
         if is_raw_halfs {
             self.half_flags.0 |= HalfFlags::OUTPUT_HALF_CODE.0;
@@ -712,10 +723,12 @@ impl Lut1DOpData {
         }
     }
 
+    /// The half float flags.
     pub fn half_flags(&self) -> HalfFlags {
         self.half_flags
     }
 
+    /// The hue adjust style.
     pub fn hue_adjust(&self) -> Lut1DHueAdjust {
         self.hue_adjust
     }
@@ -729,10 +742,12 @@ impl Lut1DOpData {
         Ok(())
     }
 
+    /// The LUT values.
     pub fn array(&self) -> &Lut1DArray {
         &self.array
     }
 
+    /// The LUT values, mutable.
     pub fn array_mut(&mut self) -> &mut Lut1DArray {
         &mut self.array
     }
@@ -836,6 +851,8 @@ impl Lut1DOpData {
             .any(|&v| !v.is_nan() && !(NORMAL_MIN..=NORMAL_MAX).contains(&v))
     }
 
+    /// The original scaling of the LUT values (see
+    /// [`set_file_output_bit_depth`](Self::set_file_output_bit_depth)).
     pub fn file_output_bit_depth(&self) -> BitDepth {
         self.file_out_bit_depth
     }
@@ -846,10 +863,12 @@ impl Lut1DOpData {
         self.file_out_bit_depth = bd;
     }
 
+    /// The format metadata.
     pub fn format_metadata(&self) -> &FormatMetadata {
         &self.metadata
     }
 
+    /// The format metadata, mutable.
     pub fn format_metadata_mut(&mut self) -> &mut FormatMetadata {
         &mut self.metadata
     }

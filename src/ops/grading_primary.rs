@@ -159,30 +159,39 @@ impl GradingPrimaryPreRender {
     pub fn local_bypass(&self) -> bool {
         self.local_bypass
     }
+    /// Brightness per channel (log style).
     pub fn brightness(&self) -> [f32; 3] {
         self.brightness
     }
+    /// Contrast per channel (log and lin styles).
     pub fn contrast(&self) -> [f32; 3] {
         self.contrast
     }
+    /// Gamma exponent per channel (log and video styles).
     pub fn gamma(&self) -> [f32; 3] {
         self.gamma
     }
+    /// Contrast pivot (log and lin styles).
     pub fn pivot(&self) -> f64 {
         self.pivot
     }
+    /// True if the gamma is identity (log and video styles).
     pub fn is_gamma_identity(&self) -> bool {
         self.is_power_identity
     }
+    /// Exposure gain per channel (lin style).
     pub fn exposure(&self) -> [f32; 3] {
         self.exposure
     }
+    /// Offset per channel (lin and video styles).
     pub fn offset(&self) -> [f32; 3] {
         self.offset
     }
+    /// True if the contrast is identity (lin style).
     pub fn is_contrast_identity(&self) -> bool {
         self.is_power_identity
     }
+    /// Slope per channel (video style).
     pub fn slope(&self) -> [f32; 3] {
         self.slope
     }
@@ -340,15 +349,19 @@ impl GradingPrimaryOp {
         }
     }
 
+    /// The grading style.
     pub fn style(&self) -> GradingStyle {
         self.style
     }
+    /// The direction.
     pub fn direction(&self) -> TransformDirection {
         self.direction
     }
+    /// The format metadata.
     pub fn metadata(&self) -> &FormatMetadata {
         &self.metadata
     }
+    /// Set the format metadata.
     pub fn set_metadata(&mut self, metadata: FormatMetadata) {
         self.metadata = metadata;
     }
@@ -794,12 +807,15 @@ impl GradingPrimaryTransform {
         Ok(())
     }
 
+    /// True if the created op holds a dynamic property.
     pub fn is_dynamic(&self) -> bool {
         self.dynamic
     }
+    /// Make the created op hold a dynamic property.
     pub fn make_dynamic(&mut self) {
         self.dynamic = true;
     }
+    /// Make the created op static.
     pub fn make_non_dynamic(&mut self) {
         self.dynamic = false;
     }

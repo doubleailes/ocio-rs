@@ -223,18 +223,23 @@ impl GradingHueCurveOp {
         }
     }
 
+    /// The grading style.
     pub fn style(&self) -> GradingStyle {
         self.style
     }
+    /// The direction.
     pub fn direction(&self) -> TransformDirection {
         self.direction
     }
+    /// The RGB to HSY conversion style.
     pub fn rgb_to_hsy(&self) -> HsyTransformStyle {
         self.rgb_to_hsy
     }
+    /// The format metadata.
     pub fn metadata(&self) -> &FormatMetadata {
         &self.metadata
     }
+    /// Set the format metadata.
     pub fn set_metadata(&mut self, metadata: FormatMetadata) {
         self.metadata = metadata;
     }
@@ -578,12 +583,15 @@ impl GradingHueCurveTransform {
         self.value.curve(c).slopes_are_default()
     }
 
+    /// True if the created op holds a dynamic property.
     pub fn is_dynamic(&self) -> bool {
         self.dynamic
     }
+    /// Make the created op hold a dynamic property.
     pub fn make_dynamic(&mut self) {
         self.dynamic = true;
     }
+    /// Make the created op static.
     pub fn make_non_dynamic(&mut self) {
         self.dynamic = false;
     }

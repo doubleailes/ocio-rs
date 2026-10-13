@@ -455,17 +455,32 @@ impl RangeOpData {
 pub enum RangeRenderer {
     /// Scale, offset and clamp at both ends.
     ScaleMinMax {
+        /// Scale applied to the input.
         scale: f32,
+        /// Offset added after scaling.
         offset: f32,
+        /// Lower clamp bound (output side).
         lower: f32,
+        /// Upper clamp bound (output side).
         upper: f32,
     },
     /// Clamp at both ends.
-    MinMax { lower: f32, upper: f32 },
+    MinMax {
+        /// Lower clamp bound.
+        lower: f32,
+        /// Upper clamp bound.
+        upper: f32,
+    },
     /// Clamp the low end.
-    Min { lower: f32 },
+    Min {
+        /// Lower clamp bound.
+        lower: f32,
+    },
     /// Clamp the high end.
-    Max { upper: f32 },
+    Max {
+        /// Upper clamp bound.
+        upper: f32,
+    },
 }
 
 impl RangeRenderer {
