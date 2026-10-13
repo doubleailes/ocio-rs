@@ -20,12 +20,15 @@ impl<T> Clone for SharedValue<T> {
 }
 
 impl<T: Clone> SharedValue<T> {
+    /// A new handle owning `v`.
     pub fn new(v: T) -> Self {
         SharedValue(Arc::new(RwLock::new(v)))
     }
+    /// A copy of the current value.
     pub fn get(&self) -> T {
         self.0.read().unwrap().clone()
     }
+    /// Replace the value (visible through every clone of the handle).
     pub fn set(&self, v: T) {
         *self.0.write().unwrap() = v;
     }
@@ -42,16 +45,24 @@ impl<T: Clone> SharedValue<T> {
 /// Handle to a dynamic property.
 #[derive(Debug, Clone)]
 pub enum DynamicProperty {
+    /// Exposure (`ExposureContrastTransform`).
     Exposure(SharedValue<f64>),
+    /// Contrast (`ExposureContrastTransform`).
     Contrast(SharedValue<f64>),
+    /// Gamma (`ExposureContrastTransform`).
     Gamma(SharedValue<f64>),
+    /// Grading primary values (`GradingPrimaryTransform`).
     GradingPrimary(SharedValue<GradingPrimary>),
+    /// Grading RGB curves (`GradingRGBCurveTransform`).
     GradingRgbCurve(SharedValue<GradingRgbCurve>),
+    /// Grading tone values (`GradingToneTransform`).
     GradingTone(SharedValue<GradingTone>),
+    /// Grading hue curves (`GradingHueCurveTransform`).
     GradingHueCurve(SharedValue<GradingHueCurve>),
 }
 
 impl DynamicProperty {
+    /// The type of the property.
     pub fn property_type(&self) -> DynamicPropertyType {
         match self {
             DynamicProperty::Exposure(_) => DynamicPropertyType::Exposure,
@@ -73,24 +84,28 @@ impl DynamicProperty {
             _ => None,
         }
     }
+    /// Value of a grading primary property.
     pub fn as_grading_primary(&self) -> Option<&SharedValue<GradingPrimary>> {
         match self {
             DynamicProperty::GradingPrimary(v) => Some(v),
             _ => None,
         }
     }
+    /// Value of a grading RGB curve property.
     pub fn as_grading_rgb_curve(&self) -> Option<&SharedValue<GradingRgbCurve>> {
         match self {
             DynamicProperty::GradingRgbCurve(v) => Some(v),
             _ => None,
         }
     }
+    /// Value of a grading tone property.
     pub fn as_grading_tone(&self) -> Option<&SharedValue<GradingTone>> {
         match self {
             DynamicProperty::GradingTone(v) => Some(v),
             _ => None,
         }
     }
+    /// Value of a grading hue curve property.
     pub fn as_grading_hue_curve(&self) -> Option<&SharedValue<GradingHueCurve>> {
         match self {
             DynamicProperty::GradingHueCurve(v) => Some(v),

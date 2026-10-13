@@ -12,10 +12,13 @@ use half::f16;
 /// Typed pixel storage.
 #[derive(Debug)]
 pub enum ImageData<'a> {
+    /// 8 bit integers.
     U8(&'a mut [u8]),
     /// 10, 12, 14 or 16 bit integers.
     U16(&'a mut [u16]),
+    /// Half floats.
     F16(&'a mut [f16]),
+    /// 32 bit floats.
     F32(&'a mut [f32]),
 }
 
@@ -93,8 +96,11 @@ fn check_bit_depth(data: &ImageData, bd: BitDepth) -> Result<()> {
 
 /// Access to an image as a grid of RGBA pixels.
 pub trait ImageDesc {
+    /// Width in pixels.
     fn width(&self) -> usize;
+    /// Height in pixels.
     fn height(&self) -> usize;
+    /// Bit depth of the pixel values.
     fn bit_depth(&self) -> BitDepth;
     /// Read row `y` into `out` (length = width).
     fn read_row(&self, y: usize, out: &mut [Pixel]);
@@ -187,6 +193,7 @@ impl<'a> PackedImageDesc<'a> {
         })
     }
 
+    /// Channel ordering of the packed pixels.
     pub fn channel_ordering(&self) -> ChannelOrdering {
         self.ordering
     }
@@ -257,6 +264,7 @@ pub struct PlanarImageDesc<'a> {
 }
 
 impl<'a> PlanarImageDesc<'a> {
+    /// Planar image from one buffer per channel; fails if the buffers do not share the same type or are smaller than `width * height`.
     pub fn new(
         r: ImageData<'a>,
         g: ImageData<'a>,

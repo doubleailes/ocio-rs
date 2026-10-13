@@ -12,9 +12,13 @@ pub const METADATA_ROOT: &str = "ROOT";
 /// Hierarchical metadata element.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormatMetadata {
+    /// Element name.
     pub element_name: String,
+    /// Element value.
     pub element_value: String,
+    /// Attributes as (name, value) pairs, in insertion order.
     pub attributes: Vec<(String, String)>,
+    /// Child elements.
     pub children: Vec<FormatMetadata>,
 }
 
@@ -35,15 +39,19 @@ impl FormatMetadata {
         }
     }
 
+    /// The element name.
     pub fn element_name(&self) -> &str {
         &self.element_name
     }
+    /// Set the element name.
     pub fn set_element_name(&mut self, name: &str) {
         self.element_name = name.to_string();
     }
+    /// The element value.
     pub fn element_value(&self) -> &str {
         &self.element_value
     }
+    /// Set the element value.
     pub fn set_element_value(&mut self, value: &str) {
         self.element_value = value.to_string();
     }
@@ -96,6 +104,7 @@ impl FormatMetadata {
     pub fn name(&self) -> &str {
         self.attribute_value(METADATA_NAME)
     }
+    /// Set the `name` attribute.
     pub fn set_name(&mut self, name: &str) {
         self.add_attribute(METADATA_NAME, name);
     }
@@ -103,6 +112,7 @@ impl FormatMetadata {
     pub fn id(&self) -> &str {
         self.attribute_value(METADATA_ID)
     }
+    /// Set the `id` attribute.
     pub fn set_id(&mut self, id: &str) {
         self.add_attribute(METADATA_ID, id);
     }

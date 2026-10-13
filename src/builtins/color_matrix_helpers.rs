@@ -16,6 +16,7 @@ pub type Vec4 = [f64; 4];
 /// CIE xy chromaticity coordinates.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Chromaticities {
+    /// The x and y coordinates.
     pub xy: [f64; 2],
 }
 

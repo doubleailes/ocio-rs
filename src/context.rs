@@ -141,27 +141,34 @@ impl Context {
     pub fn search_path(&self) -> String {
         self.search_paths.join(path_utils::SEARCH_PATH_SEPARATOR)
     }
+    /// Number of search paths.
     pub fn num_search_paths(&self) -> usize {
         self.search_paths.len()
     }
+    /// The search paths.
     pub fn search_paths(&self) -> &[String] {
         &self.search_paths
     }
+    /// Search path at index `i`.
     pub fn search_path_by_index(&self, i: usize) -> Option<&str> {
         self.search_paths.get(i).map(|s| s.as_str())
     }
+    /// Remove all the search paths.
     pub fn clear_search_paths(&mut self) {
         self.search_paths.clear();
     }
+    /// Append a search path (ignored if empty).
     pub fn add_search_path(&mut self, path: &str) {
         if !path.is_empty() {
             self.search_paths.push(path.to_string());
         }
     }
 
+    /// Set the working directory (relative search paths are resolved against it; used alone when there is no search path).
     pub fn set_working_dir(&mut self, dir: &str) {
         self.working_dir = dir.to_string();
     }
+    /// The working directory.
     pub fn working_dir(&self) -> &str {
         &self.working_dir
     }
@@ -188,9 +195,11 @@ impl Context {
             .map(|s| s.as_str())
             .unwrap_or("")
     }
+    /// True if the string variable is defined.
     pub fn has_string_var(&self, name: &str) -> bool {
         self.env_map.contains_key(&EnvKey(name.to_string()))
     }
+    /// Number of string variables.
     pub fn num_string_vars(&self) -> usize {
         self.env_map.len()
     }
@@ -198,12 +207,15 @@ impl Context {
     pub fn string_vars(&self) -> impl Iterator<Item = (&str, &str)> {
         self.env_map.iter().map(|(k, v)| (k.0.as_str(), v.as_str()))
     }
+    /// Name of the string variable at index `i`.
     pub fn string_var_name_by_index(&self, i: usize) -> Option<&str> {
         self.env_map.keys().nth(i).map(|k| k.0.as_str())
     }
+    /// Value of the string variable at index `i`.
     pub fn string_var_by_index(&self, i: usize) -> Option<&str> {
         self.env_map.values().nth(i).map(|v| v.as_str())
     }
+    /// Remove all the string variables.
     pub fn clear_string_vars(&mut self) {
         self.env_map.clear();
     }
@@ -213,13 +225,16 @@ impl Context {
             self.env_map.insert(k.clone(), v.clone());
         }
     }
+    /// The string variables.
     pub fn env_map(&self) -> &EnvMap {
         &self.env_map
     }
 
+    /// Set how `load_environment` loads the environment variables.
     pub fn set_environment_mode(&mut self, mode: EnvironmentMode) {
         self.env_mode = mode;
     }
+    /// How `load_environment` loads the environment variables.
     pub fn environment_mode(&self) -> EnvironmentMode {
         self.env_mode
     }

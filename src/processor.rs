@@ -22,18 +22,23 @@ pub struct ProcessorMetadata {
 }
 
 impl ProcessorMetadata {
+    /// Empty metadata.
     pub fn new() -> Self {
         Self::default()
     }
+    /// Files used by the processor.
     pub fn files(&self) -> &[String] {
         &self.files
     }
+    /// Looks used by the processor.
     pub fn looks(&self) -> &[String] {
         &self.looks
     }
+    /// Number of files.
     pub fn num_files(&self) -> usize {
         self.files.len()
     }
+    /// Number of looks.
     pub fn num_looks(&self) -> usize {
         self.looks.len()
     }
@@ -43,6 +48,7 @@ impl ProcessorMetadata {
             self.files.push(f.to_string());
         }
     }
+    /// Add a look.
     pub fn add_look(&mut self, l: &str) {
         self.looks.push(l.to_string());
     }
@@ -144,6 +150,7 @@ impl Processor {
         crate::hash_utils::cache_id_hash_uuid(ops::ops_cache_id(&self.ops).as_bytes())
     }
 
+    /// Files and looks used to build the processor.
     pub fn processor_metadata(&self) -> &ProcessorMetadata {
         &self.metadata
     }
@@ -158,6 +165,7 @@ impl Processor {
         self.transform_metadata.len()
     }
 
+    /// Metadata of the transform at `index` of the source group transform.
     pub fn transform_format_metadata(&self, index: usize) -> Option<&FormatMetadata> {
         self.transform_metadata.get(index)
     }
@@ -179,6 +187,7 @@ impl Processor {
         self.ops.iter().any(|o| o.is_dynamic())
     }
 
+    /// True if an op has a dynamic property of the given type.
     pub fn has_dynamic_property(&self, ty: DynamicPropertyType) -> bool {
         self.dynamic_property(ty).is_some()
     }
@@ -677,34 +686,44 @@ impl CpuProcessor {
         }
     }
 
+    /// The ops applied by the processor.
     pub fn ops(&self) -> &[OpRc] {
         &self.ops
     }
+    /// True if the processor does nothing.
     pub fn is_no_op(&self) -> bool {
         self.ops.is_empty() || ops::ops_are_no_op(&self.ops)
     }
+    /// True if all ops are identities.
     pub fn is_identity(&self) -> bool {
         self.ops.iter().all(|o| o.is_identity())
     }
+    /// True if an op makes an output channel depend on other input channels.
     pub fn has_channel_crosstalk(&self) -> bool {
         self.ops.iter().any(|o| o.has_channel_crosstalk())
     }
+    /// Cache identifier: a hash of the op cache ids.
     pub fn cache_id(&self) -> String {
         // Note: an empty op list also gets a UUID, as in OCIO.
         crate::hash_utils::cache_id_hash_uuid(ops::ops_cache_id(&self.ops).as_bytes())
     }
+    /// Bit depth of the input pixels.
     pub fn input_bit_depth(&self) -> BitDepth {
         self.input_bit_depth
     }
+    /// Bit depth of the output pixels.
     pub fn output_bit_depth(&self) -> BitDepth {
         self.output_bit_depth
     }
+    /// True if any op has a dynamic property.
     pub fn is_dynamic(&self) -> bool {
         self.ops.iter().any(|o| o.is_dynamic())
     }
+    /// True if an op has a dynamic property of the given type.
     pub fn has_dynamic_property(&self, ty: DynamicPropertyType) -> bool {
         self.dynamic_property(ty).is_some()
     }
+    /// The dynamic property of the given type (shared by all ops using it).
     pub fn dynamic_property(&self, ty: DynamicPropertyType) -> Option<DynamicProperty> {
         self.ops.iter().find_map(|o| o.dynamic_property(ty))
     }
