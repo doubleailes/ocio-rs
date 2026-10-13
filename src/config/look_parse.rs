@@ -7,7 +7,9 @@ use crate::types::TransformDirection;
 /// One look of a look list, with its direction.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LookToken {
+    /// The look name.
     pub name: String,
+    /// The direction to apply the look in.
     pub dir: TransformDirection,
 }
 
@@ -61,6 +63,7 @@ pub struct LookParseResult {
 }
 
 impl LookParseResult {
+    /// An empty result.
     pub fn new() -> Self {
         Self::default()
     }

@@ -28,6 +28,7 @@ impl NamedTransform {
         Self::default()
     }
 
+    /// The name.
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -39,67 +40,87 @@ impl NamedTransform {
         remove(&mut self.aliases, &n);
     }
 
+    /// Number of aliases.
     pub fn num_aliases(&self) -> usize {
         self.aliases.len()
     }
+    /// Alias at `idx` (`""` if out of range).
     pub fn alias(&self, idx: usize) -> &str {
         self.aliases.get(idx).map(|s| s.as_str()).unwrap_or("")
     }
+    /// All the aliases.
     pub fn aliases(&self) -> &[String] {
         &self.aliases
     }
+    /// True if the alias exists (case insensitive).
     pub fn has_alias(&self, alias: &str) -> bool {
         !alias.is_empty() && self.aliases.iter().any(|a| compare(a, alias))
     }
+    /// Add an alias (ignored if empty, equal to the name or already present).
     pub fn add_alias(&mut self, alias: &str) {
         if !alias.is_empty() && !compare(alias, &self.name) && !contain(&self.aliases, alias) {
             self.aliases.push(alias.to_string());
         }
     }
+    /// Remove an alias (case insensitive).
     pub fn remove_alias(&mut self, alias: &str) {
         if !alias.is_empty() {
             remove(&mut self.aliases, alias);
         }
     }
+    /// Remove all the aliases.
     pub fn clear_aliases(&mut self) {
         self.aliases.clear();
     }
+    /// The family.
     pub fn family(&self) -> &str {
         &self.family
     }
+    /// Set the family.
     pub fn set_family(&mut self, f: &str) {
         self.family = f.to_string();
     }
+    /// The description.
     pub fn description(&self) -> &str {
         &self.description
     }
+    /// Set the description.
     pub fn set_description(&mut self, d: &str) {
         self.description = d.to_string();
     }
+    /// True if the category exists (case insensitive).
     pub fn has_category(&self, c: &str) -> bool {
         self.categories.has_token(c)
     }
+    /// Add a category (trimmed, ignored if empty or already present).
     pub fn add_category(&mut self, c: &str) {
         self.categories.add_token(c);
     }
+    /// Remove a category.
     pub fn remove_category(&mut self, c: &str) {
         self.categories.remove_token(c);
     }
+    /// Number of categories.
     pub fn num_categories(&self) -> usize {
         self.categories.num_tokens()
     }
+    /// Category at `index` (`None` if out of range).
     pub fn category(&self, index: usize) -> Option<&str> {
         self.categories.token(index)
     }
+    /// All the categories.
     pub fn categories(&self) -> &[String] {
         self.categories.tokens()
     }
+    /// Remove all the categories.
     pub fn clear_categories(&mut self) {
         self.categories.clear_tokens();
     }
+    /// The encoding.
     pub fn encoding(&self) -> &str {
         &self.encoding
     }
+    /// Set the encoding.
     pub fn set_encoding(&mut self, e: &str) {
         self.encoding = e.to_string();
     }

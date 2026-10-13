@@ -23,6 +23,7 @@ pub enum Kind {
 /// A YAML node.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Node {
+    /// The content.
     pub kind: Kind,
     /// The tag as returned by `yaml-cpp`'s `Node::Tag()`: the verbatim tag
     /// content (e.g. `ColorSpace` for `!<ColorSpace>`), `?` for untagged
@@ -45,15 +46,19 @@ impl Node {
         }
     }
 
+    /// True for a null (or undefined) node.
     pub fn is_null(&self) -> bool {
         matches!(self.kind, Kind::Null)
     }
+    /// True for a scalar node.
     pub fn is_scalar(&self) -> bool {
         matches!(self.kind, Kind::Scalar(_))
     }
+    /// True for a sequence node.
     pub fn is_seq(&self) -> bool {
         matches!(self.kind, Kind::Seq(_))
     }
+    /// True for a map node.
     pub fn is_map(&self) -> bool {
         matches!(self.kind, Kind::Map(_))
     }

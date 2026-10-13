@@ -469,6 +469,7 @@ impl Config {
     // -----------------------------------------------------------------------
     // Versions
 
+    /// The major version.
     pub fn major_version(&self) -> u32 {
         self.major_version
     }
@@ -486,10 +487,13 @@ impl Config {
         Ok(())
     }
 
+    /// The minor version.
     pub fn minor_version(&self) -> u32 {
         self.minor_version
     }
 
+    /// Set the minor version (error if above the latest minor version of the
+    /// current major version).
     pub fn set_minor_version(&mut self, version: u32) -> Result<()> {
         let max = LAST_SUPPORTED_MINOR_VERSION[(self.major_version - 1) as usize];
         if version > max {
@@ -502,6 +506,7 @@ impl Config {
         Ok(())
     }
 
+    /// Set the major and minor versions.
     pub fn set_version(&mut self, major: u32, minor: u32) -> Result<()> {
         self.set_major_version(major)?;
         self.set_minor_version(minor)
@@ -531,13 +536,16 @@ impl Config {
     // -----------------------------------------------------------------------
     // Name, description, family separator
 
+    /// The config name.
     pub fn name(&self) -> &str {
         &self.name
     }
+    /// Set the config name.
     pub fn set_name(&mut self, name: &str) {
         self.name = name.to_string();
     }
 
+    /// The family separator (`'\0'` means no separator).
     pub fn family_separator(&self) -> char {
         self.family_separator
     }
@@ -557,9 +565,11 @@ impl Config {
         Ok(())
     }
 
+    /// The description.
     pub fn description(&self) -> &str {
         &self.description
     }
+    /// Set the description.
     pub fn set_description(&mut self, d: &str) {
         self.description = d.to_string();
     }
@@ -704,6 +714,7 @@ impl Config {
         self.reset_cache_ids();
     }
 
+    /// Number of context variables declared in the config.
     pub fn num_environment_vars(&self) -> usize {
         self.env.len()
     }
@@ -718,17 +729,20 @@ impl Config {
         self.env.get(name).map(|s| s.as_str()).unwrap_or("")
     }
 
+    /// Remove all the context variables.
     pub fn clear_environment_vars(&mut self) {
         self.env.clear();
         self.context.clear_string_vars();
         self.reset_cache_ids();
     }
 
+    /// Set the environment mode of the context.
     pub fn set_environment_mode(&mut self, mode: EnvironmentMode) {
         self.context.set_environment_mode(mode);
         self.reset_cache_ids();
     }
 
+    /// The environment mode of the context.
     pub fn environment_mode(&self) -> EnvironmentMode {
         self.context.environment_mode()
     }
@@ -744,11 +758,13 @@ impl Config {
         self.context.search_path()
     }
 
+    /// Set the search path (colon separated, empty entries are dropped).
     pub fn set_search_path(&mut self, path: &str) {
         self.context.set_search_path(path);
         self.reset_cache_ids();
     }
 
+    /// Number of search paths.
     pub fn num_search_paths(&self) -> usize {
         self.context.num_search_paths()
     }
@@ -758,11 +774,13 @@ impl Config {
         self.context.search_path_by_index(index).unwrap_or("")
     }
 
+    /// Remove all the search paths.
     pub fn clear_search_paths(&mut self) {
         self.context.clear_search_paths();
         self.reset_cache_ids();
     }
 
+    /// Append a search path (ignored if empty).
     pub fn add_search_path(&mut self, path: &str) {
         if path.is_empty() {
             return;
@@ -771,10 +789,12 @@ impl Config {
         self.reset_cache_ids();
     }
 
+    /// The working directory, used to resolve relative search paths.
     pub fn working_dir(&self) -> &str {
         self.context.working_dir()
     }
 
+    /// Set the working directory.
     pub fn set_working_dir(&mut self, dir: &str) {
         self.context.set_working_dir(dir);
         self.reset_cache_ids();

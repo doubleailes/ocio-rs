@@ -392,10 +392,12 @@ impl Config {
         Ok(())
     }
 
+    /// Number of roles.
     pub fn num_roles(&self) -> usize {
         self.roles.len()
     }
 
+    /// True if the role is defined (case insensitive).
     pub fn has_role(&self, role: &str) -> bool {
         !role.is_empty() && !self.lookup_role(role).is_empty()
     }
@@ -429,10 +431,12 @@ impl Config {
     // -----------------------------------------------------------------------
     // Luma
 
+    /// The default luma coefficients (R, G, B).
     pub fn default_luma_coefs(&self) -> [f64; 3] {
         self.default_luma_coefs
     }
 
+    /// Set the default luma coefficients (R, G, B).
     pub fn set_default_luma_coefs(&mut self, rgb: &[f64; 3]) {
         self.default_luma_coefs = *rgb;
         self.reset_cache_ids();
@@ -447,6 +451,7 @@ impl Config {
         self.looks.iter().find(|l| lower(l.name()) == n)
     }
 
+    /// Number of looks.
     pub fn num_looks(&self) -> usize {
         self.looks.len()
     }
@@ -470,6 +475,7 @@ impl Config {
         Ok(())
     }
 
+    /// Remove all the looks.
     pub fn clear_looks(&mut self) {
         self.looks.clear();
         self.reset_cache_ids();
@@ -478,6 +484,7 @@ impl Config {
     // -----------------------------------------------------------------------
     // View transforms
 
+    /// Number of view transforms.
     pub fn num_view_transforms(&self) -> usize {
         self.view_transforms.len()
     }
@@ -538,15 +545,18 @@ impl Config {
             .find(|v| v.reference_space_type() == ReferenceSpaceType::Scene)
     }
 
+    /// Name of the default view transform (may be empty).
     pub fn default_view_transform_name(&self) -> &str {
         &self.default_view_transform
     }
 
+    /// Set the name of the default view transform.
     pub fn set_default_view_transform_name(&mut self, name: &str) {
         self.default_view_transform = name.to_string();
         self.reset_cache_ids();
     }
 
+    /// Remove all the view transforms.
     pub fn clear_view_transforms(&mut self) {
         self.view_transforms.clear();
         self.reset_cache_ids();
@@ -721,6 +731,7 @@ impl Config {
         self.refresh_active_color_spaces();
     }
 
+    /// Remove all the named transforms.
     pub fn clear_named_transforms(&mut self) {
         self.all_named_transforms.clear();
         self.reset_cache_ids();
@@ -730,6 +741,7 @@ impl Config {
     // -----------------------------------------------------------------------
     // File rules
 
+    /// The file rules.
     pub fn file_rules(&self) -> &FileRules {
         &self.file_rules
     }
@@ -780,10 +792,13 @@ impl Config {
         ""
     }
 
+    /// True if strict parsing is enabled (no fallback to the `default` role
+    /// when parsing color space names from strings).
     pub fn is_strict_parsing_enabled(&self) -> bool {
         self.strict_parsing
     }
 
+    /// Enable or disable strict parsing.
     pub fn set_strict_parsing_enabled(&mut self, enabled: bool) {
         self.strict_parsing = enabled;
         self.reset_cache_ids();

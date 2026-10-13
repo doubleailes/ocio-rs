@@ -40,21 +40,27 @@ impl ViewTransform {
         }
     }
 
+    /// The name.
     pub fn name(&self) -> &str {
         &self.name
     }
+    /// Set the name.
     pub fn set_name(&mut self, name: &str) {
         self.name = name.to_string();
     }
+    /// The family.
     pub fn family(&self) -> &str {
         &self.family
     }
+    /// Set the family.
     pub fn set_family(&mut self, family: &str) {
         self.family = family.to_string();
     }
+    /// The description.
     pub fn description(&self) -> &str {
         &self.description
     }
+    /// Set the description.
     pub fn set_description(&mut self, d: &str) {
         self.description = d.to_string();
     }
@@ -76,32 +82,41 @@ impl ViewTransform {
         Ok(())
     }
 
+    /// All the interchange attributes.
     pub fn interchange_attributes(&self) -> &BTreeMap<String, String> {
         &self.interchange
     }
 
+    /// True if the category exists (case insensitive).
     pub fn has_category(&self, c: &str) -> bool {
         self.categories.has_token(c)
     }
+    /// Add a category (trimmed, ignored if empty or already present).
     pub fn add_category(&mut self, c: &str) {
         self.categories.add_token(c);
     }
+    /// Remove a category.
     pub fn remove_category(&mut self, c: &str) {
         self.categories.remove_token(c);
     }
+    /// Number of categories.
     pub fn num_categories(&self) -> usize {
         self.categories.num_tokens()
     }
+    /// Category at `index` (`None` if out of range).
     pub fn category(&self, index: usize) -> Option<&str> {
         self.categories.token(index)
     }
+    /// All the categories.
     pub fn categories(&self) -> &[String] {
         self.categories.tokens()
     }
+    /// Remove all the categories.
     pub fn clear_categories(&mut self) {
         self.categories.clear_tokens();
     }
 
+    /// The reference space (scene or display) the view transform converts from.
     pub fn reference_space_type(&self) -> ReferenceSpaceType {
         self.reference_space
     }

@@ -8,9 +8,13 @@ use crate::config::utils::format_g;
 /// Emitter manipulators.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Manip {
+    /// Start a map.
     BeginMap,
+    /// End the current map.
     EndMap,
+    /// Start a sequence.
     BeginSeq,
+    /// End the current sequence.
     EndSeq,
     /// No-op (key / value are deduced from the position).
     Key,

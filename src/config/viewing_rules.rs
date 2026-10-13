@@ -106,6 +106,7 @@ impl ViewingRules {
         Ok(())
     }
 
+    /// Number of rules.
     pub fn num_entries(&self) -> usize {
         self.rules.len()
     }
@@ -118,16 +119,19 @@ impl ViewingRules {
             .ok_or_else(|| Error::msg(format!("Viewing rules: rule name '{name}' not found.")))
     }
 
+    /// Name of the rule at `idx`.
     pub fn name(&self, idx: usize) -> Result<&str> {
         self.validate_position(idx)?;
         Ok(&self.rules[idx].name)
     }
 
+    /// Number of color spaces of the rule at `idx`.
     pub fn num_color_spaces(&self, idx: usize) -> Result<usize> {
         self.validate_position(idx)?;
         Ok(self.rules[idx].color_spaces.num_tokens())
     }
 
+    /// Color space `cs_idx` of the rule at `idx`.
     pub fn color_space(&self, idx: usize, cs_idx: usize) -> Result<&str> {
         self.validate_position(idx)?;
         let r = &self.rules[idx];
@@ -140,6 +144,8 @@ impl ViewingRules {
         })
     }
 
+    /// Add a color space to the rule at `idx` (error if empty or if the rule
+    /// has encodings).
     pub fn add_color_space(&mut self, idx: usize, cs: &str) -> Result<()> {
         self.validate_position(idx)?;
         let r = &mut self.rules[idx];
@@ -159,17 +165,20 @@ impl ViewingRules {
         Ok(())
     }
 
+    /// Remove the color space `cs_idx` of the rule at `idx`.
     pub fn remove_color_space(&mut self, idx: usize, cs_idx: usize) -> Result<()> {
         let cs = self.color_space(idx, cs_idx)?.to_string();
         self.rules[idx].color_spaces.remove_token(&cs);
         Ok(())
     }
 
+    /// Number of encodings of the rule at `idx`.
     pub fn num_encodings(&self, idx: usize) -> Result<usize> {
         self.validate_position(idx)?;
         Ok(self.rules[idx].encodings.num_tokens())
     }
 
+    /// Encoding `enc_idx` of the rule at `idx`.
     pub fn encoding(&self, idx: usize, enc_idx: usize) -> Result<&str> {
         self.validate_position(idx)?;
         let r = &self.rules[idx];
@@ -182,6 +191,8 @@ impl ViewingRules {
         })
     }
 
+    /// Add an encoding to the rule at `idx` (error if empty or if the rule has
+    /// color spaces).
     pub fn add_encoding(&mut self, idx: usize, enc: &str) -> Result<()> {
         self.validate_position(idx)?;
         let r = &mut self.rules[idx];
@@ -201,17 +212,20 @@ impl ViewingRules {
         Ok(())
     }
 
+    /// Remove the encoding `enc_idx` of the rule at `idx`.
     pub fn remove_encoding(&mut self, idx: usize, enc_idx: usize) -> Result<()> {
         let e = self.encoding(idx, enc_idx)?.to_string();
         self.rules[idx].encodings.remove_token(&e);
         Ok(())
     }
 
+    /// Number of custom keys of the rule at `idx`.
     pub fn num_custom_keys(&self, idx: usize) -> Result<usize> {
         self.validate_position(idx)?;
         Ok(self.rules[idx].custom_keys.len())
     }
 
+    /// Name of the custom key `key` of the rule at `idx`.
     pub fn custom_key_name(&self, idx: usize, key: usize) -> Result<&str> {
         self.validate_position(idx)?;
         let r = &self.rules[idx];
@@ -223,6 +237,7 @@ impl ViewingRules {
         })
     }
 
+    /// Value of the custom key `key` of the rule at `idx`.
     pub fn custom_key_value(&self, idx: usize, key: usize) -> Result<&str> {
         self.validate_position(idx)?;
         let r = &self.rules[idx];
@@ -234,6 +249,7 @@ impl ViewingRules {
         })
     }
 
+    /// Set (or remove when `value` is empty) a custom key of the rule at `idx`.
     pub fn set_custom_key(&mut self, idx: usize, key: &str, value: &str) -> Result<()> {
         self.validate_position(idx)?;
         let r = &mut self.rules[idx];
@@ -262,6 +278,7 @@ impl ViewingRules {
         Ok(())
     }
 
+    /// Remove the rule at `idx`.
     pub fn remove_rule(&mut self, idx: usize) -> Result<()> {
         self.validate_position(idx)?;
         self.rules.remove(idx);
