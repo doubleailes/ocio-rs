@@ -78,13 +78,18 @@ fn prec(f: &fmt::Formatter<'_>) -> usize {
 /// Red / green / blue / master values.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct GradingRgbm {
+    /// Red value.
     pub red: f64,
+    /// Green value.
     pub green: f64,
+    /// Blue value.
     pub blue: f64,
+    /// Master value (applied to all channels).
     pub master: f64,
 }
 
 impl GradingRgbm {
+    /// Values from red, green, blue and master.
     pub const fn new(red: f64, green: f64, blue: f64, master: f64) -> Self {
         Self {
             red,
@@ -114,19 +119,31 @@ impl fmt::Display for GradingRgbm {
 /// Primary grading values.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GradingPrimary {
+    /// Brightness (log style; default 0).
     pub brightness: GradingRgbm,
+    /// Contrast (default 1).
     pub contrast: GradingRgbm,
+    /// Gamma (default 1).
     pub gamma: GradingRgbm,
+    /// Offset (default 0).
     pub offset: GradingRgbm,
+    /// Exposure in stops (linear style; default 0).
     pub exposure: GradingRgbm,
+    /// Lift (video style; default 0).
     pub lift: GradingRgbm,
+    /// Gain (video style; default 1).
     pub gain: GradingRgbm,
+    /// Saturation (default 1).
     pub saturation: f64,
     /// LOG default is -0.2, LIN default is 0.18.
     pub pivot: f64,
+    /// Black pivot (default 0), used by the log-style gamma and video-style lift/gain.
     pub pivot_black: f64,
+    /// White pivot (default 1), used by the log-style gamma and video-style lift/gain.
     pub pivot_white: f64,
+    /// Lower output clamp ([`NO_CLAMP_BLACK`](Self::NO_CLAMP_BLACK) for none).
     pub clamp_black: f64,
+    /// Upper output clamp ([`NO_CLAMP_WHITE`](Self::NO_CLAMP_WHITE) for none).
     pub clamp_white: f64,
 }
 
@@ -224,11 +241,14 @@ impl fmt::Display for GradingPrimary {
 /// A control point of a B-spline curve.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct GradingControlPoint {
+    /// Input (x) coordinate.
     pub x: f32,
+    /// Output (y) coordinate.
     pub y: f32,
 }
 
 impl GradingControlPoint {
+    /// Control point at (`x`, `y`).
     pub const fn new(x: f32, y: f32) -> Self {
         Self { x, y }
     }
@@ -249,9 +269,11 @@ impl fmt::Display for GradingControlPoint {
 /// A B-spline curve defined by control points and optional slopes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GradingBSplineCurve {
+    /// The control points, with non-decreasing x coordinates.
     pub control_points: Vec<GradingControlPoint>,
     /// Slopes at each control point; empty or all zero means "default slopes".
     pub slopes: Vec<f32>,
+    /// The B-spline type.
     pub spline_type: BSplineType,
 }
 
@@ -297,6 +319,7 @@ impl GradingBSplineCurve {
         }
     }
 
+    /// Number of control points.
     pub fn num_control_points(&self) -> usize {
         self.control_points.len()
     }
@@ -502,6 +525,7 @@ pub fn rgb_curve_type_name(c: RgbCurveType) -> &'static str {
 /// Red, green, blue and master curves.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GradingRgbCurve {
+    /// The curves, indexed by [`RgbCurveType`].
     pub curves: [GradingBSplineCurve; 4],
 }
 
@@ -526,9 +550,11 @@ impl GradingRgbCurve {
         }
     }
 
+    /// The curve of the given type.
     pub fn curve(&self, c: RgbCurveType) -> &GradingBSplineCurve {
         &self.curves[c as usize]
     }
+    /// Mutable curve of the given type.
     pub fn curve_mut(&mut self, c: RgbCurveType) -> &mut GradingBSplineCurve {
         &mut self.curves[c as usize]
     }
@@ -663,7 +689,9 @@ pub fn default_hue_curve(c: HueCurveType, style: GradingStyle) -> GradingBSpline
 /// The eight hue curves.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GradingHueCurve {
+    /// The curves, indexed by [`HueCurveType`].
     pub curves: [GradingBSplineCurve; 8],
+    /// If true, only the hue-sat curve is evaluated on each channel, for drawing (spline types are not validated).
     pub draw_curve_only: bool,
 }
 
@@ -699,9 +727,11 @@ impl GradingHueCurve {
         Ok(res)
     }
 
+    /// The curve of the given type.
     pub fn curve(&self, c: HueCurveType) -> &GradingBSplineCurve {
         &self.curves[c as usize]
     }
+    /// Mutable curve of the given type.
     pub fn curve_mut(&mut self, c: HueCurveType) -> &mut GradingBSplineCurve {
         &mut self.curves[c as usize]
     }
@@ -752,9 +782,13 @@ impl fmt::Display for GradingHueCurve {
 /// RGBM + start + width values of a tonal zone.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GradingRgbmsw {
+    /// Red value (default 1).
     pub red: f64,
+    /// Green value (default 1).
     pub green: f64,
+    /// Blue value (default 1).
     pub blue: f64,
+    /// Master value (default 1).
     pub master: f64,
     /// Or center for midtones.
     pub start: f64,
@@ -776,6 +810,7 @@ impl Default for GradingRgbmsw {
 }
 
 impl GradingRgbmsw {
+    /// Values from red, green, blue, master, start and width.
     pub const fn new(red: f64, green: f64, blue: f64, master: f64, start: f64, width: f64) -> Self {
         Self {
             red,
@@ -822,11 +857,17 @@ impl fmt::Display for GradingRgbmsw {
 /// Tonal grading values.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GradingTone {
+    /// Blacks zone.
     pub blacks: GradingRgbmsw,
+    /// Shadows zone.
     pub shadows: GradingRgbmsw,
+    /// Midtones zone.
     pub midtones: GradingRgbmsw,
+    /// Highlights zone.
     pub highlights: GradingRgbmsw,
+    /// Whites zone.
     pub whites: GradingRgbmsw,
+    /// S-curve contrast (default 1).
     pub s_contrast: f64,
 }
 

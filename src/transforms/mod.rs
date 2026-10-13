@@ -24,28 +24,51 @@ pub const DEFAULT_LUMA_COEFS: [f64; 3] = [0.2126, 0.7152, 0.0722];
 /// Any transform.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Transform {
+    /// An [`AllocationTransform`].
     Allocation(AllocationTransform),
+    /// A [`BuiltinTransform`].
     Builtin(BuiltinTransform),
+    /// A [`CdlTransform`].
     Cdl(CdlTransform),
+    /// A [`ColorSpaceTransform`].
     ColorSpace(ColorSpaceTransform),
+    /// A [`DisplayViewTransform`].
     DisplayView(DisplayViewTransform),
+    /// An [`ExponentTransform`].
     Exponent(ExponentTransform),
+    /// An [`ExponentWithLinearTransform`].
     ExponentWithLinear(ExponentWithLinearTransform),
+    /// An [`ExposureContrastTransform`].
     ExposureContrast(ExposureContrastTransform),
+    /// A [`FileTransform`].
     File(FileTransform),
+    /// A [`FixedFunctionTransform`].
     FixedFunction(FixedFunctionTransform),
+    /// A [`GradingHueCurveTransform`].
     GradingHueCurve(GradingHueCurveTransform),
+    /// A [`GradingPrimaryTransform`].
     GradingPrimary(GradingPrimaryTransform),
+    /// A [`GradingRgbCurveTransform`].
     GradingRgbCurve(GradingRgbCurveTransform),
+    /// A [`GradingToneTransform`].
     GradingTone(GradingToneTransform),
+    /// A [`GroupTransform`].
     Group(GroupTransform),
+    /// A [`LogAffineTransform`].
     LogAffine(LogAffineTransform),
+    /// A [`LogCameraTransform`].
     LogCamera(LogCameraTransform),
+    /// A [`LogTransform`].
     Log(LogTransform),
+    /// A [`LookTransform`].
     Look(LookTransform),
+    /// A [`Lut1DTransform`].
     Lut1D(Lut1DTransform),
+    /// A [`Lut3DTransform`].
     Lut3D(Lut3DTransform),
+    /// A [`MatrixTransform`].
     Matrix(MatrixTransform),
+    /// A [`RangeTransform`].
     Range(RangeTransform),
 }
 
@@ -228,7 +251,9 @@ impl_from_transform! {
 /// `allocation` in colorspaces.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct AllocationTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// The allocation type (uniform or lg2).
     pub allocation: Allocation,
     /// 0, 2 or 3 variables: min, max, [lg2 linear offset].
     pub vars: Vec<f64>,
@@ -238,11 +263,14 @@ pub struct AllocationTransform {
 /// (for instance `"ACEScct_to_ACES2065-1"`).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct BuiltinTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// The builtin style name, looked up in the builtin registry.
     pub style: String,
 }
 
 impl BuiltinTransform {
+    /// Builtin transform of the given style, in the forward direction.
     pub fn new(style: &str) -> Self {
         Self {
             direction: TransformDirection::Forward,
@@ -254,11 +282,17 @@ impl BuiltinTransform {
 /// ASC CDL (slope / offset / power / saturation).
 #[derive(Debug, Clone, PartialEq)]
 pub struct CdlTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// The CDL style (clamping behavior).
     pub style: CdlStyle,
+    /// Per-channel RGB slope (default 1).
     pub slope: [f64; 3],
+    /// Per-channel RGB offset (default 0).
     pub offset: [f64; 3],
+    /// Per-channel RGB power (default 1).
     pub power: [f64; 3],
+    /// Saturation (default 1).
     pub sat: f64,
     /// Holds the `id` attribute and description children (`Description`,
     /// `InputDescription`, `ViewingDescription`, `SOPDescription`,
@@ -290,6 +324,7 @@ pub const METADATA_INPUT_DESCRIPTION: &str = "InputDescription";
 pub const METADATA_VIEWING_DESCRIPTION: &str = "ViewingDescription";
 
 impl CdlTransform {
+    /// Identity CDL (same as `Default`).
     pub fn new() -> Self {
         Self::default()
     }
@@ -301,6 +336,7 @@ impl CdlTransform {
         v[6..].copy_from_slice(&self.power);
         v
     }
+    /// Set the 9 SOP values: slope, offset, power.
     pub fn set_sop(&mut self, v: &[f64; 9]) {
         self.slope.copy_from_slice(&v[..3]);
         self.offset.copy_from_slice(&v[3..6]);
@@ -310,9 +346,11 @@ impl CdlTransform {
     pub fn sat_luma_coefs(&self) -> [f64; 3] {
         DEFAULT_LUMA_COEFS
     }
+    /// The `id` attribute of the metadata.
     pub fn id(&self) -> &str {
         self.metadata.id()
     }
+    /// Set the `id` attribute of the metadata.
     pub fn set_id(&mut self, id: &str) {
         self.metadata.set_id(id);
     }
@@ -345,9 +383,13 @@ impl CdlTransform {
 /// Conversion between two color spaces of the config.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ColorSpaceTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// Source color space name.
     pub src: String,
+    /// Destination color space name.
     pub dst: String,
+    /// If true (the default), data color spaces are not converted.
     pub data_bypass: bool,
 }
 
@@ -363,6 +405,7 @@ impl Default for ColorSpaceTransform {
 }
 
 impl ColorSpaceTransform {
+    /// Conversion from `src` to `dst`, in the forward direction.
     pub fn new(src: &str, dst: &str) -> Self {
         Self {
             src: src.to_string(),
@@ -375,11 +418,17 @@ impl ColorSpaceTransform {
 /// Conversion from a color space to a (display, view) pair.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DisplayViewTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// Source color space name.
     pub src: String,
+    /// Display name.
     pub display: String,
+    /// View name.
     pub view: String,
+    /// If true, the looks of the view are not applied (default false).
     pub looks_bypass: bool,
+    /// If true (the default), data color spaces are not converted.
     pub data_bypass: bool,
 }
 
@@ -397,6 +446,7 @@ impl Default for DisplayViewTransform {
 }
 
 impl DisplayViewTransform {
+    /// Conversion from `src` to the (`display`, `view`) pair, in the forward direction.
     pub fn new(src: &str, display: &str, view: &str) -> Self {
         Self {
             src: src.to_string(),
@@ -410,9 +460,13 @@ impl DisplayViewTransform {
 /// Power function `out = in ^ value` per channel (RGBA).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExponentTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// Per-channel RGBA exponent (default 1).
     pub value: [f64; 4],
+    /// How negative values are handled (default `Clamp`).
     pub negative_style: NegativeStyle,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
@@ -428,6 +482,7 @@ impl Default for ExponentTransform {
 }
 
 impl ExponentTransform {
+    /// Exponent transform with the given RGBA exponents.
     pub fn new(value: [f64; 4]) -> Self {
         Self {
             value,
@@ -440,11 +495,15 @@ impl ExponentTransform {
 /// "moncurve").
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExponentWithLinearTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// Per-channel RGBA gamma (default 1).
     pub gamma: [f64; 4],
+    /// Per-channel RGBA offset (default 0).
     pub offset: [f64; 4],
     /// Only `Linear` and `Mirror` are valid.
     pub negative_style: NegativeStyle,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
@@ -463,17 +522,29 @@ impl Default for ExponentWithLinearTransform {
 /// Exposure / contrast / gamma adjustment.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExposureContrastTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// The exposure / contrast style (linear, video or log).
     pub style: ExposureContrastStyle,
+    /// Exposure in stops (default 0).
     pub exposure: f64,
+    /// If true, the exposure is a dynamic property.
     pub exposure_dynamic: bool,
+    /// Contrast (default 1).
     pub contrast: f64,
+    /// If true, the contrast is a dynamic property.
     pub contrast_dynamic: bool,
+    /// Gamma (default 1).
     pub gamma: f64,
+    /// If true, the gamma is a dynamic property.
     pub gamma_dynamic: bool,
+    /// Linear value around which contrast and gamma pivot (default 0.18).
     pub pivot: f64,
+    /// Log units per stop of exposure, for the log style (default 0.088).
     pub log_exposure_step: f64,
+    /// Log-encoded value of mid-gray, for the log style (default 0.435).
     pub log_mid_gray: f64,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
@@ -499,10 +570,15 @@ impl Default for ExposureContrastTransform {
 /// Transform loaded from an external file (LUT, CDL, CLF, ...).
 #[derive(Debug, Clone, PartialEq)]
 pub struct FileTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// Path of the file (resolved against the config search path).
     pub src: String,
+    /// CDL id (or index) selecting a correction in a `.ccc` / `.cdl` file.
     pub ccc_id: String,
+    /// The CDL style used when the file holds a CDL.
     pub cdl_style: CdlStyle,
+    /// The interpolation used for LUTs.
     pub interpolation: Interpolation,
 }
 
@@ -519,6 +595,7 @@ impl Default for FileTransform {
 }
 
 impl FileTransform {
+    /// File transform for the given file path.
     pub fn new(src: &str) -> Self {
         Self {
             src: src.to_string(),
@@ -530,13 +607,18 @@ impl FileTransform {
 /// Hard-coded color math (ACES red modifier, glow, HSV, PQ, ACES 2 ...).
 #[derive(Debug, Clone, PartialEq)]
 pub struct FixedFunctionTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// The fixed function style.
     pub style: FixedFunctionStyle,
+    /// Style-specific parameters.
     pub params: Vec<f64>,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
 impl FixedFunctionTransform {
+    /// Fixed function of the given style and parameters, in the forward direction.
     pub fn new(style: FixedFunctionStyle, params: &[f64]) -> Self {
         Self {
             direction: TransformDirection::Forward,
@@ -550,14 +632,20 @@ impl FixedFunctionTransform {
 /// Primary grading (lift/gamma/gain, contrast, offset, exposure, saturation).
 #[derive(Debug, Clone, PartialEq)]
 pub struct GradingPrimaryTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// The grading style (log, linear or video).
     pub style: GradingStyle,
+    /// The grading values.
     pub value: GradingPrimary,
+    /// If true, the values are a dynamic property.
     pub dynamic: bool,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
 impl GradingPrimaryTransform {
+    /// Identity grading for the given style.
     pub fn new(style: GradingStyle) -> Self {
         Self {
             direction: TransformDirection::Forward,
@@ -572,15 +660,22 @@ impl GradingPrimaryTransform {
 /// Hue curve grading.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GradingHueCurveTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// The grading style (log, linear or video).
     pub style: GradingStyle,
+    /// The hue curves.
     pub value: GradingHueCurve,
+    /// The RGB to HSY conversion style (default `Hsy1`).
     pub rgb_to_hsy: HsyTransformStyle,
+    /// If true, the values are a dynamic property.
     pub dynamic: bool,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
 impl GradingHueCurveTransform {
+    /// Identity hue curves for the given style.
     pub fn new(style: GradingStyle) -> Self {
         Self {
             direction: TransformDirection::Forward,
@@ -596,15 +691,22 @@ impl GradingHueCurveTransform {
 /// RGB curve grading.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GradingRgbCurveTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// The grading style (log, linear or video).
     pub style: GradingStyle,
+    /// The RGB curves.
     pub value: GradingRgbCurve,
+    /// If true, the linear style skips the lin-to-log conversion around the curves.
     pub bypass_lin_to_log: bool,
+    /// If true, the values are a dynamic property.
     pub dynamic: bool,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
 impl GradingRgbCurveTransform {
+    /// Identity RGB curves for the given style.
     pub fn new(style: GradingStyle) -> Self {
         Self {
             direction: TransformDirection::Forward,
@@ -620,14 +722,20 @@ impl GradingRgbCurveTransform {
 /// Tonal grading (blacks, shadows, midtones, highlights, whites).
 #[derive(Debug, Clone, PartialEq)]
 pub struct GradingToneTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// The grading style (log, linear or video).
     pub style: GradingStyle,
+    /// The tonal grading values.
     pub value: GradingTone,
+    /// If true, the values are a dynamic property.
     pub dynamic: bool,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
 impl GradingToneTransform {
+    /// Identity tonal grading for the given style.
     pub fn new(style: GradingStyle) -> Self {
         Self {
             direction: TransformDirection::Forward,
@@ -642,27 +750,35 @@ impl GradingToneTransform {
 /// Ordered list of transforms.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct GroupTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// The transforms, applied in order.
     pub transforms: Vec<Transform>,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
 impl GroupTransform {
+    /// Empty group.
     pub fn new() -> Self {
         Self::default()
     }
+    /// Group of the given transforms.
     pub fn from_transforms(transforms: Vec<Transform>) -> Self {
         Self {
             transforms,
             ..Default::default()
         }
     }
+    /// Number of transforms in the group.
     pub fn num_transforms(&self) -> usize {
         self.transforms.len()
     }
+    /// Add a transform at the end.
     pub fn append(&mut self, t: impl Into<Transform>) {
         self.transforms.push(t.into());
     }
+    /// Add a transform at the beginning.
     pub fn prepend(&mut self, t: impl Into<Transform>) {
         self.transforms.insert(0, t.into());
     }
@@ -671,12 +787,19 @@ impl GroupTransform {
 /// `out = logSlope * log(linSlope * in + linOffset, base) + logOffset`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LogAffineTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// Log base (default 2).
     pub base: f64,
+    /// Per-channel log side slope (default 1).
     pub log_side_slope: [f64; 3],
+    /// Per-channel log side offset (default 0).
     pub log_side_offset: [f64; 3],
+    /// Per-channel linear side slope (default 1).
     pub lin_side_slope: [f64; 3],
+    /// Per-channel linear side offset (default 0).
     pub lin_side_offset: [f64; 3],
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
@@ -697,19 +820,28 @@ impl Default for LogAffineTransform {
 /// Camera log curve: log affine with a linear segment below `lin_side_break`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LogCameraTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// Log base (default 2).
     pub base: f64,
+    /// Per-channel log side slope (default 1).
     pub log_side_slope: [f64; 3],
+    /// Per-channel log side offset (default 0).
     pub log_side_offset: [f64; 3],
+    /// Per-channel linear side slope (default 1).
     pub lin_side_slope: [f64; 3],
+    /// Per-channel linear side offset (default 0).
     pub lin_side_offset: [f64; 3],
+    /// Per-channel linear value below which the linear segment is used.
     pub lin_side_break: [f64; 3],
     /// Optional; computed from the other parameters when `None`.
     pub linear_slope: Option<[f64; 3]>,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
 impl LogCameraTransform {
+    /// Camera log with the given linear side break and default parameters.
     pub fn new(lin_side_break: [f64; 3]) -> Self {
         Self {
             direction: TransformDirection::Forward,
@@ -728,8 +860,11 @@ impl LogCameraTransform {
 /// `out = log(in, base)`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LogTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// Log base (default 2).
     pub base: f64,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
@@ -744,6 +879,7 @@ impl Default for LogTransform {
 }
 
 impl LogTransform {
+    /// Log transform with the given base.
     pub fn new(base: f64) -> Self {
         Self {
             base,
@@ -755,14 +891,20 @@ impl LogTransform {
 /// Apply looks (and color space conversions) from `src` to `dst`.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct LookTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// Source color space name.
     pub src: String,
+    /// Destination color space name.
     pub dst: String,
+    /// Look names to apply (comma-separated, optionally `+`/`-` prefixed).
     pub looks: String,
+    /// If true, only the looks are applied (no conversion to `dst`).
     pub skip_color_space_conversion: bool,
 }
 
 impl LookTransform {
+    /// Look transform from `src` to `dst` applying `looks`.
     pub fn new(src: &str, dst: &str, looks: &str) -> Self {
         Self {
             src: src.to_string(),
@@ -776,13 +918,21 @@ impl LookTransform {
 /// 1D LUT. `values` holds `length * 3` interleaved RGB values.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Lut1DTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// Interleaved RGB values (`length * 3`).
     pub values: Vec<f32>,
+    /// If true, entries are indexed by half-float bit patterns (65536 entries).
     pub input_half_domain: bool,
+    /// If true, values are stored as raw half-float bit patterns when written.
     pub output_raw_halfs: bool,
+    /// The hue adjustment applied after the LUT.
     pub hue_adjust: Lut1DHueAdjust,
+    /// The interpolation.
     pub interpolation: Interpolation,
+    /// Bit depth used to scale the values when written to a file.
     pub file_output_bit_depth: BitDepth,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
@@ -810,6 +960,7 @@ impl Lut1DTransform {
         t
     }
 
+    /// Number of entries.
     pub fn length(&self) -> usize {
         self.values.len() / 3
     }
@@ -831,6 +982,7 @@ impl Lut1DTransform {
         }
     }
 
+    /// RGB value at `index` (panics if out of bounds).
     pub fn value(&self, index: usize) -> [f32; 3] {
         [
             self.values[3 * index],
@@ -839,6 +991,7 @@ impl Lut1DTransform {
         ]
     }
 
+    /// Set the RGB value at `index` (panics if out of bounds).
     pub fn set_value(&mut self, index: usize, r: f32, g: f32, b: f32) {
         self.values[3 * index] = r;
         self.values[3 * index + 1] = g;
@@ -850,11 +1003,17 @@ impl Lut1DTransform {
 /// index changing fastest: `index = ((r * n + g) * n + b) * 3`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Lut3DTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// Number of entries along each axis.
     pub grid_size: usize,
+    /// RGB values (`grid_size^3 * 3`, blue fastest).
     pub values: Vec<f32>,
+    /// The interpolation.
     pub interpolation: Interpolation,
+    /// Bit depth used to scale the values when written to a file.
     pub file_output_bit_depth: BitDepth,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
@@ -896,12 +1055,14 @@ impl Lut3DTransform {
         }
     }
 
+    /// RGB value at grid position (`r`, `g`, `b`) (panics if out of bounds).
     pub fn value(&self, r: usize, g: usize, b: usize) -> [f32; 3] {
         let n = self.grid_size;
         let i = ((r * n + g) * n + b) * 3;
         [self.values[i], self.values[i + 1], self.values[i + 2]]
     }
 
+    /// Set the RGB value at grid position (`r`, `g`, `b`) (panics if out of bounds).
     pub fn set_value(&mut self, r: usize, g: usize, b: usize, rgb: [f32; 3]) {
         let n = self.grid_size;
         let i = ((r * n + g) * n + b) * 3;
@@ -912,11 +1073,17 @@ impl Lut3DTransform {
 /// 4x4 matrix (row major) plus offset: `out = M * in + offset`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatrixTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// 4x4 row-major matrix (default identity).
     pub matrix: [f64; 16],
+    /// RGBA offset (default 0).
     pub offset: [f64; 4],
+    /// Input bit depth the values were scaled for in the file.
     pub file_input_bit_depth: BitDepth,
+    /// Output bit depth the values were scaled for in the file.
     pub file_output_bit_depth: BitDepth,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
@@ -942,6 +1109,7 @@ impl Default for MatrixTransform {
 }
 
 impl MatrixTransform {
+    /// Matrix transform with the given matrix and offset.
     pub fn new(matrix: [f64; 16], offset: [f64; 4]) -> Self {
         Self {
             matrix,
@@ -1047,14 +1215,23 @@ impl MatrixTransform {
 /// clamping. Each bound is optional.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RangeTransform {
+    /// The transform direction.
     pub direction: TransformDirection,
+    /// Whether values are clamped to the bounds (default `Clamp`).
     pub style: RangeStyle,
+    /// Lower input bound.
     pub min_in: Option<f64>,
+    /// Upper input bound.
     pub max_in: Option<f64>,
+    /// Lower output bound.
     pub min_out: Option<f64>,
+    /// Upper output bound.
     pub max_out: Option<f64>,
+    /// Input bit depth the values were scaled for in the file.
     pub file_input_bit_depth: BitDepth,
+    /// Output bit depth the values were scaled for in the file.
     pub file_output_bit_depth: BitDepth,
+    /// Format metadata.
     pub metadata: FormatMetadata,
 }
 
@@ -1075,6 +1252,7 @@ impl Default for RangeTransform {
 }
 
 impl RangeTransform {
+    /// Range transform with the given bounds.
     pub fn new(
         min_in: Option<f64>,
         max_in: Option<f64>,
