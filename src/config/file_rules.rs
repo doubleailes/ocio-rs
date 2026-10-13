@@ -16,11 +16,17 @@ pub const FILE_PATH_SEARCH_RULE_NAME: &str = "ColorSpaceNamePathSearch";
 
 /// Keys used by the YAML file rules.
 pub mod keys {
+    /// Rule name key.
     pub const NAME: &str = "name";
+    /// Color space key.
     pub const COLOR_SPACE: &str = "colorspace";
+    /// Glob pattern key.
     pub const PATTERN: &str = "pattern";
+    /// Glob extension key.
     pub const EXTENSION: &str = "extension";
+    /// Regular expression key.
     pub const REGEX: &str = "regex";
+    /// Custom keys map key.
     pub const CUSTOM_KEY: &str = "custom";
 }
 
@@ -406,6 +412,7 @@ impl FileRules {
         Ok(())
     }
 
+    /// Number of rules (including the default rule).
     pub fn num_entries(&self) -> usize {
         self.rules.len()
     }
@@ -418,36 +425,45 @@ impl FileRules {
             .ok_or_else(|| Error::msg(format!("File rules: rule name '{name}' not found.")))
     }
 
+    /// Name of the rule at `idx`.
     pub fn name(&self, idx: usize) -> Result<&str> {
         self.validate_position(idx, true)?;
         Ok(&self.rules[idx].name)
     }
 
+    /// Glob pattern of the rule at `idx` (`""` if not a glob rule).
     pub fn pattern(&self, idx: usize) -> Result<&str> {
         self.validate_position(idx, true)?;
         Ok(self.rules[idx].pattern())
     }
 
+    /// Set the glob pattern of the rule at `idx` (turns it into a glob rule;
+    /// error for the default rule).
     pub fn set_pattern(&mut self, idx: usize, pattern: &str) -> Result<()> {
         self.validate_position(idx, false)?;
         self.rules[idx].set_pattern(pattern)
     }
 
+    /// Glob extension of the rule at `idx` (`""` if not a glob rule).
     pub fn extension(&self, idx: usize) -> Result<&str> {
         self.validate_position(idx, true)?;
         Ok(self.rules[idx].extension())
     }
 
+    /// Set the glob extension of the rule at `idx` (error for the default rule).
     pub fn set_extension(&mut self, idx: usize, ext: &str) -> Result<()> {
         self.validate_position(idx, false)?;
         self.rules[idx].set_extension(ext)
     }
 
+    /// Regular expression of the rule at `idx` (`""` if not a regex rule).
     pub fn regex(&self, idx: usize) -> Result<&str> {
         self.validate_position(idx, true)?;
         Ok(self.rules[idx].regex())
     }
 
+    /// Set the regular expression of the rule at `idx` (turns it into a regex
+    /// rule; error for the default rule).
     pub fn set_regex(&mut self, idx: usize, regex: &str) -> Result<()> {
         self.validate_position(idx, false)?;
         self.rules[idx].set_regex(regex)
@@ -459,16 +475,20 @@ impl FileRules {
         Ok(&self.rules[idx].color_space)
     }
 
+    /// Set the color space (or role) of the rule at `idx` (must be empty for
+    /// the `ColorSpaceNamePathSearch` rule, non-empty otherwise).
     pub fn set_color_space(&mut self, idx: usize, cs: &str) -> Result<()> {
         self.validate_position(idx, true)?;
         self.rules[idx].set_color_space(cs)
     }
 
+    /// Number of custom keys of the rule at `idx`.
     pub fn num_custom_keys(&self, idx: usize) -> Result<usize> {
         self.validate_position(idx, true)?;
         Ok(self.rules[idx].custom_keys.len())
     }
 
+    /// Name of the custom key `key` of the rule at `idx`.
     pub fn custom_key_name(&self, idx: usize, key: usize) -> Result<&str> {
         self.validate_position(idx, true)?;
         let r = &self.rules[idx];
@@ -480,6 +500,7 @@ impl FileRules {
         })
     }
 
+    /// Value of the custom key `key` of the rule at `idx`.
     pub fn custom_key_value(&self, idx: usize, key: usize) -> Result<&str> {
         self.validate_position(idx, true)?;
         let r = &self.rules[idx];
@@ -491,6 +512,7 @@ impl FileRules {
         })
     }
 
+    /// Set (or remove when `value` is empty) a custom key of the rule at `idx`.
     pub fn set_custom_key(&mut self, idx: usize, key: &str, value: &str) -> Result<()> {
         self.validate_position(idx, true)?;
         let r = &mut self.rules[idx];
@@ -549,6 +571,7 @@ impl FileRules {
         }
     }
 
+    /// Remove the rule at `idx` (the default rule cannot be removed).
     pub fn remove_rule(&mut self, idx: usize) -> Result<()> {
         self.validate_position(idx, false)?;
         self.rules.remove(idx);

@@ -79,6 +79,7 @@ impl ColorSpace {
         cs
     }
 
+    /// The name.
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -90,6 +91,7 @@ impl ColorSpace {
         remove(&mut self.aliases, &n);
     }
 
+    /// Number of aliases.
     pub fn num_aliases(&self) -> usize {
         self.aliases.len()
     }
@@ -99,10 +101,12 @@ impl ColorSpace {
         self.aliases.get(idx).map(|s| s.as_str()).unwrap_or("")
     }
 
+    /// All the aliases.
     pub fn aliases(&self) -> &[String] {
         &self.aliases
     }
 
+    /// True if the alias exists (case insensitive).
     pub fn has_alias(&self, alias: &str) -> bool {
         self.aliases.iter().any(|a| compare(a, alias))
     }
@@ -114,35 +118,44 @@ impl ColorSpace {
         }
     }
 
+    /// Remove an alias (case insensitive).
     pub fn remove_alias(&mut self, alias: &str) {
         if !alias.is_empty() {
             remove(&mut self.aliases, alias);
         }
     }
 
+    /// Remove all the aliases.
     pub fn clear_aliases(&mut self) {
         self.aliases.clear();
     }
 
+    /// The family.
     pub fn family(&self) -> &str {
         &self.family
     }
+    /// Set the family.
     pub fn set_family(&mut self, family: &str) {
         self.family = family.to_string();
     }
+    /// The equality group.
     pub fn equality_group(&self) -> &str {
         &self.equality_group
     }
+    /// Set the equality group.
     pub fn set_equality_group(&mut self, group: &str) {
         self.equality_group = group.to_string();
     }
+    /// The description.
     pub fn description(&self) -> &str {
         &self.description
     }
+    /// Set the description.
     pub fn set_description(&mut self, description: &str) {
         self.description = description.to_string();
     }
 
+    /// The interop id.
     pub fn interop_id(&self) -> &str {
         &self.interop_id
     }
@@ -219,25 +232,32 @@ impl ColorSpace {
         &self.interchange
     }
 
+    /// The bit depth.
     pub fn bit_depth(&self) -> BitDepth {
         self.bit_depth
     }
+    /// Set the bit depth.
     pub fn set_bit_depth(&mut self, bd: BitDepth) {
         self.bit_depth = bd;
     }
+    /// The reference space (scene or display) this color space relates to.
     pub fn reference_space_type(&self) -> ReferenceSpaceType {
         self.reference_space
     }
 
+    /// True if the category exists (case insensitive).
     pub fn has_category(&self, category: &str) -> bool {
         self.categories.has_token(category)
     }
+    /// Add a category (trimmed, ignored if empty or already present).
     pub fn add_category(&mut self, category: &str) {
         self.categories.add_token(category);
     }
+    /// Remove a category.
     pub fn remove_category(&mut self, category: &str) {
         self.categories.remove_token(category);
     }
+    /// Number of categories.
     pub fn num_categories(&self) -> usize {
         self.categories.num_tokens()
     }
@@ -245,37 +265,48 @@ impl ColorSpace {
     pub fn category(&self, index: usize) -> Option<&str> {
         self.categories.token(index)
     }
+    /// All the categories.
     pub fn categories(&self) -> &[String] {
         self.categories.tokens()
     }
+    /// Remove all the categories.
     pub fn clear_categories(&mut self) {
         self.categories.clear_tokens();
     }
 
+    /// The encoding.
     pub fn encoding(&self) -> &str {
         &self.encoding
     }
+    /// Set the encoding.
     pub fn set_encoding(&mut self, encoding: &str) {
         self.encoding = encoding.to_string();
     }
+    /// True if the color space holds non-color data.
     pub fn is_data(&self) -> bool {
         self.is_data
     }
+    /// Set whether the color space holds non-color data.
     pub fn set_is_data(&mut self, is_data: bool) {
         self.is_data = is_data;
     }
+    /// The allocation.
     pub fn allocation(&self) -> Allocation {
         self.allocation
     }
+    /// Set the allocation.
     pub fn set_allocation(&mut self, allocation: Allocation) {
         self.allocation = allocation;
     }
+    /// Number of allocation variables.
     pub fn allocation_num_vars(&self) -> usize {
         self.allocation_vars.len()
     }
+    /// The allocation variables.
     pub fn allocation_vars(&self) -> &[f32] {
         &self.allocation_vars
     }
+    /// Set the allocation variables.
     pub fn set_allocation_vars(&mut self, vars: &[f32]) {
         self.allocation_vars = vars.to_vec();
     }
@@ -371,10 +402,12 @@ impl PartialEq for ColorSpaceSet {
 }
 
 impl ColorSpaceSet {
+    /// An empty set.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Number of color spaces.
     pub fn num_color_spaces(&self) -> usize {
         self.color_spaces.len()
     }
@@ -384,6 +417,7 @@ impl ColorSpaceSet {
         self.color_spaces.get(index).map(|c| c.name())
     }
 
+    /// Color space at `index`.
     pub fn color_space_by_index(&self, index: usize) -> Option<&ColorSpace> {
         self.color_spaces.get(index)
     }
@@ -405,6 +439,7 @@ impl ColorSpaceSet {
             .position(|cs| compare(cs.name(), &s) || cs.aliases.iter().any(|a| compare(a, &s)))
     }
 
+    /// True if a color space has this name or alias.
     pub fn has_color_space(&self, name: &str) -> bool {
         self.color_space_index(name).is_some()
     }
@@ -476,6 +511,7 @@ impl ColorSpaceSet {
         }
     }
 
+    /// Remove all the color spaces.
     pub fn clear_color_spaces(&mut self) {
         self.color_spaces.clear();
     }

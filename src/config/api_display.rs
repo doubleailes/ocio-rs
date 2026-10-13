@@ -115,10 +115,12 @@ impl Config {
     // -----------------------------------------------------------------------
     // Viewing rules
 
+    /// The viewing rules.
     pub fn viewing_rules(&self) -> &ViewingRules {
         &self.viewing_rules
     }
 
+    /// Replace the viewing rules.
     pub fn set_viewing_rules(&mut self, rules: &ViewingRules) {
         self.viewing_rules = rules.clone();
         self.reset_cache_ids();
@@ -533,10 +535,12 @@ impl Config {
     // -----------------------------------------------------------------------
     // Virtual display
 
+    /// True if the virtual display has the view (display-defined or shared).
     pub fn has_virtual_view(&self, view: &str) -> bool {
         !self.virtual_display_view_color_space_name(view).is_empty()
     }
 
+    /// True if `view` is a shared view of the virtual display.
     pub fn is_virtual_view_shared(&self, view: &str) -> bool {
         !view.is_empty()
             && self
@@ -602,6 +606,7 @@ impl Config {
         Ok(())
     }
 
+    /// Number of views of the given type in the virtual display.
     pub fn virtual_display_num_views(&self, ty: ViewType) -> usize {
         match ty {
             ViewType::DisplayDefined => self.virtual_display.views.len(),
@@ -655,26 +660,31 @@ impl Config {
         find_view(&self.virtual_display.views, view).map(|i| &self.virtual_display.views[i])
     }
 
+    /// View transform of a virtual display view (`""` if not found).
     pub fn virtual_display_view_transform_name(&self, view: &str) -> &str {
         self.virtual_view(view)
             .map(|v| v.view_transform.as_str())
             .unwrap_or("")
     }
+    /// Color space of a virtual display view (`""` if not found).
     pub fn virtual_display_view_color_space_name(&self, view: &str) -> &str {
         self.virtual_view(view)
             .map(|v| v.colorspace.as_str())
             .unwrap_or("")
     }
+    /// Looks of a virtual display view (`""` if not found).
     pub fn virtual_display_view_looks(&self, view: &str) -> &str {
         self.virtual_view(view)
             .map(|v| v.looks.as_str())
             .unwrap_or("")
     }
+    /// Viewing rule of a virtual display view (`""` if not found).
     pub fn virtual_display_view_rule(&self, view: &str) -> &str {
         self.virtual_view(view)
             .map(|v| v.rule.as_str())
             .unwrap_or("")
     }
+    /// Description of a virtual display view (`""` if not found).
     pub fn virtual_display_view_description(&self, view: &str) -> &str {
         self.virtual_view(view)
             .map(|v| v.description.as_str())
@@ -830,6 +840,7 @@ impl Config {
         join_string_env_style(&self.active_displays)
     }
 
+    /// Number of active displays.
     pub fn num_active_displays(&self) -> usize {
         self.active_displays.len()
     }
@@ -839,6 +850,8 @@ impl Config {
         self.active_displays.get(index).map(|s| s.as_str())
     }
 
+    /// Add an active display (no-op if already active, error if `display` is
+    /// empty).
     pub fn add_active_display(&mut self, display: &str) -> Result<()> {
         if display.is_empty() {
             return Err(Error::msg(
@@ -853,6 +866,7 @@ impl Config {
         Ok(())
     }
 
+    /// Remove an active display (error if empty or not active).
     pub fn remove_active_display(&mut self, display: &str) -> Result<()> {
         if display.is_empty() {
             return Err(Error::msg(
@@ -873,6 +887,7 @@ impl Config {
         Ok(())
     }
 
+    /// Remove all the active displays.
     pub fn clear_active_displays(&mut self) {
         self.active_displays.clear();
         self.reset_cache_ids();
@@ -894,14 +909,17 @@ impl Config {
         join_string_env_style(&self.active_views)
     }
 
+    /// Number of active views.
     pub fn num_active_views(&self) -> usize {
         self.active_views.len()
     }
 
+    /// Active view at `index`.
     pub fn active_view(&self, index: usize) -> Option<&str> {
         self.active_views.get(index).map(|s| s.as_str())
     }
 
+    /// Add an active view (no-op if already active, error if `view` is empty).
     pub fn add_active_view(&mut self, view: &str) -> Result<()> {
         if view.is_empty() {
             return Err(Error::msg(
@@ -916,6 +934,7 @@ impl Config {
         Ok(())
     }
 
+    /// Remove an active view (error if empty or not active).
     pub fn remove_active_view(&mut self, view: &str) -> Result<()> {
         if view.is_empty() {
             return Err(Error::msg(
@@ -936,6 +955,7 @@ impl Config {
         Ok(())
     }
 
+    /// Remove all the active views.
     pub fn clear_active_views(&mut self) {
         self.active_views.clear();
         self.reset_cache_ids();
@@ -962,6 +982,7 @@ impl Config {
         self.displays.iter().position(|d| d.0 == name)
     }
 
+    /// True if the display at `index` is temporary (`false` if out of range).
     pub fn is_display_temporary(&self, index: usize) -> bool {
         self.displays
             .get(index)
@@ -969,6 +990,7 @@ impl Config {
             .unwrap_or(false)
     }
 
+    /// Mark the display at `index` as temporary (ignored if out of range).
     pub fn set_display_temporary(&mut self, index: usize, temporary: bool) {
         if index < self.displays.len() {
             self.displays[index].1.temporary = temporary;

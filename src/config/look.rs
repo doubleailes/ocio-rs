@@ -26,15 +26,19 @@ impl Look {
         Self::default()
     }
 
+    /// The name.
     pub fn name(&self) -> &str {
         &self.name
     }
+    /// Set the name.
     pub fn set_name(&mut self, name: &str) {
         self.name = name.to_string();
     }
+    /// The process color space.
     pub fn process_space(&self) -> &str {
         &self.process_space
     }
+    /// Set the process color space.
     pub fn set_process_space(&mut self, ps: &str) {
         self.process_space = ps.to_string();
     }
@@ -42,6 +46,7 @@ impl Look {
     pub fn transform(&self) -> Option<&Transform> {
         self.transform.as_ref()
     }
+    /// Set the forward transform.
     pub fn set_transform(&mut self, t: Option<Transform>) {
         self.transform = t;
     }
@@ -49,12 +54,15 @@ impl Look {
     pub fn inverse_transform(&self) -> Option<&Transform> {
         self.inverse_transform.as_ref()
     }
+    /// Set the explicit inverse transform.
     pub fn set_inverse_transform(&mut self, t: Option<Transform>) {
         self.inverse_transform = t;
     }
+    /// The description.
     pub fn description(&self) -> &str {
         &self.description
     }
+    /// Set the description.
     pub fn set_description(&mut self, d: &str) {
         self.description = d.to_string();
     }
@@ -76,6 +84,7 @@ impl Look {
         Ok(())
     }
 
+    /// All the interchange attributes.
     pub fn interchange_attributes(&self) -> &BTreeMap<String, String> {
         &self.interchange
     }

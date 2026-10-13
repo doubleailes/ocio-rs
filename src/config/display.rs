@@ -6,6 +6,7 @@ use crate::types::OCIO_VIEW_USE_DISPLAY_NAME;
 /// A view of a display (or a shared view).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct View {
+    /// The view name.
     pub name: String,
     /// Might be empty.
     pub view_transform: String,
