@@ -1603,8 +1603,6 @@ impl Renderer for LinToDoubleLog {
 
 // ---------------------------------------------------------------------------
 
-/// Build the CPU renderer of validated fixed function data (port of
-/// `GetFixedFunctionCPURenderer`).
 /// The renderer used under `OptimizationFlags::FAST_LOG_EXP_POW` (the fast
 /// power SSE renderers of `GetFixedFunctionCPURenderer`), if the style has
 /// one.
@@ -1618,6 +1616,8 @@ pub(crate) fn get_fixed_function_fast_cpu_renderer(
     }
 }
 
+/// Build the CPU renderer of validated fixed function data (port of
+/// `GetFixedFunctionCPURenderer`).
 pub(crate) fn get_fixed_function_cpu_renderer(data: &FixedFunctionOpData) -> Result<RendererRc> {
     Ok(match data.style {
         S::AcesRedMod03Fwd => Arc::new(AcesRedMod03::new(false)),

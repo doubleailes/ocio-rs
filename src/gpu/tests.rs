@@ -1620,31 +1620,51 @@ fn from_reference_glsl(transform: &str) -> String {
 // The expected lines of the two tests below come from the C++ OCIO 2.6
 // library.
 
+/// The camera log break point is computed in double precision by the Linux
+/// builds of OCIO and in single precision by the others (see
+/// `get_log_side_break`): the expected line of the target platform.
+fn by_platform(linux: &'static str, other: &'static str) -> &'static str {
+    if cfg!(target_os = "linux") {
+        linux
+    } else {
+        other
+    }
+}
+
 #[test]
 fn camera_log_break_precision() {
     let text = from_reference_glsl(
         "!<LogCameraTransform> {base: 10, lin_side_offset: 0.1, lin_side_slope: 1.2, \
          log_side_offset: 0.3, log_side_slope: 0.4, lin_side_break: 0.2}",
     );
-    assert!(text.contains(
-        "    vec3 linear_segment_offset = vec3(-0.0100327656, -0.0100327656, -0.0100327656);\n"
-    ));
+    assert!(text.contains(by_platform(
+        "    vec3 linear_segment_offset = vec3(-0.0100327656, -0.0100327656, -0.0100327656);\n",
+        "    vec3 linear_segment_offset = vec3(-0.0100327507, -0.0100327507, -0.0100327507);\n",
+    )));
 
     let text = from_reference_glsl(
         "!<LogCameraTransform> {base: 10, lin_side_offset: 0.1, lin_side_slope: 1.2, \
          log_side_offset: 0.3, log_side_slope: 0.4, lin_side_break: 0.2, linear_slope: 1.5, \
          direction: inverse}",
     );
-    assert!(text.contains("    vec3 log_break = vec3(0.112591565, 0.112591565, 0.112591565);\n"));
-    assert!(text.contains(
-        "    vec3 linear_segment_offset = vec3(-0.187408447, -0.187408447, -0.187408447);\n"
-    ));
+    assert!(text.contains(by_platform(
+        "    vec3 log_break = vec3(0.112591565, 0.112591565, 0.112591565);\n",
+        "    vec3 log_break = vec3(0.11259158, 0.11259158, 0.11259158);\n",
+    )));
+    assert!(text.contains(by_platform(
+        "    vec3 linear_segment_offset = vec3(-0.187408447, -0.187408447, -0.187408447);\n",
+        "    vec3 linear_segment_offset = vec3(-0.187408432, -0.187408432, -0.187408432);\n",
+    )));
 
     let text = from_reference_glsl("!<BuiltinTransform> {style: SONY_SLOG3-SGAMUT3_to_ACES2065-1}");
-    assert!(text.contains("    vec3 log_break = vec3(0.167360991, 0.167360991, 0.167360991);\n"));
-    assert!(text.contains(
-        "    vec3 linear_segment_offset = vec3(0.092864126, 0.092864126, 0.092864126);\n"
-    ));
+    assert!(text.contains(by_platform(
+        "    vec3 log_break = vec3(0.167360991, 0.167360991, 0.167360991);\n",
+        "    vec3 log_break = vec3(0.167360976, 0.167360976, 0.167360976);\n",
+    )));
+    assert!(text.contains(by_platform(
+        "    vec3 linear_segment_offset = vec3(0.092864126, 0.092864126, 0.092864126);\n",
+        "    vec3 linear_segment_offset = vec3(0.0928641111, 0.0928641111, 0.0928641111);\n",
+    )));
 }
 
 #[test]
