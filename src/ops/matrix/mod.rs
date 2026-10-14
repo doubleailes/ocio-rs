@@ -484,34 +484,46 @@ impl MatrixRenderer {
             // value, e.g. the fast mirrored gamma gives -0 for -NaN).
             MatrixRenderer::Matrix { columns } => {
                 for p in pixels.iter_mut() {
-                    let (r, g, b, a) = (p[0], p[1], p[2], p[3]);
-                    for c in 0..4 {
-                        let m = [columns[0][c], columns[1][c], columns[2][c], columns[3][c]];
-                        let v = (m[0] * r + m[1] * g) + (m[2] * b + m[3] * a);
-                        p[c] = if v.is_nan() {
-                            matrix_row_x86(&m, r, g, b, a)
-                        } else {
-                            v
-                        };
-                    }
+                    apply_matrix(p, columns, None);
                 }
             }
             MatrixRenderer::MatrixWithOffset { columns, offset } => {
                 for p in pixels.iter_mut() {
-                    let (r, g, b, a) = (p[0], p[1], p[2], p[3]);
-                    for c in 0..4 {
-                        let m = [columns[0][c], columns[1][c], columns[2][c], columns[3][c]];
-                        let v = ((m[0] * r + m[1] * g) + (m[2] * b + m[3] * a)) + offset[c];
-                        p[c] = if v.is_nan() {
-                            sse::add(matrix_row_x86(&m, r, g, b, a), offset[c])
-                        } else {
-                            v
-                        };
-                    }
+                    apply_matrix(p, columns, Some(offset));
                 }
             }
         }
     }
+}
+
+/// One pixel of the SSE matrix renderers (see [`MatrixRenderer::apply`]).
+/// The NaN check is done once per pixel, so that finite pixels only pay for
+/// one predictable branch. (Without offsets nothing is added, which keeps
+/// the sign of a zero.)
+#[inline]
+fn apply_matrix(p: &mut Pixel, columns: &[[f32; 4]; 4], offset: Option<&[f32; 4]>) {
+    let (r, g, b, a) = (p[0], p[1], p[2], p[3]);
+    let mut out = [0.0f32; 4];
+    for c in 0..4 {
+        let v = (columns[0][c] * r + columns[1][c] * g) + (columns[2][c] * b + columns[3][c] * a);
+        out[c] = match offset {
+            Some(o) => v + o[c],
+            None => v,
+        };
+    }
+    if out.iter().any(|v| v.is_nan()) {
+        for c in 0..4 {
+            if out[c].is_nan() {
+                let m = [columns[0][c], columns[1][c], columns[2][c], columns[3][c]];
+                let v = matrix_row_x86(&m, r, g, b, a);
+                out[c] = match offset {
+                    Some(o) => sse::add(v, o[c]),
+                    None => v,
+                };
+            }
+        }
+    }
+    *p = out;
 }
 
 // ---------------------------------------------------------------------------
