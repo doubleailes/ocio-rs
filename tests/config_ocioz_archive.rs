@@ -228,6 +228,37 @@ fn ocioz_context_test_for_search_paths_and_filetransform_source_path() {
     }
 }
 
+/// Configs loaded at the same time from the same archive share its
+/// extraction directory: none of them may read a partially extracted file.
+#[test]
+fn ocioz_concurrent_loads() {
+    for round in 0..8 {
+        // A fresh copy of the archive gets its own extraction directory.
+        let dir = TempDir::new(&format!("concurrent{round}"));
+        let archive = format!("{}/context_test1_linux.ocioz", dir.path());
+        std::fs::copy(archive_path("context_test1_linux.ocioz"), &archive).unwrap();
+        let threads: Vec<_> = (0..8)
+            .map(|_| {
+                let archive = archive.clone();
+                std::thread::spawn(move || {
+                    let cfg = Config::create_from_file(&archive).unwrap();
+                    let mut ctx = cfg.current_context().clone();
+                    for v in ["SHOT", "LUT_PATH", "CAMERA", "CCCID"] {
+                        ctx.set_string_var(v, Some("none"));
+                    }
+                    let p = cfg
+                        .get_processor_with_context_names(&ctx, "shot2_lut1_cs", "reference")
+                        .unwrap();
+                    first_matrix_value(&p)
+                })
+            })
+            .collect();
+        for t in threads {
+            assert_eq!(t.join().unwrap(), 20.0);
+        }
+    }
+}
+
 #[test]
 fn ocioz_archive_config_and_compare_to_original_no_processor() {
     let config_path = archive_path("config.ocio");

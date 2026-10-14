@@ -148,11 +148,58 @@ impl OciozArchive {
         let dir = std::env::temp_dir().join(format!("ocio-ocioz-{id}"));
         let dir_str = dir.to_string_lossy().replace('\\', "/");
         if !dir.join(".complete").exists() {
-            extract_ocioz_archive(&self.path, &dir_str)?;
-            std::fs::write(dir.join(".complete"), b"")?;
+            extract_to_shared_dir(&self.path, &dir)?;
         }
         config.set_working_dir(&dir_str);
         Ok(())
+    }
+}
+
+/// Extract the archive at `path` into the directory `dir`, shared by all
+/// the configs loaded from the same archive (also from other threads or
+/// processes).
+///
+/// The files are extracted into a private staging directory which is then
+/// renamed to `dir`, so a reader never sees a partially written file. When
+/// another extraction completed first, its directory is kept and the
+/// staging copy is removed.
+fn extract_to_shared_dir(path: &str, dir: &std::path::Path) -> Result<()> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    let mut staging = dir.as_os_str().to_owned();
+    staging.push(format!(
+        ".{}.{}",
+        std::process::id(),
+        COUNTER.fetch_add(1, Ordering::Relaxed)
+    ));
+    let staging = std::path::PathBuf::from(staging);
+    let staging_str = staging.to_string_lossy().replace('\\', "/");
+
+    let result = extract_ocioz_archive(path, &staging_str)
+        .and_then(|_| Ok(std::fs::write(staging.join(".complete"), b"")?));
+    if let Err(e) = result {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Err(e);
+    }
+    let mut result = std::fs::rename(&staging, dir);
+    if result.is_err() && dir.exists() && !dir.join(".complete").exists() {
+        // A leftover of an interrupted extraction (or of an older version
+        // extracting in place): replace it.
+        let _ = std::fs::remove_dir_all(dir);
+        result = std::fs::rename(&staging, dir);
+    }
+    match result {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            let _ = std::fs::remove_dir_all(&staging);
+            if dir.join(".complete").exists() {
+                // Another extraction completed first.
+                Ok(())
+            } else {
+                Err(e.into())
+            }
+        }
     }
 }
 
