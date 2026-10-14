@@ -285,17 +285,31 @@ pub fn get_linear_slope(params: &[f64], base: f64) -> f32 {
 }
 
 /// Log side value of the break point of a camera log.
+///
+/// OCIO calls the unqualified `log2` on float arguments here, and which
+/// overload that resolves to depends on the C++ standard library:
+/// * with libstdc++ (the Linux builds, e.g. the PyOpenColorIO 2.6.0 Linux
+///   wheel) it is the C `log2(double)`, so the logarithms are computed in
+///   double precision,
+/// * with MSVC (the Windows builds) it is `log2(float)`, so they are computed
+///   in single precision, as in the renderers. The other platforms are
+///   assumed to behave like MSVC (libc++ also declares `log2(float)` in the
+///   global namespace), which is not verified.
+///
+/// The results differ by one ulp for some curves (S-Log3: 0.16736099 in
+/// double, 0.16736098 in float), which moves the offset of the linear
+/// segment, so the OCIO build of the target platform is followed.
 pub fn get_log_side_break(params: &[f64], base: f64) -> f32 {
-    // Note: OCIO calls the C `log2(double)` here, so the logarithms are
-    // computed in double precision on float arguments.
-    let mut log_side_break = (((params[LIN_SIDE_SLOPE] * params[LIN_SIDE_BREAK]
-        + params[LIN_SIDE_OFFSET]) as f32) as f64)
-        .log2() as f32;
-    log_side_break = (log_side_break as f64
-        * (params[LOG_SIDE_SLOPE] as f32 as f64 / (base as f32 as f64).log2()))
-        as f32;
-    log_side_break += params[LOG_SIDE_OFFSET] as f32;
-    log_side_break
+    let lin = (params[LIN_SIDE_SLOPE] * params[LIN_SIDE_BREAK] + params[LIN_SIDE_OFFSET]) as f32;
+    let log_slope = params[LOG_SIDE_SLOPE] as f32;
+    let base = base as f32;
+    let log_side_break = if cfg!(target_os = "linux") {
+        let b = (lin as f64).log2() as f32;
+        (b as f64 * (log_slope as f64 / (base as f64).log2())) as f32
+    } else {
+        lin.log2() * (log_slope / base.log2())
+    };
+    log_side_break + params[LOG_SIDE_OFFSET] as f32
 }
 
 /// Offset of the linear segment of a camera log.
@@ -308,6 +322,25 @@ mod tests {
     use super::*;
     use crate::ops::log::LogOpData;
     use crate::ops::matrix::test_utils::assert_close;
+
+    #[test]
+    fn log_side_break_s_log3() {
+        let params = [
+            261.5 / 1023.0,
+            420.0 / 1023.0,
+            1.0 / (0.18 + 0.01),
+            0.01 / (0.18 + 0.01),
+            0.01125,
+        ];
+        // PyOpenColorIO 2.6.0 Linux wheel (double precision) and MSVC builds
+        // (single precision).
+        let expected = if cfg!(target_os = "linux") {
+            0.16736099
+        } else {
+            0.16736098
+        };
+        assert_eq!(get_log_side_break(&params, 10.0), expected);
+    }
 
     #[test]
     fn styles() {
