@@ -16,7 +16,7 @@ use crate::config::Config;
 use crate::context::Context;
 use crate::error::{Error, Result};
 use crate::format_metadata::FormatMetadata;
-use crate::ops::{Op, OpVec, Pixel};
+use crate::ops::{Op, OpRc, OpVec, Pixel};
 use crate::transforms::{BuildOps, FixedFunctionTransform, Transform, Validate};
 use crate::types::{FixedFunctionStyle, OptimizationFlags, TransformDirection};
 use cpu::RendererRc;
@@ -776,6 +776,16 @@ impl Op for FixedFunctionOp {
 
     fn cache_id(&self) -> String {
         format!("<FixedFunctionOp {}>", self.data.cache_id())
+    }
+
+    fn cpu_op(&self, fast_log_exp_pow: bool) -> Option<OpRc> {
+        if !fast_log_exp_pow {
+            return None;
+        }
+        Some(Arc::new(Self {
+            data: self.data.clone(),
+            renderer: cpu::get_fixed_function_fast_cpu_renderer(&self.data)?,
+        }))
     }
 
     fn as_any(&self) -> &dyn Any {

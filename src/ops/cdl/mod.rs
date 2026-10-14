@@ -16,7 +16,7 @@ use crate::ops::matrix::{
     create_matrix_op_from_data, create_saturation_op, create_scale_offset_op, MatrixOpData,
 };
 use crate::ops::range::{create_range_op_from_data, RangeOpData};
-use crate::ops::{Op, OpVec, Pixel};
+use crate::ops::{Op, OpRc, OpVec, Pixel};
 use crate::transforms::{
     BuildOps, CdlTransform, MatrixTransform, Transform, Validate, METADATA_SOP_DESCRIPTION,
 };
@@ -574,6 +574,86 @@ impl CdlRenderer {
     }
 }
 
+// Fast renderers (port of `CDLRendererFwdSSE` / `CDLRendererRevSSE`). They
+// process the four channels as SSE lanes: the slope, offset and power of
+// alpha are 1, 0 and 1, and alpha is restored at the end, but it goes
+// through the power and its weight of 0 is part of the luma sum, so a non
+// finite alpha makes the RGB channels NaN.
+
+#[inline]
+fn fast_clamp(p: &mut Pixel) {
+    use crate::ops::sse;
+    for v in p.iter_mut() {
+        *v = sse::min(sse::max(*v, 0.0), 1.0);
+    }
+}
+
+#[inline]
+fn fast_power(p: &mut Pixel, power: &[f32; 4], clamp: bool) {
+    use crate::ops::sse;
+    if clamp {
+        fast_clamp(p);
+        for c in 0..4 {
+            p[c] = sse::power(p[c], power[c]);
+        }
+    } else {
+        // Negative values are passed through (a NaN gives 0).
+        for c in 0..4 {
+            let pix_power = sse::power(p[c], power[c]);
+            if !(p[c] < 0.0) {
+                p[c] = pix_power;
+            }
+        }
+    }
+}
+
+#[inline]
+fn fast_saturation(p: &mut Pixel, sat: f32) {
+    let luma = crate::ops::sse::luma(p, &[0.2126, 0.7152, 0.0722]);
+    for v in p.iter_mut() {
+        *v = luma + sat * (*v - luma);
+    }
+}
+
+impl CdlRenderer {
+    /// Process pixels in place with the fast power of OCIO's SSE renderers
+    /// (port of `CDLRendererFwdSSE` / `CDLRendererRevSSE`, used under
+    /// `OptimizationFlags::FAST_LOG_EXP_POW`). Alpha is not modified.
+    pub fn apply_fast(&self, pixels: &mut [Pixel]) {
+        let p = &self.params;
+        let clamp = !p.is_no_clamp;
+        let slope = [p.slope[0], p.slope[1], p.slope[2], 1.0];
+        let offset = [p.offset[0], p.offset[1], p.offset[2], 0.0];
+        let power = [p.power[0], p.power[1], p.power[2], 1.0];
+        for px in pixels.iter_mut() {
+            let alpha = px[3];
+            if !p.is_reverse {
+                for c in 0..4 {
+                    px[c] = px[c] * slope[c] + offset[c];
+                }
+                fast_power(px, &power, clamp);
+                fast_saturation(px, p.saturation);
+                if clamp {
+                    fast_clamp(px);
+                }
+            } else {
+                if clamp {
+                    fast_clamp(px);
+                }
+                fast_saturation(px, p.saturation);
+                fast_power(px, &power, clamp);
+                for c in 0..4 {
+                    px[c] = (px[c] + offset[c]) * slope[c];
+                }
+                if clamp {
+                    fast_clamp(px);
+                }
+            }
+            px[3] = alpha;
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // The op.
 
@@ -582,6 +662,8 @@ impl CdlRenderer {
 pub struct CdlOp {
     data: CdlOpData,
     renderer: CdlRenderer,
+    /// Use the fast power (see [`CdlRenderer::apply_fast`]).
+    fast_power: bool,
 }
 
 impl CdlOp {
@@ -589,7 +671,11 @@ impl CdlOp {
     pub fn new(data: CdlOpData) -> Result<Self> {
         data.validate()?;
         let renderer = CdlRenderer::new(&data);
-        Ok(Self { data, renderer })
+        Ok(Self {
+            data,
+            renderer,
+            fast_power: false,
+        })
     }
 
     /// The parameters.
@@ -604,7 +690,11 @@ impl Op for CdlOp {
     }
 
     fn apply(&self, pixels: &mut [Pixel]) {
-        self.renderer.apply(pixels);
+        if self.fast_power {
+            self.renderer.apply_fast(pixels);
+        } else {
+            self.renderer.apply(pixels);
+        }
     }
 
     fn is_no_op(&self) -> bool {
@@ -617,6 +707,15 @@ impl Op for CdlOp {
 
     fn cache_id(&self) -> String {
         format!("<CDLOp {}>", self.data.cache_id())
+    }
+
+    fn cpu_op(&self, fast_log_exp_pow: bool) -> Option<OpRc> {
+        fast_log_exp_pow.then(|| {
+            Arc::new(Self {
+                fast_power: true,
+                ..self.clone()
+            }) as OpRc
+        })
     }
 
     fn as_any(&self) -> &dyn Any {

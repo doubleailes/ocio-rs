@@ -9,10 +9,11 @@ use super::*;
 use crate::ops::grading_primary::tests::{processor, to_pixels};
 use crate::processor::optimize_ops;
 
-/// Port of the non SSE `ValidateImage` of `GradingToneOpCPU_tests.cpp`
-/// (relative error for values above 1).
+/// Port of the SSE `ValidateImage` of `GradingToneOpCPU_tests.cpp` (the
+/// lin-to-log shapers follow OCIO's SSE2 builds; relative error for values
+/// above 1).
 fn validate_image(expected: &[f32], res: &[Pixel], line: u32) {
-    const ERROR: f32 = 1e-6;
+    const ERROR: f32 = 2e-4;
     for (i, px) in res.iter().enumerate() {
         for j in 0..4 {
             let e = expected[i * 4 + j];

@@ -12,7 +12,7 @@ use crate::context::Context;
 use crate::dynamic_property::{DynamicProperty, SharedValue};
 use crate::error::Result;
 use crate::format_metadata::FormatMetadata;
-use crate::ops::{Op, OpRc, OpVec, Pixel};
+use crate::ops::{sse, Op, OpRc, OpVec, Pixel};
 use crate::transforms::grading::GradingPrimary;
 use crate::transforms::{BuildOps, GradingPrimaryTransform, RangeTransform, Transform, Validate};
 use crate::types::{DynamicPropertyType, GradingStyle, OptimizationFlags, TransformDirection};
@@ -467,191 +467,236 @@ pub fn create_grading_primary_op(
 
 // ---------------------------------------------------------------------------
 // CPU rendering
+//
+// Port of the `OCIO_USE_SSE2` branch of `GradingPrimaryOpCPU.cpp`, which
+// OCIO's SSE2 builds always use: the four channels are processed as SSE
+// lanes (the parameters of alpha are identities and alpha is restored at the
+// end, but its weight of 0 is part of the luma sum), the powers are the fast
+// `ssePower`, and the clamps follow `_mm_max_ps` / `_mm_min_ps` (a NaN
+// becomes the black clamp).
+
+/// Parameters of the RGB lanes, with `alpha` for the alpha lane.
+#[inline]
+fn lanes(v: [f32; 3], alpha: f32) -> [f32; 4] {
+    [v[0], v[1], v[2], alpha]
+}
 
 #[inline]
-fn apply_contrast(pix: &mut Pixel, contrast: &[f32; 3], pivot: f32) {
-    for i in 0..3 {
-        pix[i] = (pix[i] - pivot) * contrast[i] + pivot;
+fn apply_contrast(pix: &mut Pixel, contrast: &[f32; 4], pivot: f32) {
+    for c in 0..4 {
+        pix[c] = (pix[c] - pivot) * contrast[c] + pivot;
     }
 }
 
 #[inline]
-fn apply_lin_contrast(pix: &mut Pixel, contrast: &[f32; 3], pivot: f32) {
-    for i in 0..3 {
-        pix[i] = (pix[i] / pivot).abs().powf(contrast[i]) * pivot.copysign(pix[i]);
+fn apply_lin_contrast(pix: &mut Pixel, contrast: &[f32; 4], pivot: f32) {
+    for c in 0..4 {
+        let x = pix[c] / pivot;
+        let sign = sse::sign_bits(x);
+        pix[c] = sse::xor_sign(sse::power(sse::abs(x), contrast[c]) * pivot, sign);
     }
 }
 
 #[inline]
-fn apply_slope(pix: &mut Pixel, slope: &[f32; 3]) {
-    for i in 0..3 {
-        pix[i] *= slope[i];
+fn apply_slope(pix: &mut Pixel, slope: &[f32; 4]) {
+    for c in 0..4 {
+        pix[c] *= slope[c];
     }
 }
 
 #[inline]
-fn apply_offset(pix: &mut Pixel, offset: &[f32; 3]) {
-    for i in 0..3 {
-        pix[i] += offset[i];
+fn apply_offset(pix: &mut Pixel, offset: &[f32; 4]) {
+    for c in 0..4 {
+        pix[c] += offset[c];
     }
 }
 
 #[inline]
-fn apply_gamma(pix: &mut Pixel, gamma: &[f32; 3], black_pivot: f32, white_pivot: f32) {
-    for i in 0..3 {
-        pix[i] = ((pix[i] - black_pivot).abs() / (white_pivot - black_pivot)).powf(gamma[i])
-            * 1.0f32.copysign(pix[i] - black_pivot)
-            * (white_pivot - black_pivot)
-            + black_pivot;
+fn apply_gamma(pix: &mut Pixel, gamma: &[f32; 4], black_pivot: f32, white_pivot: f32) {
+    let range = white_pivot - black_pivot;
+    for c in 0..4 {
+        let x = pix[c] - black_pivot;
+        let sign = sse::sign_bits(x);
+        let y = sse::power(sse::abs(x) / range, gamma[c]);
+        pix[c] = sse::xor_sign(y, sign) * range + black_pivot;
     }
 }
 
 #[inline]
 fn apply_saturation(pix: &mut Pixel, saturation: f32) {
-    if saturation != 1.0 {
-        const LUMA_WEIGHTS: [f32; 3] = [0.2126, 0.7152, 0.0722];
-        let src = [pix[0], pix[1], pix[2]];
-        let luma = src[0] * LUMA_WEIGHTS[0] + src[1] * LUMA_WEIGHTS[1] + src[2] * LUMA_WEIGHTS[2];
-        for i in 0..3 {
-            pix[i] = luma + saturation * (src[i] - luma);
-        }
+    let luma = sse::luma(pix, &[0.2126, 0.7152, 0.0722]);
+    for c in 0..4 {
+        pix[c] = luma + saturation * (pix[c] - luma);
     }
 }
 
 #[inline]
 fn apply_clamp(pix: &mut Pixel, clamp_min: f32, clamp_max: f32) {
-    for p in pix.iter_mut().take(3) {
-        *p = std_min(std_max(*p, clamp_min), clamp_max);
+    for c in 0..4 {
+        pix[c] = sse::min(sse::max(pix[c], clamp_min), clamp_max);
+    }
+}
+
+/// The saturation of the forward renderers, if it is applied.
+#[inline]
+fn fwd_saturation(v: &GradingPrimary) -> Option<f32> {
+    (v.saturation != 1.0).then_some(v.saturation as f32)
+}
+
+/// The inverse saturation of the reverse renderers, if it is applied.
+#[inline]
+fn rev_saturation(v: &GradingPrimary) -> Option<f32> {
+    (v.saturation != 1.0 && v.saturation != 0.0).then(|| (1.0 / v.saturation) as f32)
+}
+
+/// Run `f` on each pixel, restoring alpha.
+#[inline]
+fn for_each_pixel(pixels: &mut [Pixel], mut f: impl FnMut(&mut Pixel)) {
+    for out in pixels.iter_mut() {
+        let alpha = out[3];
+        f(out);
+        out[3] = alpha;
     }
 }
 
 fn apply_log_fwd(v: &GradingPrimary, comp: &GradingPrimaryPreRender, pixels: &mut [Pixel]) {
-    let brightness = comp.brightness;
-    let contrast = comp.contrast;
-    let gamma = comp.gamma;
+    let brightness = lanes(comp.brightness, 0.0);
+    let contrast = lanes(comp.contrast, 1.0);
+    let gamma = lanes(comp.gamma, 1.0);
     let actual_pivot = comp.pivot as f32;
-    let saturation = v.saturation as f32;
+    let saturation = fwd_saturation(v);
     let pivot_black = v.pivot_black as f32;
     let pivot_white = v.pivot_white as f32;
     let clamp_black = v.clamp_black as f32;
     let clamp_white = v.clamp_white as f32;
     let gamma_identity = comp.is_gamma_identity();
-    for out in pixels.iter_mut() {
+    for_each_pixel(pixels, |out| {
         apply_offset(out, &brightness);
         apply_contrast(out, &contrast, actual_pivot);
         if !gamma_identity {
             apply_gamma(out, &gamma, pivot_black, pivot_white);
         }
-        apply_saturation(out, saturation);
+        if let Some(sat) = saturation {
+            apply_saturation(out, sat);
+        }
         apply_clamp(out, clamp_black, clamp_white);
-    }
+    });
 }
 
 fn apply_log_rev(v: &GradingPrimary, comp: &GradingPrimaryPreRender, pixels: &mut [Pixel]) {
-    let brightness_inv = comp.brightness;
-    let contrast_inv = comp.contrast;
-    let gamma_inv = comp.gamma;
+    let brightness_inv = lanes(comp.brightness, 0.0);
+    let contrast_inv = lanes(comp.contrast, 1.0);
+    let gamma_inv = lanes(comp.gamma, 1.0);
     let pivot_black = v.pivot_black as f32;
     let pivot_white = v.pivot_white as f32;
     let clamp_black = v.clamp_black as f32;
     let clamp_white = v.clamp_white as f32;
     let actual_pivot = comp.pivot as f32;
-    let sat = v.saturation as f32;
-    let sat_inv = 1.0 / if sat != 0.0 { sat } else { 1.0 };
+    let sat_inv = rev_saturation(v);
     let gamma_identity = comp.is_gamma_identity();
-    for out in pixels.iter_mut() {
+    for_each_pixel(pixels, |out| {
         apply_clamp(out, clamp_black, clamp_white);
-        apply_saturation(out, sat_inv);
+        if let Some(sat) = sat_inv {
+            apply_saturation(out, sat);
+        }
         if !gamma_identity {
             apply_gamma(out, &gamma_inv, pivot_black, pivot_white);
         }
         apply_contrast(out, &contrast_inv, actual_pivot);
         apply_offset(out, &brightness_inv);
-    }
+    });
 }
 
 fn apply_lin_fwd(v: &GradingPrimary, comp: &GradingPrimaryPreRender, pixels: &mut [Pixel]) {
-    let offset = comp.offset;
-    let exposure = comp.exposure;
-    let contrast = comp.contrast;
+    let offset = lanes(comp.offset, 0.0);
+    let exposure = lanes(comp.exposure, 1.0);
+    let contrast = lanes(comp.contrast, 1.0);
     let actual_pivot = comp.pivot as f32;
-    let saturation = v.saturation as f32;
+    let saturation = fwd_saturation(v);
     let clamp_black = v.clamp_black as f32;
     let clamp_white = v.clamp_white as f32;
     let contrast_identity = comp.is_contrast_identity();
-    for out in pixels.iter_mut() {
+    for_each_pixel(pixels, |out| {
         apply_offset(out, &offset);
         apply_slope(out, &exposure);
         if !contrast_identity {
             apply_lin_contrast(out, &contrast, actual_pivot);
         }
-        apply_saturation(out, saturation);
+        if let Some(sat) = saturation {
+            apply_saturation(out, sat);
+        }
         apply_clamp(out, clamp_black, clamp_white);
-    }
+    });
 }
 
 fn apply_lin_rev(v: &GradingPrimary, comp: &GradingPrimaryPreRender, pixels: &mut [Pixel]) {
-    let offset_inv = comp.offset;
-    let exposure_inv = comp.exposure;
-    let contrast_inv = comp.contrast;
+    let offset_inv = lanes(comp.offset, 0.0);
+    let exposure_inv = lanes(comp.exposure, 1.0);
+    let contrast_inv = lanes(comp.contrast, 1.0);
     let actual_pivot = comp.pivot as f32;
-    let sat = v.saturation as f32;
-    let sat_inv = 1.0 / if sat != 0.0 { sat } else { 1.0 };
+    let sat_inv = rev_saturation(v);
     let clamp_black = v.clamp_black as f32;
     let clamp_white = v.clamp_white as f32;
-    let contrast_identity = comp.is_contrast_identity();
-    for out in pixels.iter_mut() {
+    // Note: without saturation, OCIO's renderer applies the contrast even
+    // when it is an identity (the fast power is not an exact identity).
+    let apply_contrast = !comp.is_contrast_identity() || sat_inv.is_none();
+    for_each_pixel(pixels, |out| {
         apply_clamp(out, clamp_black, clamp_white);
-        apply_saturation(out, sat_inv);
-        if !contrast_identity {
+        if let Some(sat) = sat_inv {
+            apply_saturation(out, sat);
+        }
+        if apply_contrast {
             apply_lin_contrast(out, &contrast_inv, actual_pivot);
         }
         apply_slope(out, &exposure_inv);
         apply_offset(out, &offset_inv);
-    }
+    });
 }
 
 fn apply_vid_fwd(v: &GradingPrimary, comp: &GradingPrimaryPreRender, pixels: &mut [Pixel]) {
-    let gamma = comp.gamma;
-    let offset = comp.offset;
-    let slope = comp.slope;
-    let saturation = v.saturation as f32;
+    let gamma = lanes(comp.gamma, 1.0);
+    let offset = lanes(comp.offset, 0.0);
+    let slope = lanes(comp.slope, 1.0);
+    let saturation = fwd_saturation(v);
     let clamp_black = v.clamp_black as f32;
     let clamp_white = v.clamp_white as f32;
     let pivot_black = v.pivot_black as f32;
     let pivot_white = v.pivot_white as f32;
     let gamma_identity = comp.is_gamma_identity();
-    for out in pixels.iter_mut() {
+    for_each_pixel(pixels, |out| {
         apply_offset(out, &offset);
         apply_contrast(out, &slope, pivot_black);
         if !gamma_identity {
             apply_gamma(out, &gamma, pivot_black, pivot_white);
         }
-        apply_saturation(out, saturation);
+        if let Some(sat) = saturation {
+            apply_saturation(out, sat);
+        }
         apply_clamp(out, clamp_black, clamp_white);
-    }
+    });
 }
 
 fn apply_vid_rev(v: &GradingPrimary, comp: &GradingPrimaryPreRender, pixels: &mut [Pixel]) {
-    let gamma_inv = comp.gamma;
-    let offset_inv = comp.offset;
-    let slope_inv = comp.slope;
+    let gamma_inv = lanes(comp.gamma, 1.0);
+    let offset_inv = lanes(comp.offset, 0.0);
+    let slope_inv = lanes(comp.slope, 1.0);
     let pivot_black = v.pivot_black as f32;
     let pivot_white = v.pivot_white as f32;
     let clamp_black = v.clamp_black as f32;
     let clamp_white = v.clamp_white as f32;
-    let sat = v.saturation as f32;
-    let sat_inv = 1.0 / if sat != 0.0 { sat } else { 1.0 };
+    let sat_inv = rev_saturation(v);
     let gamma_identity = comp.is_gamma_identity();
-    for out in pixels.iter_mut() {
+    for_each_pixel(pixels, |out| {
         apply_clamp(out, clamp_black, clamp_white);
-        apply_saturation(out, sat_inv);
+        if let Some(sat) = sat_inv {
+            apply_saturation(out, sat);
+        }
         if !gamma_identity {
             apply_gamma(out, &gamma_inv, pivot_black, pivot_white);
         }
         apply_contrast(out, &slope_inv, pivot_black);
         apply_offset(out, &offset_inv);
-    }
+    });
 }
 
 impl Op for GradingPrimaryOp {

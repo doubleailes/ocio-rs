@@ -123,7 +123,8 @@ fn convert_color_spaces() {
     let out = img.data_f32().unwrap();
     for (i, (o, v)) in out.iter().zip(values.iter()).enumerate() {
         let expected = if i % 4 == 3 { *v } else { v.log2() };
-        assert!((o - expected).abs() < 1e-5, "{i}: {o} vs {expected}");
+        // The default CPU processor uses the fast log2 (FAST_LOG_EXP_POW).
+        assert!((o - expected).abs() < 5e-5, "{i}: {o} vs {expected}");
     }
     let attrs = img.attributes();
     assert!(attrs.contains(&("myfloat".to_string(), AttributeValue::Float(0.5))));

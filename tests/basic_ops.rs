@@ -458,11 +458,13 @@ colorspaces:
     let cpu = p.default_cpu_processor();
     let mut px = [0.99f32, 0.0, 0.0];
     cpu.apply_rgb(&mut px);
-    assert!((px[0] - 0.0).abs() < 1e-6);
+    // The default processor uses the fast log2 of OCIO (FAST_LOG_EXP_POW),
+    // which gives 1.3e-5 for log2(1).
+    assert!((px[0] - 0.0).abs() < 2e-5);
     let back = config
         .get_processor("log", "lin")
         .unwrap()
         .default_cpu_processor();
     back.apply_rgb(&mut px);
-    assert!((px[0] - 0.99).abs() < 1e-5);
+    assert!((px[0] - 0.99).abs() < 1e-4);
 }

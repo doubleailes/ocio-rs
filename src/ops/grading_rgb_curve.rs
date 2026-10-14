@@ -212,8 +212,11 @@ impl Op for GradingRgbCurveOp {
         let fwd = self.direction == TransformDirection::Forward;
         for out in pixels.iter_mut() {
             if lin_to_log {
-                for o in out.iter_mut().take(3) {
-                    *o = log_lin::lin_log(*o);
+                // As in OCIO's SSE2 renderers, the shapers process the four
+                // lanes and alpha is not restored when the processing is done
+                // in place, as OCIO's CPU processors do.
+                for o in out.iter_mut() {
+                    *o = log_lin::lin_log_sse(*o);
                 }
             }
             if fwd {
@@ -222,8 +225,8 @@ impl Op for GradingRgbCurveOp {
                 eval_rev(kc, out);
             }
             if lin_to_log {
-                for o in out.iter_mut().take(3) {
-                    *o = log_lin::log_lin(*o);
+                for o in out.iter_mut() {
+                    *o = log_lin::log_lin_sse(*o);
                 }
             }
         }

@@ -18,7 +18,7 @@ use crate::format_metadata::FormatMetadata;
 use crate::math_utils::is_scalar_equal_to_zero;
 use crate::ops::matrix::float_format::format_g;
 use crate::ops::range::{RangeOp, RangeOpData};
-use crate::ops::{Op, OpVec, Pixel};
+use crate::ops::{Op, OpRc, OpVec, Pixel};
 use crate::transforms::{
     BuildOps, LogAffineTransform, LogCameraTransform, LogTransform, Transform, Validate,
 };
@@ -675,6 +675,95 @@ impl LogRenderer {
     }
 }
 
+impl LogRenderer {
+    /// Process pixels in place with the fast `log2` / `exp2` of OCIO's SSE
+    /// renderers (port of the `*RendererSSE` renderers, used under
+    /// `OptimizationFlags::FAST_LOG_EXP_POW`). Alpha is not modified.
+    ///
+    /// As in OCIO, the camera renderers use the log segment when the value is
+    /// greater than the break point (the scalar renderers use the linear
+    /// segment when it is lower), which only differs for a NaN.
+    pub fn apply_fast(&self, pixels: &mut [Pixel]) {
+        use crate::ops::sse;
+        const MIN_VALUE: f32 = f32::MIN_POSITIVE;
+        match self {
+            LogRenderer::Log { scale } => {
+                for p in pixels.iter_mut() {
+                    for v in p.iter_mut().take(3) {
+                        *v = sse::log2(sse::max(*v, MIN_VALUE)) * scale;
+                    }
+                }
+            }
+            LogRenderer::AntiLog { log2_base } => {
+                for p in pixels.iter_mut() {
+                    for v in p.iter_mut().take(3) {
+                        *v = sse::exp2(*v * log2_base);
+                    }
+                }
+            }
+            LogRenderer::Lin2Log { m, b, klog, kb } => {
+                for p in pixels.iter_mut() {
+                    for i in 0..3 {
+                        let v = sse::log2(sse::max(p[i] * m[i] + b[i], MIN_VALUE));
+                        p[i] = v * klog[i] + kb[i];
+                    }
+                }
+            }
+            LogRenderer::Log2Lin {
+                kinv,
+                minuskb,
+                minusb,
+                minv,
+            } => {
+                for p in pixels.iter_mut() {
+                    for i in 0..3 {
+                        let v = sse::exp2((p[i] + minuskb[i]) * kinv[i]);
+                        p[i] = (v + minusb[i]) * minv[i];
+                    }
+                }
+            }
+            LogRenderer::CameraLin2Log {
+                m,
+                b,
+                klog,
+                kb,
+                linb,
+                linear_slope,
+                linear_offset,
+            } => {
+                for p in pixels.iter_mut() {
+                    for i in 0..3 {
+                        let x = p[i];
+                        let lin = x * linear_slope[i] + linear_offset[i];
+                        let v = sse::log2(sse::max(x * m[i] + b[i], MIN_VALUE));
+                        let log = v * klog[i] + kb[i];
+                        p[i] = if x > linb[i] { log } else { lin };
+                    }
+                }
+            }
+            LogRenderer::CameraLog2Lin {
+                kinv,
+                minuskb,
+                minusb,
+                minv,
+                log_side_break,
+                linsinv,
+                minuslino,
+            } => {
+                for p in pixels.iter_mut() {
+                    for i in 0..3 {
+                        let x = p[i];
+                        let lin = (x + minuslino[i]) * linsinv[i];
+                        let v = sse::exp2((x + minuskb[i]) * kinv[i]);
+                        let log = (v + minusb[i]) * minv[i];
+                        p[i] = if x > log_side_break[i] { log } else { lin };
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // The op.
 
@@ -683,6 +772,8 @@ impl LogRenderer {
 pub struct LogOp {
     data: LogOpData,
     renderer: LogRenderer,
+    /// Use the fast `log2` / `exp2` (see [`LogRenderer::apply_fast`]).
+    fast_log_exp: bool,
 }
 
 impl LogOp {
@@ -690,7 +781,11 @@ impl LogOp {
     pub fn new(data: LogOpData) -> Result<Self> {
         data.validate()?;
         let renderer = LogRenderer::new(&data);
-        Ok(Self { data, renderer })
+        Ok(Self {
+            data,
+            renderer,
+            fast_log_exp: false,
+        })
     }
 
     /// The parameters.
@@ -710,7 +805,11 @@ impl Op for LogOp {
     }
 
     fn apply(&self, pixels: &mut [Pixel]) {
-        self.renderer.apply(pixels);
+        if self.fast_log_exp {
+            self.renderer.apply_fast(pixels);
+        } else {
+            self.renderer.apply(pixels);
+        }
     }
 
     fn is_no_op(&self) -> bool {
@@ -723,6 +822,15 @@ impl Op for LogOp {
 
     fn cache_id(&self) -> String {
         format!("<LogOp {}>", self.data.cache_id())
+    }
+
+    fn cpu_op(&self, fast_log_exp_pow: bool) -> Option<OpRc> {
+        fast_log_exp_pow.then(|| {
+            Arc::new(Self {
+                fast_log_exp: true,
+                ..self.clone()
+            }) as OpRc
+        })
     }
 
     fn as_any(&self) -> &dyn Any {

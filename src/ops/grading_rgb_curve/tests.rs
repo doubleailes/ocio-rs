@@ -11,8 +11,9 @@ use crate::transforms::grading::{GradingBSplineCurve, GradingControlPoint};
 use crate::transforms::GroupTransform;
 use crate::types::BSplineType;
 
-/// Non SSE tolerance of `GradingRGBCurveOpCPU_tests.cpp`.
-const ERROR: f32 = 2e-5;
+/// SSE tolerance of `GradingRGBCurveOpCPU_tests.cpp` (the lin-to-log
+/// shapers follow OCIO's SSE2 builds).
+const ERROR: f32 = 5e-4;
 
 fn curve(points: &[(f32, f32)]) -> GradingBSplineCurve {
     GradingBSplineCurve::new(points, BSplineType::BSpline)

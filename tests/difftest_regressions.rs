@@ -1,6 +1,8 @@
 //! Regression tests for the differences found by differential testing
 //! against the C++ OpenColorIO library. The expected values were produced by
-//! the C++ reference implementation (OCIO 2.5+ `main`, scalar CPU path).
+//! the C++ reference implementation (OCIO 2.5+ `main`, scalar CPU path),
+//! except where a test says otherwise: ocio-rs follows the SSE2 builds of
+//! OCIO where their results differ (see `PORTING.md`).
 
 // The reference values are kept as printed by OCIO (`%.9g`).
 #![allow(clippy::excessive_precision)]
@@ -200,20 +202,24 @@ fn file_load_error_lists_formats_per_extension() {
     assert!(e.message().ends_with(&expected), "{}", e.message());
 }
 
-/// The matrix renderer uses the evaluation order of the OCIO scalar path.
+/// The matrix renderer uses the evaluation order of the OCIO SSE2 path,
+/// `(r*m0 + g*m1) + (b*m2 + a*m3)`, which differs from the scalar path for a
+/// matrix using alpha.
 #[test]
-fn matrix_renderer_matches_scalar_evaluation_order() {
+fn matrix_renderer_matches_sse_evaluation_order() {
     let p = file_processor(
         "matrix_example_1_3_alpha_offsets.ctf",
         TransformDirection::Inverse,
         Interpolation::Default,
     )
     .unwrap();
-    // Values from OCIO (exact float results).
+    // Values from PyOpenColorIO 2.6.0 (SSE2 build, exact float results). The
+    // scalar path gives -0.0877165198 and 0.526439071 for the first pixel and
+    // -7.64636374 for the third one.
     let cases = [
         (
             [0.25, 0.5, 0.75, 1.0],
-            [-0.0877165198, -0.0821949095, 0.0160389207, 0.526439071],
+            [-0.0877165347, -0.0821949095, 0.0160389207, 0.52643913],
         ),
         (
             [-0.5, 0.0, 0.1, 1.0],
@@ -221,7 +227,7 @@ fn matrix_renderer_matches_scalar_evaluation_order() {
         ),
         (
             [0.18, 0.01, 100.0, 1.0],
-            [-58.9104233, -75.0311661, -7.64636374, 119.691956],
+            [-58.9104233, -75.0311661, -7.64636326, 119.691956],
         ),
     ];
     for flags in [OptimizationFlags::DEFAULT, OptimizationFlags::NONE] {

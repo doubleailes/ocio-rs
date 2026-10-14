@@ -13,7 +13,7 @@ use crate::error::{Error, Result};
 use crate::format_metadata::FormatMetadata;
 use crate::ops::matrix::float_format::format_g;
 use crate::ops::range::{RangeOp, RangeOpData};
-use crate::ops::{Op, OpVec, Pixel};
+use crate::ops::{Op, OpRc, OpVec, Pixel};
 use crate::transforms::{
     BuildOps, ExponentTransform, ExponentWithLinearTransform, Transform, Validate,
 };
@@ -806,6 +806,87 @@ impl GammaRenderer {
     }
 }
 
+impl GammaRenderer {
+    /// Process pixels in place with the fast power of OCIO's SSE renderers
+    /// (port of the `Gamma*OpCPUSSE` renderers, used under
+    /// `OptimizationFlags::FAST_LOG_EXP_POW`). As in OCIO, the power is
+    /// evaluated on the alpha channel too (`1^1` gives `1.0000116`).
+    pub fn apply_fast(&self, pixels: &mut [Pixel]) {
+        use crate::ops::sse;
+        match self {
+            GammaRenderer::Basic { gamma } => {
+                for p in pixels.iter_mut() {
+                    for c in 0..4 {
+                        p[c] = sse::power(p[c], gamma[c]);
+                    }
+                }
+            }
+            GammaRenderer::BasicMirror { gamma } => {
+                for p in pixels.iter_mut() {
+                    for c in 0..4 {
+                        let sign = sse::sign_bits(p[c]);
+                        p[c] = sse::or_sign(sign, sse::power(sse::abs(p[c]), gamma[c]));
+                    }
+                }
+            }
+            GammaRenderer::BasicPassThru { gamma } => {
+                for p in pixels.iter_mut() {
+                    for c in 0..4 {
+                        let data = sse::power(p[c], gamma[c]);
+                        if p[c] > 0.0 {
+                            p[c] = data;
+                        }
+                    }
+                }
+            }
+            GammaRenderer::MoncurveFwd { params } => {
+                for p in pixels.iter_mut() {
+                    for c in 0..4 {
+                        let r = &params[c];
+                        let x = p[c];
+                        let data = sse::power(x * r.scale + r.offset, r.gamma);
+                        p[c] = if x > r.break_pnt { data } else { x * r.slope };
+                    }
+                }
+            }
+            GammaRenderer::MoncurveRev { params } => {
+                for p in pixels.iter_mut() {
+                    for c in 0..4 {
+                        let r = &params[c];
+                        let x = p[c];
+                        let data = sse::power(x, r.gamma) * r.scale - r.offset;
+                        p[c] = if x > r.break_pnt { data } else { x * r.slope };
+                    }
+                }
+            }
+            GammaRenderer::MoncurveMirrorFwd { params } => {
+                for p in pixels.iter_mut() {
+                    for c in 0..4 {
+                        let r = &params[c];
+                        let sign = sse::sign_bits(p[c]);
+                        let x = sse::abs(p[c]);
+                        let data = sse::power(x * r.scale + r.offset, r.gamma);
+                        let data = if x > r.break_pnt { data } else { x * r.slope };
+                        p[c] = sse::or_sign(sign, data);
+                    }
+                }
+            }
+            GammaRenderer::MoncurveMirrorRev { params } => {
+                for p in pixels.iter_mut() {
+                    for c in 0..4 {
+                        let r = &params[c];
+                        let sign = sse::sign_bits(p[c]);
+                        let x = sse::abs(p[c]);
+                        let data = sse::power(x, r.gamma) * r.scale - r.offset;
+                        let data = if x > r.break_pnt { data } else { x * r.slope };
+                        p[c] = sse::or_sign(sign, data);
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // The op.
 
@@ -814,6 +895,8 @@ impl GammaRenderer {
 pub struct GammaOp {
     data: GammaOpData,
     renderer: GammaRenderer,
+    /// Use the fast power (see [`GammaRenderer::apply_fast`]).
+    fast_power: bool,
 }
 
 impl GammaOp {
@@ -821,7 +904,11 @@ impl GammaOp {
     pub fn new(data: GammaOpData) -> Result<Self> {
         data.validate()?;
         let renderer = GammaRenderer::new(&data);
-        Ok(Self { data, renderer })
+        Ok(Self {
+            data,
+            renderer,
+            fast_power: false,
+        })
     }
 
     /// The parameters.
@@ -849,7 +936,11 @@ impl Op for GammaOp {
     }
 
     fn apply(&self, pixels: &mut [Pixel]) {
-        self.renderer.apply(pixels);
+        if self.fast_power {
+            self.renderer.apply_fast(pixels);
+        } else {
+            self.renderer.apply(pixels);
+        }
     }
 
     fn is_no_op(&self) -> bool {
@@ -862,6 +953,15 @@ impl Op for GammaOp {
 
     fn cache_id(&self) -> String {
         format!("<GammaOp {} >", self.data.cache_id())
+    }
+
+    fn cpu_op(&self, fast_log_exp_pow: bool) -> Option<OpRc> {
+        fast_log_exp_pow.then(|| {
+            Arc::new(Self {
+                fast_power: true,
+                ..self.clone()
+            }) as OpRc
+        })
     }
 
     fn as_any(&self) -> &dyn Any {

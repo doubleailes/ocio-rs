@@ -1,8 +1,9 @@
 //! CPU renderers of the fixed function op (port of `FixedFunctionOpCPU.cpp`).
 //!
 //! All renderers work in single precision on interleaved RGBA pixels, as the
-//! OCIO scalar CPU renderers do. (The SSE "fast power" variants of the PQ
-//! curves are not ported; the accurate scalar path is always used.)
+//! OCIO scalar CPU renderers do. The SSE "fast power" variants of the PQ
+//! curves, used under `OptimizationFlags::FAST_LOG_EXP_POW`, are ported in
+//! [`get_fixed_function_fast_cpu_renderer`].
 
 use super::aces2::common::{
     ChromaCompressParams, GamutCompressParams, JMhParams, SharedCompressionParameters,
@@ -1327,6 +1328,62 @@ impl Renderer for LinToPq {
     }
 }
 
+/// Port of `Renderer_PQ_TO_LIN_SSE<true>` (fast power).
+#[derive(Debug)]
+struct PqToLinSse;
+
+impl Renderer for PqToLinSse {
+    fn name(&self) -> &'static str {
+        "Renderer_PQ_TO_LIN_SSE"
+    }
+
+    fn apply(&self, pixels: &mut [Pixel]) {
+        use crate::ops::sse;
+        use st_2084::*;
+        let (c1, c2, c3) = (C1 as f32, C2 as f32, C3 as f32);
+        let m1_inv = 1.0f32 / M1 as f32;
+        let m2_inv = 1.0f32 / M2 as f32;
+        for px in pixels.iter_mut() {
+            for v in px.iter_mut().take(3) {
+                let x = sse::power(sse::abs(*v), m2_inv);
+                let nom = sse::max(0.0, x - c1);
+                let denom = c2 - c3 * x;
+                // Output scale is 1.0 = 10000 nits, we map it to make 1.0 = 100 nits.
+                let nits100 = 100.0f32 * sse::power(nom / denom, m1_inv);
+                // Restore the sign bit.
+                *v = sse::or_sign(sse::sign_bits(*v), sse::abs(nits100));
+            }
+        }
+    }
+}
+
+/// Port of `Renderer_LIN_TO_PQ_SSE<true>` (fast power).
+#[derive(Debug)]
+struct LinToPqSse;
+
+impl Renderer for LinToPqSse {
+    fn name(&self) -> &'static str {
+        "Renderer_LIN_TO_PQ_SSE"
+    }
+
+    fn apply(&self, pixels: &mut [Pixel]) {
+        use crate::ops::sse;
+        use st_2084::*;
+        let (m1, m2, c1, c2, c3) = (M1 as f32, M2 as f32, C1 as f32, C2 as f32, C3 as f32);
+        for px in pixels.iter_mut() {
+            for v in px.iter_mut().take(3) {
+                // Input is in nits/100, convert to [0,1], where 1 is 10000 nits.
+                let l = 0.01f32 * sse::abs(*v);
+                let y = sse::power(l, m1);
+                let ratpoly = (c1 + c2 * y) / (1.0f32 + c3 * y);
+                let n = sse::power(ratpoly, m2);
+                // Restore the sign bit.
+                *v = sse::or_sign(sse::sign_bits(*v), sse::abs(n));
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Gamma / log curve
 
@@ -1548,6 +1605,19 @@ impl Renderer for LinToDoubleLog {
 
 /// Build the CPU renderer of validated fixed function data (port of
 /// `GetFixedFunctionCPURenderer`).
+/// The renderer used under `OptimizationFlags::FAST_LOG_EXP_POW` (the fast
+/// power SSE renderers of `GetFixedFunctionCPURenderer`), if the style has
+/// one.
+pub(crate) fn get_fixed_function_fast_cpu_renderer(
+    data: &FixedFunctionOpData,
+) -> Option<RendererRc> {
+    match data.style {
+        S::LinToPq => Some(Arc::new(LinToPqSse)),
+        S::PqToLin => Some(Arc::new(PqToLinSse)),
+        _ => None,
+    }
+}
+
 pub(crate) fn get_fixed_function_cpu_renderer(data: &FixedFunctionOpData) -> Result<RendererRc> {
     Ok(match data.style {
         S::AcesRedMod03Fwd => Arc::new(AcesRedMod03::new(false)),

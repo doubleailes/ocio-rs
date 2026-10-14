@@ -14,8 +14,7 @@ pub(crate) fn processor(t: impl Into<Transform>, dir: TransformDirection) -> Pro
     Processor::from_transform(&Config::create_raw(), &Context::new(), &t.into(), dir).unwrap()
 }
 
-/// Compare images like OCIO's `ValidateImage` (non SSE tolerance is 1e-6, a
-/// slightly larger absolute tolerance is used to be robust to libm differences).
+/// Compare images like OCIO's `ValidateImage`.
 pub(crate) fn validate_image(expected: &[f32], res: &[Pixel], error: f32, line: u32) {
     for (i, px) in res.iter().enumerate() {
         for j in 0..4 {
@@ -40,7 +39,9 @@ pub(crate) fn to_pixels(data: &[f32]) -> Vec<Pixel> {
     data.chunks(4).map(|c| [c[0], c[1], c[2], c[3]]).collect()
 }
 
-const ERROR: f32 = 1e-6;
+/// SSE tolerance of `GradingPrimaryOpCPU_tests.cpp` (the renderers follow
+/// OCIO's SSE2 builds).
+const ERROR: f32 = 1e-4;
 
 fn apply_op(op: &dyn Op, input: &[f32]) -> Vec<Pixel> {
     let mut px = to_pixels(input);
