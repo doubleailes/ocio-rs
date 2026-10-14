@@ -24,6 +24,7 @@ pub mod lut3d;
 pub mod matrix;
 pub mod noop;
 pub mod range;
+pub(crate) mod sse;
 
 // GPU renderers of the ops (port of the `*OpGPU.cpp` files).
 #[path = "cdl/gpu.rs"]
@@ -163,6 +164,17 @@ pub trait Op: Debug + Send + Sync + Any {
     /// e.g. an inverse matrix becomes the equivalent forward matrix). Called
     /// when a processor is created. Default: `None` (already final).
     fn finalize(&self) -> Option<OpRc> {
+        None
+    }
+
+    /// The op evaluated by a CPU processor (port of `Op::getCPUOp`).
+    ///
+    /// `fast_log_exp_pow` is set when the processor is created with
+    /// `OptimizationFlags::FAST_LOG_EXP_POW`: the ops having a fast renderer
+    /// in OCIO (gamma, log, CDL and the PQ fixed functions) then return a
+    /// copy of themselves using it (a port of OCIO's `*SSE` renderer).
+    /// `None` (default) keeps the op.
+    fn cpu_op(&self, _fast_log_exp_pow: bool) -> Option<OpRc> {
         None
     }
 

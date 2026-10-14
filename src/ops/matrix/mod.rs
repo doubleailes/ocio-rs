@@ -13,7 +13,7 @@ use crate::context::Context;
 use crate::error::{Error, Result};
 use crate::format_metadata::FormatMetadata;
 use crate::math_utils::{equal_with_abs_error, is_scalar_equal_to_zero};
-use crate::ops::{hash_f64, Op, OpRc, OpVec, Pixel};
+use crate::ops::{hash_f64, sse, Op, OpRc, OpVec, Pixel};
 use crate::transforms::{BuildOps, MatrixTransform, Transform, Validate, IDENTITY_MATRIX44};
 use crate::types::{BitDepth, OptimizationFlags, TransformDirection};
 use std::any::Any;
@@ -414,6 +414,20 @@ pub enum MatrixRenderer {
     },
 }
 
+/// One output channel of the SSE matrix renderers, `(m0*r + m1*g) +
+/// (m2*b + m3*a)`, with the x86 NaN rules (see [`MatrixRenderer::apply`]).
+///
+/// Which NaN an addition of two NaNs returns depends on the operand order
+/// the C++ compiler chose: the order used here is the one of the
+/// PyOpenColorIO 2.6.0 Linux x86-64 wheel, which computes the last addition
+/// as `(m2*b + m3*a) + (m0*r + m1*g)`.
+#[inline(never)]
+fn matrix_row_x86(m: &[f32; 4], r: f32, g: f32, b: f32, a: f32) -> f32 {
+    let rg = sse::add(sse::mul(m[0], r), sse::mul(m[1], g));
+    let ba = sse::add(sse::mul(m[2], b), sse::mul(m[3], a));
+    sse::add(ba, rg)
+}
+
 impl MatrixRenderer {
     /// Select and initialize the renderer for a forward matrix.
     pub fn new(mat: &MatrixOpData) -> Result<Self> {
@@ -462,15 +476,23 @@ impl MatrixRenderer {
                     }
                 }
             }
+            // Same evaluation order as the `OCIO_USE_SSE2` path of OCIO, which
+            // its SSE2 builds always use: `(r*m0 + g*m1) + (b*m2 + a*m3)`
+            // (the scalar path sums the products from left to right). A NaN
+            // result is recomputed with the x86 NaN rules, so that its sign
+            // is the one OCIO gets (a later op may turn it into a signed
+            // value, e.g. the fast mirrored gamma gives -0 for -NaN).
             MatrixRenderer::Matrix { columns } => {
                 for p in pixels.iter_mut() {
                     let (r, g, b, a) = (p[0], p[1], p[2], p[3]);
                     for c in 0..4 {
-                        // Same evaluation order as the OCIO scalar path.
-                        p[c] = r * columns[0][c]
-                            + g * columns[1][c]
-                            + b * columns[2][c]
-                            + a * columns[3][c];
+                        let m = [columns[0][c], columns[1][c], columns[2][c], columns[3][c]];
+                        let v = (m[0] * r + m[1] * g) + (m[2] * b + m[3] * a);
+                        p[c] = if v.is_nan() {
+                            matrix_row_x86(&m, r, g, b, a)
+                        } else {
+                            v
+                        };
                     }
                 }
             }
@@ -478,11 +500,13 @@ impl MatrixRenderer {
                 for p in pixels.iter_mut() {
                     let (r, g, b, a) = (p[0], p[1], p[2], p[3]);
                     for c in 0..4 {
-                        p[c] = r * columns[0][c]
-                            + g * columns[1][c]
-                            + b * columns[2][c]
-                            + a * columns[3][c]
-                            + offset[c];
+                        let m = [columns[0][c], columns[1][c], columns[2][c], columns[3][c]];
+                        let v = ((m[0] * r + m[1] * g) + (m[2] * b + m[3] * a)) + offset[c];
+                        p[c] = if v.is_nan() {
+                            sse::add(matrix_row_x86(&m, r, g, b, a), offset[c])
+                        } else {
+                            v
+                        };
                     }
                 }
             }

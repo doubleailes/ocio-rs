@@ -382,6 +382,15 @@ fn op_dynamic_properties() {
 
 // ExposureContrastOpCPU_tests.cpp
 
+/// `std::max(a, b)` (returns `a` if `b` is NaN).
+fn cmax(a: f32, b: f32) -> f32 {
+    if a < b {
+        b
+    } else {
+        a
+    }
+}
+
 fn video_ec_val(input: f32, ec: &ExposureContrastOpData) -> f32 {
     let exposure = 2.0f32
         .powf(ec.exposure() as f32)
@@ -648,11 +657,13 @@ fn transform_processor_with_dynamic() {
     let ec_data = ExposureContrastOpData::from_transform(&t);
     let expected = |d: &ExposureContrastOpData| [0, 1, 2].map(|i| video_ec_val(input[i], d));
 
+    // The renderer uses the fast SSE power, as OCIO's SSE2 builds (whose
+    // test also adjusts the error for the SSE approximation).
     let mut px = input;
     cpu.apply_rgba(&mut px);
     let e = expected(&ec_data);
     for i in 0..3 {
-        assert_close_f(px[i], e[i] as f64, 1e-6);
+        assert_close_f(px[i], e[i] as f64, 1e-5);
     }
 
     // Change the dynamic values.
@@ -666,7 +677,7 @@ fn transform_processor_with_dynamic() {
     cpu.apply_rgba(&mut px);
     let e = expected(&ec_data);
     for i in 0..3 {
-        assert_close_f(px[i], e[i] as f64, 1e-6);
+        assert_close_f(px[i], e[i] as f64, 1e-5);
     }
     assert_eq!(px[3], 1.0);
 
@@ -682,8 +693,9 @@ fn transform_processor_with_dynamic() {
     st.build_ops(&mut ops, &config, &ctx, TransformDirection::Inverse)
         .unwrap();
     let out = apply_ops(&ops, &input);
+    // Two fast SSE powers.
     for i in 0..4 {
-        assert_close_f(out[i], input[i] as f64, 1e-5);
+        assert_close_f(out[i], input[i] as f64, 1e-4);
     }
     assert!(optimize_ops(&ops, OptimizationFlags::DEFAULT).is_empty());
 }

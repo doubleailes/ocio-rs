@@ -79,6 +79,10 @@ Commits before the snapshot that are ported with a known difference from C++:
   MD5. C++ uses `CacheIDHashUUID(ops.getCacheID())` (XXH3-128 over the ops
   cache id). The `urn:uuid:` format matches, but the values differ.
 
+Numerical choices that are not tied to a commit (the CPU renderers follow
+OCIO's SSE2 builds, the camera log break point follows the platform's C++
+standard library) are described in [`PORTING.md`](PORTING.md#cpu-numerics-ocios-sse2-builds).
+
 ## Ported from the 2.6 cycle
 
 Behavioral commits from `v2.5.0..93878f9` that are already in ocio-rs. Commits

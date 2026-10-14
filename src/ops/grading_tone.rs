@@ -1185,6 +1185,36 @@ pub(crate) mod log_lin {
             2.0f32.powf(v) * (0.18 + SHIFT) - SHIFT
         }
     }
+
+    /// [`lin_log`] as computed by the `OCIO_USE_SSE2` branch of the RGB
+    /// curve and tone renderers, which OCIO's SSE2 builds always use: the
+    /// fast `sseLog2`, and the log segment for the values greater than the
+    /// break point (a NaN takes the linear segment).
+    #[inline]
+    pub fn lin_log_sse(v: f32) -> f32 {
+        use crate::ops::sse;
+        let lin = v * GAIN + OFFS;
+        let log = sse::log2((v + SHIFT) * M);
+        if v > XBRK {
+            log
+        } else {
+            lin
+        }
+    }
+
+    /// [`log_lin`] as computed by the `OCIO_USE_SSE2` branch (see
+    /// [`lin_log_sse`]): `ssePower(2, v)`.
+    #[inline]
+    pub fn log_lin_sse(v: f32) -> f32 {
+        use crate::ops::sse;
+        let lin = (v - OFFS) * (1.0 / GAIN);
+        let log = sse::power(2.0, v) * (SHIFT + 0.18) - SHIFT;
+        if v > YBRK {
+            log
+        } else {
+            lin
+        }
+    }
 }
 
 use RgbmChannel::{B, G, M, R};
@@ -1363,8 +1393,11 @@ impl Op for GradingToneOp {
         let fwd = self.direction == TransformDirection::Forward;
         for out in pixels.iter_mut() {
             if lin {
-                for o in out.iter_mut().take(3) {
-                    *o = log_lin::lin_log(*o);
+                // As in OCIO's SSE2 renderers, the shapers process the four
+                // lanes and alpha is not restored when the processing is done
+                // in place, as OCIO's CPU processors do.
+                for o in out.iter_mut() {
+                    *o = log_lin::lin_log_sse(*o);
                 }
             }
             if fwd {
@@ -1373,8 +1406,8 @@ impl Op for GradingToneOp {
                 apply_rev_pixel(v, vpr, out);
             }
             if lin {
-                for o in out.iter_mut().take(3) {
-                    *o = log_lin::log_lin(*o);
+                for o in out.iter_mut() {
+                    *o = log_lin::log_lin_sse(*o);
                 }
             }
             clamp_max_rgb(out);

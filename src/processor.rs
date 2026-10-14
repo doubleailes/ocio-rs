@@ -217,7 +217,7 @@ impl Processor {
     /// CPU processor with the given optimization.
     pub fn optimized_cpu_processor(&self, flags: OptimizationFlags) -> CpuProcessor {
         CpuProcessor {
-            ops: optimize_ops(&self.ops, flags),
+            ops: cpu_ops(optimize_ops(&self.ops, flags), flags),
             input_bit_depth: BitDepth::F32,
             output_bit_depth: BitDepth::F32,
             bit_depth_luts: None,
@@ -236,6 +236,7 @@ impl Processor {
     ) -> CpuProcessor {
         let mut ops = optimize_ops(&self.ops, flags);
         optimize_for_bit_depth(&mut ops, input, output, flags);
+        let ops = cpu_ops(ops, flags);
         let bit_depth_luts = BitDepthLuts::new(&ops, input, output).map(Arc::new);
         CpuProcessor {
             ops,
@@ -244,6 +245,17 @@ impl Processor {
             bit_depth_luts,
         }
     }
+}
+
+/// The ops evaluated by a CPU processor created with `flags` (port of the
+/// `getCPUOp` calls of `CreateCPUEngine`): under
+/// `OptimizationFlags::FAST_LOG_EXP_POW`, the ops having a fast renderer use
+/// it, as in OCIO's SSE builds.
+fn cpu_ops(ops: OpVec, flags: OptimizationFlags) -> OpVec {
+    let fast_log_exp_pow = flags.contains(OptimizationFlags::FAST_LOG_EXP_POW);
+    ops.into_iter()
+        .map(|o| o.cpu_op(fast_log_exp_pow).unwrap_or(o))
+        .collect()
 }
 
 /// True for the ops that only carry information (port of the

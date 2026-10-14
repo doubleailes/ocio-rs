@@ -12,7 +12,7 @@ use crate::dynamic_property::{DynamicProperty, SharedValue};
 use crate::error::Result;
 use crate::format_metadata::FormatMetadata;
 use crate::ops::matrix::float_format::format_g;
-use crate::ops::{Op, OpRc, OpVec, Pixel};
+use crate::ops::{sse, Op, OpRc, OpVec, Pixel};
 use crate::transforms::{BuildOps, ExposureContrastTransform, Transform, Validate};
 use crate::types::{
     DynamicPropertyType, ExposureContrastStyle, OptimizationFlags, TransformDirection,
@@ -469,16 +469,6 @@ impl ExposureContrastOpData {
 // ---------------------------------------------------------------------------
 // CPU renderer.
 
-/// `std::max(a, b)` (returns `a` if `b` is NaN).
-#[inline]
-fn cmax(a: f32, b: f32) -> f32 {
-    if a < b {
-        b
-    } else {
-        a
-    }
-}
-
 #[inline]
 fn cmax_f64(a: f64, b: f64) -> f64 {
     if a < b {
@@ -552,11 +542,12 @@ impl ExposureContrastRenderer {
                         }
                     }
                 } else {
+                    // As in OCIO's SSE2 builds, the power is always the fast
+                    // `ssePower` (0 for a value <= 0 or a NaN).
                     let exposure_over_pivot = exposure_val / pivot;
                     for p in pixels.iter_mut() {
                         for v in p.iter_mut().take(3) {
-                            // Note: With std::max NaN becomes 0.
-                            *v = cmax(0.0, *v * exposure_over_pivot).powf(contrast_val) * pivot;
+                            *v = sse::power(*v * exposure_over_pivot, contrast_val) * pivot;
                         }
                     }
                 }
@@ -580,8 +571,7 @@ impl ExposureContrastRenderer {
                     let inv_pivot = 1.0f32 / pivot;
                     for p in pixels.iter_mut() {
                         for v in p.iter_mut().take(3) {
-                            *v = cmax(0.0, *v * inv_pivot).powf(inv_contrast_val)
-                                * pivot_over_exposure;
+                            *v = sse::power(*v * inv_pivot, inv_contrast_val) * pivot_over_exposure;
                         }
                     }
                 }
