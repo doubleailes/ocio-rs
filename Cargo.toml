@@ -1,6 +1,6 @@
 [package]
 name = "ocio"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 license = "MIT AND BSD-3-Clause"
 description = "A pure Rust port of OpenColorIO, the color management framework for visual effects and animation."
