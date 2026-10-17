@@ -46,7 +46,10 @@ impl OciozArchive {
         let mut entries = BTreeMap::new();
         for i in 0..zip.len() {
             if let Ok(f) = zip.by_index_raw(i) {
-                entries.insert(f.name().to_string(), format!("{}{}", f.name(), f.crc32()));
+                if let Ok(name) = f.name() {
+                    let name = name.into_owned();
+                    entries.insert(name.clone(), format!("{}{}", name, f.crc32()));
+                }
             }
         }
         Ok(Self {
@@ -83,7 +86,8 @@ impl OciozArchive {
                 Ok(f) => f,
                 Err(_) => continue,
             };
-            if path_equal(filepath, f.name()) {
+            let matches = f.name().is_ok_and(|name| path_equal(filepath, &name));
+            if matches {
                 if f.size() == 0 || f.size() > MAX_ENTRY_SIZE {
                     return Err(Error::msg(
                         "OCIOZ archive entry size is invalid or exceeds maximum allowed size.",

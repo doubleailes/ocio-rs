@@ -15,4 +15,4 @@ ocio = { path = ".." }
 half = "2"
 exr = "1.7"
 image = { version = "0.25", default-features = false, features = ["png", "tiff", "jpeg"] }
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }

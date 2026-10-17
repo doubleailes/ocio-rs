@@ -113,6 +113,13 @@ fn list(path: &str) -> ExitCode {
                 return ExitCode::from(1);
             }
         };
+        let name = match entry.name() {
+            Ok(n) => n.into_owned(),
+            Err(_) => {
+                eprintln!("ERROR: Could not get information from entry: {i}");
+                return ExitCode::from(1);
+            }
+        };
         let (month, day, year, hour, minute) = match entry.last_modified() {
             Some(d) => (d.month(), d.day(), d.year() % 100, d.hour(), d.minute()),
             None => (1, 1, 80, 0, 0),
@@ -125,7 +132,7 @@ fn list(path: &str) -> ExitCode {
             hour,
             minute,
             entry.crc32(),
-            entry.name()
+            name
         );
     }
     ExitCode::SUCCESS
