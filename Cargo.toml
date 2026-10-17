@@ -19,7 +19,7 @@ md5 = "0.8"
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 regex = "1"
 yaml-rust2 = "0.10"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 
