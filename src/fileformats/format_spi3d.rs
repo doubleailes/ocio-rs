@@ -198,6 +198,9 @@ mod tests {
 
     #[test]
     fn test() {
+        if !crate::test_fixture_present("spi_ocio_srgb_test.spi3d") {
+            return;
+        }
         let name = "spi_ocio_srgb_test.spi3d";
         let file = LocalFileFormat
             .read(&test_file(name), name, Interpolation::Default)
@@ -294,6 +297,9 @@ mod tests {
     #[test]
     fn lut_interpolation_option_processor() {
         use crate::transforms::FileTransform;
+        if !crate::test_fixture_present("spi_ocio_srgb_test.spi3d") {
+            return;
+        }
         let config = crate::Config::create_raw();
         let path = format!(
             "{}/tests/data/files/spi_ocio_srgb_test.spi3d",

@@ -566,6 +566,9 @@ fn lut_3by1d() {
 
 #[test]
 fn lut1d_long_lut() {
+    if !crate::test_fixture_present("clf/lut1d_long.clf") {
+        return;
+    }
     let t = load("clf/lut1d_long.clf").unwrap();
     assert_eq!(t.ops.len(), 1);
     let lut = as_lut1d(&t.ops[0]);
