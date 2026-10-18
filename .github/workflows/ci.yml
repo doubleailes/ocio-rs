@@ -34,6 +34,7 @@ jobs:
       # so tests and fixtures keep working for downstream packagers.
       - run: cargo package
       - run: cargo test --manifest-path target/package/ocio-*/Cargo.toml --all-targets
+      - run: cargo test --manifest-path target/package/ocio-*/Cargo.toml --doc
 
   lint:
     name: Lint
