@@ -655,6 +655,9 @@ fn metal_support4() {
 #[test]
 fn metal_support5() {
     // The unit test validates a single 1D LUT needing an helper method.
+    if !crate::test_fixture_present("clf/lut1d_long.clf") {
+        return;
+    }
     let config =
         cs1_cs2_config("    from_scene_reference: !<FileTransform> {src: clf/lut1d_long.clf}\n");
     let text = cs1_to_cs2_shader(&config, GpuLanguage::Msl2_0, |_| {});
@@ -732,6 +735,9 @@ fn metal_support5() {
 #[test]
 fn metal_support6() {
     // The unit test validates several arbitrary luts.
+    if !crate::test_fixture_present("clf/lut1d_long.clf") {
+        return;
+    }
     let config = cs1_cs2_config(
         "    from_scene_reference: !<GroupTransform>\n\
          \x20     children:\n\

@@ -76,3 +76,16 @@ pub fn clear_all_caches() {
 pub const OCIO_VERSION: &str = "2.5.2";
 /// Version of this crate.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Whether the test fixture `tests/data/files/<name>` exists. The largest
+/// fixtures are listed under `[package] exclude` in `Cargo.toml` to keep the
+/// published crate small, so the tests using them skip when it is missing.
+#[cfg(test)]
+pub(crate) fn test_fixture_present(name: &str) -> bool {
+    let path = format!("{}/tests/data/files/{name}", env!("CARGO_MANIFEST_DIR"));
+    let present = std::path::Path::new(&path).exists();
+    if !present {
+        eprintln!("skipped: tests/data/files/{name} is not in the published crate");
+    }
+    present
+}

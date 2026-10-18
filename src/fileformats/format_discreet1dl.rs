@@ -497,6 +497,9 @@ mod tests {
 
     #[test]
     fn test_lut1d_16f_16f() {
+        if !crate::test_fixture_present("photo_default_16fpto16fp.lut") {
+            return;
+        }
         let lut = load_lut_file("photo_default_16fpto16fp.lut").unwrap();
         assert_eq!(lut.interpolation, Interpolation::Default);
         assert_eq!(lut.file_output_bit_depth, BitDepth::F16);

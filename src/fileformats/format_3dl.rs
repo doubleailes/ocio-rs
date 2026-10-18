@@ -440,11 +440,13 @@ mod tests {
 
     #[test]
     fn load_others() {
-        let file = load_lut_file("lustre_33x33x33.3dl").unwrap();
-        let Transform::Lut3D(lut) = file.group.transforms.last().unwrap() else {
-            panic!()
-        };
-        assert_eq!(lut.grid_size, 33);
+        if crate::test_fixture_present("lustre_33x33x33.3dl") {
+            let file = load_lut_file("lustre_33x33x33.3dl").unwrap();
+            let Transform::Lut3D(lut) = file.group.transforms.last().unwrap() else {
+                panic!()
+            };
+            assert_eq!(lut.grid_size, 33);
+        }
         let file = load_lut_file("crosstalk.3dl").unwrap();
         assert!(matches!(
             file.group.transforms.last().unwrap(),

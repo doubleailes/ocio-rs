@@ -709,6 +709,9 @@ mod tests {
             "crosstalk.3dl",
             "lustre_33x33x33.3dl",
         ] {
+            if !crate::test_fixture_present(name) {
+                continue;
+            }
             let (_, cached) = get_cached_file(&test_file(name), Interpolation::Default).unwrap();
             assert!(cached.group.num_transforms() > 0, "{name}");
         }
@@ -748,6 +751,9 @@ mod tests {
             "lut1d_inv.ctf",
             "lut3d_example_Inv.ctf",
         ] {
+            if !crate::test_fixture_present(name) {
+                continue;
+            }
             let proc = file_transform_processor(name).unwrap();
             assert!(!proc.is_no_op(), "{name}");
         }

@@ -8,6 +8,15 @@ repository = "https://github.com/doubleailes/ocio-rs"
 readme = "README.md"
 keywords = ["color", "ocio", "vfx", "lut", "aces"]
 categories = ["graphics", "multimedia::images"]
+# Largest test fixtures, left out to keep the published crate small: the
+# tests using them skip when they are missing.
+exclude = [
+    "tests/data/files/spi_ocio_srgb_test.spi3d",
+    "tests/data/files/clf/aces_to_video_with_look.clf",
+    "tests/data/files/photo_default_16fpto16fp.lut",
+    "tests/data/files/clf/lut1d_long.clf",
+    "tests/data/files/lustre_33x33x33.3dl",
+]
 
 [lib]
 name = "ocio"

@@ -25,7 +25,9 @@ revision the port follows.
   can run `cargo test` from the `.crate` source. Do not exclude `tests/` or
   unit tests from the package. crates.io caps a crate at 10 MB compressed:
   when adding large fixtures, check `cargo package --list` / the packaged
-  size, and only list a fixture under `[package] exclude` if the tests that
-  use it are skipped when it is missing.
+  size. A fixture listed under `[package] exclude` in `Cargo.toml` must be
+  guarded in every test that uses it with `crate::test_fixture_present(name)`
+  (return early, or `continue` in a loop over files), so those tests skip
+  in the published crate.
 * Run `cargo test --all-targets` and `cargo test --doc` before pushing
   (`--all-targets` does not run doc tests).
