@@ -23,6 +23,25 @@ jobs:
       - run: cargo test --all-targets
       - run: cargo test --doc
 
+  wgsl:
+    name: WGSL shaders
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            .
+            wgpu-example
+      # Optimized builds validate and run the WGSL shaders of the whole test
+      # corpus (debug builds test a subset).
+      - run: cargo test --release --test gpu_wgsl
+      # The wgpu example is not part of the workspace: check it builds.
+      - run: cargo clippy --manifest-path wgpu-example/Cargo.toml -- -D warnings
+
   package:
     name: Package
     runs-on: ubuntu-latest

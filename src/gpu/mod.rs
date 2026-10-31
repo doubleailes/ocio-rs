@@ -33,6 +33,7 @@ mod class_wrapper;
 mod op_gpu;
 pub mod processor;
 pub mod shader_text;
+pub mod wgsl;
 
 pub use op_gpu::{
     default_extract_gpu_shader_info, extract_op_gpu_shader_info, supported_by_legacy_shader,
@@ -185,6 +186,11 @@ pub struct GpuShaderCreatorBase {
 
     descriptor_set_index: u32,
     texture_binding_start: u32,
+
+    /// The textures added by the renderers (used by the WGSL lowering).
+    texture_sources: Vec<wgsl::TextureSource>,
+    /// The resources of the WGSL module, once finalized.
+    wgsl_bindings: Option<wgsl::WgslBindings>,
 }
 
 impl Default for GpuShaderCreatorBase {
@@ -209,6 +215,8 @@ impl Default for GpuShaderCreatorBase {
             class_wrapper: ClassWrapper::create(language),
             descriptor_set_index: 0,
             texture_binding_start: 1,
+            texture_sources: Vec::new(),
+            wgsl_bindings: None,
         }
     }
 }
@@ -227,12 +235,41 @@ impl GpuShaderCreatorBase {
         c.dynamic_properties.clear();
         c.shader_code.clear();
         c.shader_code_id.clear();
+        c.texture_sources.clear();
+        c.wgsl_bindings = None;
         c
     }
 
     /// The complete shader program (empty until finalized).
     pub fn shader_text(&self) -> &str {
         &self.shader_code
+    }
+
+    /// Record a texture added by a renderer (the WGSL lowering needs its
+    /// size, channels, interpolation and binding).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn record_texture(
+        &mut self,
+        texture_name: &str,
+        width: u32,
+        height: u32,
+        depth: u32,
+        channel: TextureType,
+        dimensions: u32,
+        interpolation: Interpolation,
+        binding: u32,
+    ) {
+        self.texture_sources.push(wgsl::TextureSource {
+            texture_name: texture_name.to_string(),
+            sampler_name: shader_text::GpuShaderText::sampler_name(texture_name),
+            dimensions,
+            width,
+            height,
+            depth,
+            channel,
+            interpolation,
+            binding,
+        });
     }
 }
 
@@ -416,6 +453,14 @@ pub trait GpuShaderCreator {
         Ok(())
     }
 
+    /// The resources (uniform buffer layout and textures) of the WGSL
+    /// module, once the shader is finalized with
+    /// [`GpuLanguage::Wgsl`] (see [`wgsl`]); `None` for the other
+    /// languages.
+    fn wgsl_bindings(&self) -> Option<&wgsl::WgslBindings> {
+        self.base().wgsl_bindings.as_ref()
+    }
+
     /// Number of dynamic properties.
     fn num_dynamic_properties(&self) -> usize {
         self.base().dynamic_properties.len()
@@ -592,6 +637,20 @@ pub trait GpuShaderCreator {
 
         // Build the complete shader program.
         self.create_shader_text(&params, &textures, &helpers, &header, &body, &footer);
+
+        if self.base().language == GpuLanguage::Wgsl {
+            // The program is written in GLSL 4.0: lower it to WGSL.
+            let b = self.base_mut();
+            let (code, bindings) = wgsl::translate(
+                &b.shader_code,
+                &b.function_name,
+                b.descriptor_set_index,
+                &b.texture_sources,
+            )?;
+            b.shader_code_id = cache_id_hash(&code);
+            b.shader_code = code;
+            b.wgsl_bindings = Some(bindings);
+        }
 
         if logging_level() >= LoggingLevel::Debug && logging_level() != LoggingLevel::Unknown {
             log_debug(&format!(
