@@ -824,6 +824,16 @@ fn add_reach_table(
         Interpolation::Nearest,
         &tbl[..],
     )?;
+    shader_creator.base_mut().record_texture(
+        &name,
+        table::TOTAL_SIZE as u32,
+        1,
+        1,
+        TextureType::RedChannel,
+        dimensions as u32,
+        Interpolation::Nearest,
+        texture_shader_binding_index,
+    );
 
     // Create the texture declaration.
     declare_table_texture(
@@ -1309,6 +1319,16 @@ fn add_cusp_table(
         Interpolation::Nearest,
         &values,
     )?;
+    shader_creator.base_mut().record_texture(
+        &name,
+        table::TOTAL_SIZE as u32,
+        1,
+        1,
+        TextureType::RgbChannel,
+        dimensions as u32,
+        Interpolation::Nearest,
+        texture_shader_binding_index,
+    );
 
     // Create the texture declaration.
     declare_table_texture(

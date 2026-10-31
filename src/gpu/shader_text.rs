@@ -219,12 +219,23 @@ fn check_name(name: &str) -> Result<()> {
     Ok(())
 }
 
+/// The language the shader text is written in: WGSL programs are written in
+/// GLSL 4.0 and lowered to WGSL afterwards.
+pub(crate) fn source_dialect(lang: GpuLanguage) -> GpuLanguage {
+    if lang == GpuLanguage::Wgsl {
+        GpuLanguage::Glsl4_0
+    } else {
+        lang
+    }
+}
+
 fn is_glsl(lang: GpuLanguage) -> bool {
     matches!(
         lang,
         GpuLanguage::Glsl1_2
             | GpuLanguage::Glsl1_3
             | GpuLanguage::Glsl4_0
+            | GpuLanguage::Wgsl
             | GpuLanguage::GlslVk4_6
             | GpuLanguage::GlslEs1_0
             | GpuLanguage::GlslEs3_0
@@ -236,6 +247,7 @@ fn vec_keyword(lang: GpuLanguage, n: usize) -> String {
         GpuLanguage::Glsl1_2
         | GpuLanguage::Glsl1_3
         | GpuLanguage::Glsl4_0
+        | GpuLanguage::Wgsl
         | GpuLanguage::GlslVk4_6
         | GpuLanguage::GlslEs1_0
         | GpuLanguage::GlslEs3_0 => format!("vec{n}"),
@@ -259,6 +271,7 @@ fn tex_decl(
         | GpuLanguage::Glsl1_3
         | GpuLanguage::Cg
         | GpuLanguage::Glsl4_0
+            | GpuLanguage::Wgsl
         | GpuLanguage::GlslEs1_0
         | GpuLanguage::GlslEs3_0 => Ok((String::new(), format!("uniform sampler{n}D {sampler_name};"))),
         GpuLanguage::GlslVk4_6 => Ok((
@@ -300,7 +313,7 @@ fn tex_sample(
         }
         GpuLanguage::Cg => Ok(format!("tex{n}D({sampler_name}, {coords})")),
         GpuLanguage::HlslSm5_0 => Ok(format!("{texture_name}.Sample({sampler_name}, {coords})")),
-        GpuLanguage::Glsl4_0 | GpuLanguage::GlslVk4_6 => {
+        GpuLanguage::Glsl4_0 | GpuLanguage::GlslVk4_6 | GpuLanguage::Wgsl => {
             Ok(format!("texture({sampler_name}, {coords})"))
         }
         GpuLanguage::GlslEs3_0 => {
@@ -355,7 +368,12 @@ pub struct GpuShaderText {
 
 impl GpuShaderText {
     /// A new empty shader text for `lang`.
+    ///
+    /// WGSL programs are written in the GLSL 4.0 dialect and lowered to WGSL
+    /// once complete (see [`crate::gpu::wgsl`]), so a text created for
+    /// [`GpuLanguage::Wgsl`] spells GLSL 4.0.
     pub fn new(lang: GpuLanguage) -> Self {
+        let lang = source_dialect(lang);
         Self {
             lang,
             text: String::new(),
@@ -415,6 +433,7 @@ impl GpuShaderText {
             GpuLanguage::Glsl1_2
             | GpuLanguage::Glsl1_3
             | GpuLanguage::Glsl4_0
+            | GpuLanguage::Wgsl
             | GpuLanguage::GlslVk4_6
             | GpuLanguage::GlslEs1_0
             | GpuLanguage::GlslEs3_0
@@ -571,6 +590,7 @@ impl GpuShaderText {
             GpuLanguage::Glsl1_2
             | GpuLanguage::Glsl1_3
             | GpuLanguage::Glsl4_0
+            | GpuLanguage::Wgsl
             | GpuLanguage::GlslVk4_6
             | GpuLanguage::GlslEs1_0
             | GpuLanguage::GlslEs3_0 => format!(
@@ -614,6 +634,7 @@ impl GpuShaderText {
             GpuLanguage::Glsl1_2
             | GpuLanguage::Glsl1_3
             | GpuLanguage::Glsl4_0
+            | GpuLanguage::Wgsl
             | GpuLanguage::GlslVk4_6
             | GpuLanguage::GlslEs1_0
             | GpuLanguage::GlslEs3_0 => format!(

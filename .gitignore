@@ -25,3 +25,4 @@ target
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+wgpu-example/Cargo.lock

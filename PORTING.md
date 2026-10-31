@@ -34,6 +34,19 @@ Design choices:
   no GPU execution backend. As in OCIO, OSL has no texture support, so 1D / 3D
   LUT ops are rejected: a processor containing one returns an error when OSL
   shader text is requested.
+* WGSL (`GpuLanguage::Wgsl`, not in OCIO) is an addition of ocio-rs
+  (`src/gpu/wgsl`). The op renderers write their code in GLSL 4.0 as for
+  the other languages; once the program is complete it is parsed and
+  lowered to a WGSL module (ternaries become `select`, swizzle assignments
+  rebuild the vector, implicit conversions and scalar arguments of
+  component-wise built-ins are made explicit). Uniforms are members of one
+  uniform buffer at binding 0 (std140 layout, the one of the Vulkan block)
+  and LUTs are read with `textureLoad`, the nearest / linear interpolation
+  being done in the shader, so no sampler and no filterable float texture
+  are needed. `GpuShaderCreator::wgsl_bindings` describes the resources. The
+  tests (`tests/gpu_wgsl.rs`) validate every generated module with naga and
+  run it with a naga IR interpreter to compare it with the CPU processors;
+  `wgpu-example/` runs a display / view shader with wgpu.
 
 ## CPU numerics: OCIO's SSE2 builds
 

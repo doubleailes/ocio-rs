@@ -31,6 +31,8 @@ yaml-rust2 = "0.10"
 zip = { version = "9", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
+# Parses and validates the generated WGSL shaders in the tests.
+naga = { version = "30", features = ["wgsl-in"] }
 
 [workspace]
 members = [".", "tools"]

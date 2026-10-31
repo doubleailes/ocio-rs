@@ -486,6 +486,11 @@ pub enum GpuLanguage {
     GlslEs3_0,
     /// Metal Shading Language 2.0 (`"msl_2"`).
     Msl2_0,
+    /// WebGPU Shading Language (`"wgsl"`), for `wgpu` / WebGPU clients.
+    ///
+    /// See [`crate::gpu::wgsl`] for the resource bindings of the generated
+    /// module.
+    Wgsl,
 }
 
 impl GpuLanguage {
@@ -502,6 +507,7 @@ impl GpuLanguage {
             GpuLanguage::HlslSm5_0 => "hlsl_sm_5.0",
             GpuLanguage::Msl2_0 => "msl_2",
             GpuLanguage::Osl1 => "osl_1",
+            GpuLanguage::Wgsl => "wgsl",
         }
     }
     /// Parse an OCIO language name (case insensitive); errors on unknown names.
@@ -517,6 +523,7 @@ impl GpuLanguage {
             "hlsl_sm_5.0" => GpuLanguage::HlslSm5_0,
             "osl_1" => GpuLanguage::Osl1,
             "msl_2" => GpuLanguage::Msl2_0,
+            "wgsl" => GpuLanguage::Wgsl,
             _ => {
                 return Err(Error::msg(format!(
                     "Unsupported GPU shader language: '{s}'."

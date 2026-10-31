@@ -1682,3 +1682,32 @@ fn aces2_clamp_upper_bound_precision() {
         "    outColor.rgb = min(vec3(3468.943359375, 3468.943359375, 3468.943359375), outColor.rgb);\n"
     ));
 }
+
+#[test]
+fn wgsl_language() {
+    assert_eq!(GpuLanguage::parse("wgsl").unwrap(), GpuLanguage::Wgsl);
+    assert_eq!(GpuLanguage::parse("WGSL").unwrap(), GpuLanguage::Wgsl);
+    assert_eq!(GpuLanguage::Wgsl.as_str(), "wgsl");
+
+    // The renderers write GLSL 4.0, lowered to WGSL once the program is
+    // complete.
+    let st = GpuShaderText::new(GpuLanguage::Wgsl);
+    assert_eq!(st.language(), GpuLanguage::Glsl4_0);
+
+    let mut desc = GpuShaderDesc::new();
+    desc.set_language(GpuLanguage::Wgsl);
+    let mut m = MatrixTransform::default();
+    m.matrix[1] = 0.5;
+    let config = Config::create_raw();
+    let gpu = processor(&config, Transform::Matrix(m))
+        .default_gpu_processor()
+        .unwrap();
+    gpu.extract_gpu_shader_info(&mut desc).unwrap();
+    let text = desc.shader_text();
+    assert!(
+        text.contains("fn OCIOMain(inPixel: vec4<f32>) -> vec4<f32> {"),
+        "{text}"
+    );
+    assert!(text.contains("mat4x4<f32>("), "{text}");
+    assert!(desc.wgsl_bindings().is_some());
+}

@@ -22,8 +22,9 @@ What is covered:
   processor working on interleaved RGBA `f32`.
 * File formats: the LUT and transform formats OCIO reads and writes (CLF/CTF,
   `.cube`, `.spi1d`, `.spi3d`, `.3dl`, ...), and LUT baking.
-* GPU shader text generation for GLSL, GLSL ES, Vulkan GLSL, HLSL, MSL, Cg
-  and OSL. There is no GPU execution backend.
+* GPU shader text generation for GLSL, GLSL ES, Vulkan GLSL, HLSL, MSL, Cg,
+  OSL and WGSL (for `wgpu` / WebGPU, see the `ocio::gpu::wgsl` module and the
+  [`wgpu-example`](wgpu-example) program). There is no GPU execution backend.
 
 ## Usage
 

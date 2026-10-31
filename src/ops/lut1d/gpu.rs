@@ -179,6 +179,20 @@ pub(crate) fn lut1d_shader_program(
         lut_data.concrete_interpolation(),
         &values,
     )?;
+    shader_creator.base_mut().record_texture(
+        &name,
+        width as u32,
+        height as u32,
+        1,
+        if single_channel {
+            TextureType::RedChannel
+        } else {
+            TextureType::RgbChannel
+        },
+        dimensions as u32,
+        lut_data.concrete_interpolation(),
+        texture_shader_binding_index,
+    );
 
     // Add the LUT code to the OCIO shader program.
 

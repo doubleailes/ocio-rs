@@ -2,7 +2,7 @@
 
 use crate::error::{Error, Result};
 use crate::gpu::shader_text::replace_all;
-use crate::gpu::{GpuShaderCreator, GpuShaderText};
+use crate::gpu::{GpuShaderCreator, GpuShaderText, TextureType};
 use crate::nl;
 use crate::ops::lut3d::{make_fast_lut3d_from_inverse, Lut3DOp, Lut3DOpData};
 use crate::types::{GpuLanguage, Interpolation, TransformDirection};
@@ -107,6 +107,16 @@ pub(crate) fn lut3d_shader_program(
         sampler_interpolation,
         lut_data.array().values(),
     )?;
+    shader_creator.base_mut().record_texture(
+        &name,
+        grid_size as u32,
+        grid_size as u32,
+        grid_size as u32,
+        TextureType::RgbChannel,
+        3,
+        sampler_interpolation,
+        texture_shader_binding_index,
+    );
 
     let lang = shader_creator.language();
 
