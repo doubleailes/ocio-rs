@@ -46,7 +46,12 @@ Design choices:
   are needed. `GpuShaderCreator::wgsl_bindings` describes the resources. The
   tests (`tests/gpu_wgsl.rs`) validate every generated module with naga and
   run it with a naga IR interpreter to compare it with the CPU processors;
-  `wgpu-example/` runs a display / view shader with wgpu.
+  `wgpu-example/` runs a display / view shader with wgpu. The OpenColorIO
+  GPU unit tests (`tests/gpu/*_test.cpp`, all 270 of them) are ported in
+  `tests/gpu_unit_*.rs` with their harness (`tests/wgsl_common/gpu_unit.rs`:
+  same input image, NaN / Inf values, tolerances and dynamic property
+  retests) and run on the WGSL shaders. Debug builds compare a sample of
+  the image; `cargo test --release` (CI) compares all of it.
 
 ## CPU numerics: OCIO's SSE2 builds
 
