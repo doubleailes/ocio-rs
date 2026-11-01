@@ -37,8 +37,9 @@ jobs:
             .
             wgpu-example
       # Optimized builds validate and run the WGSL shaders of the whole test
-      # corpus (debug builds test a subset).
-      - run: cargo test --release --test gpu_wgsl
+      # corpus and the full images of the ported OpenColorIO GPU unit tests
+      # (debug builds test a subset).
+      - run: cargo test --release --test gpu_wgsl --test 'gpu_unit_*'
       # The wgpu example is not part of the workspace: check it builds.
       - run: cargo clippy --manifest-path wgpu-example/Cargo.toml -- -D warnings
 
