@@ -415,7 +415,9 @@ impl Runner {
             .expect("poll");
         let data = slice.get_mapped_range().expect("mapped range");
         let out = data
-            .chunks_exact(16)
+            .as_chunks::<16>()
+            .0
+            .iter()
             .map(|c| {
                 let f = |i: usize| f32::from_le_bytes(c[4 * i..4 * i + 4].try_into().unwrap());
                 [f(0), f(1), f(2), f(3)]

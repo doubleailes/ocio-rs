@@ -199,6 +199,20 @@ fn wgsl_builtin_config_display_views() {
     check_cases(cases);
 }
 
+/// Parse and validate a generated WGSL module with naga.
+fn validated_module(text: &str) -> naga::Module {
+    let module = naga::front::wgsl::parse_str(text)
+        .unwrap_or_else(|e| panic!("invalid WGSL: {}\n{text}", e.emit_to_string(text)));
+    naga::valid::Validator::new(
+        naga::valid::ValidationFlags::all(),
+        naga::valid::Capabilities::empty(),
+    )
+    .validate(&module)
+    .unwrap_or_else(|e| panic!("invalid WGSL: {}\n{text}", e.emit_to_string(text)));
+    module
+}
+
+/// The processor of `t` and its validated WGSL shader description.
 fn wgsl_desc(t: Transform) -> (ocio::Processor, GpuShaderDesc) {
     let config = Config::create_raw();
     let processor = config
@@ -208,6 +222,7 @@ fn wgsl_desc(t: Transform) -> (ocio::Processor, GpuShaderDesc) {
     let mut desc = GpuShaderDesc::new();
     desc.set_language(GpuLanguage::Wgsl);
     gpu.extract_gpu_shader_info(&mut desc).unwrap();
+    validated_module(desc.shader_text());
     (processor, desc)
 }
 
@@ -234,7 +249,7 @@ fn wgsl_dynamic_properties_update_the_uniform_buffer_only() {
     let text = desc.shader_text().to_string();
     let cache_id = desc.cache_id();
     let bindings = desc.wgsl_bindings().unwrap().clone();
-    let module = naga::front::wgsl::parse_str(&text).unwrap();
+    let module = validated_module(&text);
 
     let cpu = processor.optimized_cpu_processor(cpu_flags());
     let gpu_exposure = desc
@@ -342,6 +357,7 @@ fn wgsl_descriptor_set_and_bindings() {
     desc.set_language(GpuLanguage::Wgsl);
     desc.set_descriptor_set_index(2, 5).unwrap();
     gpu.extract_gpu_shader_info(&mut desc).unwrap();
+    validated_module(desc.shader_text());
     let b = desc.wgsl_bindings().unwrap();
     assert_eq!(b.group, 2);
     assert!(!b.textures.is_empty());
@@ -362,6 +378,7 @@ fn wgsl_texel_data() {
     let mut desc = GpuShaderDesc::new();
     desc.set_language(GpuLanguage::Wgsl);
     gpu.extract_gpu_shader_info(&mut desc).unwrap();
+    validated_module(desc.shader_text());
     let b = desc.wgsl_bindings().unwrap();
     let t = b
         .textures
