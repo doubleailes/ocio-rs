@@ -3,6 +3,7 @@
 //!
 //! ```text
 //! cargo run --release --manifest-path wgpu-example/Cargo.toml
+//! cargo run --release --manifest-path wgpu-example/Cargo.toml -- --bench --iterations 7
 //! ```
 //!
 //! The processor is the `sRGB - Display` / `ACES 2.0 - SDR 100 nits (Rec.709)`
@@ -14,6 +15,10 @@
 //! The bind group layout is built from `WgslBindings` only: the LUT textures
 //! are declared unfilterable (`Float { filterable: false }`), so no optional
 //! device feature is needed.
+//!
+//! `--bench` compares the single-thread CPU batch API with GPU-resident and
+//! upload/compute/readback paths at 720p, 1080p and 4K. See `README.md` in
+//! this example's directory for the timing methodology.
 //!
 //! Exits with 0 when every finite result is within 2 code values of the CPU
 //! after 8 bits quantization, 1 otherwise and 2 when no GPU adapter is
@@ -27,6 +32,8 @@ use ocio::{
 };
 use std::borrow::Cow;
 use std::collections::HashMap;
+
+mod benchmark;
 
 const CONFIG: &str = "cg-config-latest";
 const SRC: &str = "ACEScg";
@@ -56,10 +63,21 @@ fn test_pixels() -> Vec<[f32; 4]> {
         let v = 2f32.powf(-12.0 + 20.0 * i as f32 / 255.0);
         p.push([v, v * 0.7, v * 0.3, 1.0]);
     }
+    // Deterministic chromatic HDR samples, including non-opaque alpha.
+    let mut state = 42u32;
+    for _ in 0..4096 {
+        let mut next = || {
+            state = state.wrapping_mul(1664525).wrapping_add(1013904223);
+            (state >> 8) as f32 / 16777216.0
+        };
+        let scale = 2f32.powf(-12.0 + 20.0 * next());
+        p.push([next() * scale, next() * scale, next() * scale, next()]);
+    }
     p
 }
 
 fn main() {
+    let iterations = benchmark::arguments();
     let config = Config::create_from_builtin_config(CONFIG).expect("builtin config");
     let ec = ExposureContrastTransform {
         exposure_dynamic: true,
@@ -92,6 +110,7 @@ fn main() {
 
     let runner = Runner::new(&device, &queue, &desc, &bindings);
     let pixels = test_pixels();
+    println!("Validating {} RGBA pixels at four exposures", pixels.len());
 
     let gpu_exposure = desc
         .dynamic_property(DynamicPropertyType::Exposure)
@@ -113,7 +132,7 @@ fn main() {
         for (p, g) in pixels.iter().zip(&out) {
             let mut c = *p;
             cpu.apply_rgba(&mut c);
-            for k in 0..3 {
+            for k in 0..4 {
                 if !c[k].is_finite() {
                     continue;
                 }
@@ -137,6 +156,12 @@ fn main() {
         eprintln!("The GPU results differ from the CPU results.");
         std::process::exit(1);
     }
+    if let Some(iterations) = iterations {
+        gpu_exposure.as_double().unwrap().set(0.0);
+        cpu_exposure.as_double().unwrap().set(0.0);
+        let uniforms = bindings.uniform_buffer(&desc).expect("uniform buffer");
+        benchmark::run(&device, &queue, &runner, &uniforms, &cpu, iterations);
+    }
 }
 
 async fn open_device() -> Option<(wgpu::Device, wgpu::Queue)> {
@@ -145,6 +170,7 @@ async fn open_device() -> Option<(wgpu::Device, wgpu::Queue)> {
         .request_adapter(&wgpu::RequestAdapterOptions::default())
         .await
         .ok()?;
+    println!("Adapter: {:?}", adapter.get_info());
     adapter
         .request_device(&wgpu::DeviceDescriptor::default())
         .await
@@ -210,8 +236,8 @@ impl Runner {
              @group({IO_GROUP}) @binding(0) var<storage, read> ocio_input: array<vec4<f32>>;\n\
              @group({IO_GROUP}) @binding(1) var<storage, read_write> ocio_output: array<vec4<f32>>;\n\
              @compute @workgroup_size(64)\n\
-             fn main(@builtin(global_invocation_id) id: vec3<u32>) {{\n\
-             \x20   let i = id.x;\n\
+             fn main(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {{\n\
+             \x20   let i = id.x + id.y * groups.x * 64u;\n\
              \x20   if (i < arrayLength(&ocio_input)) {{\n\
              \x20       ocio_output[i] = {}(ocio_input[i]);\n\
              \x20   }}\n\
@@ -335,6 +361,18 @@ impl Runner {
         uniforms: &[u8],
         pixels: &[[f32; 4]],
     ) -> Vec<[f32; 4]> {
+        let job = self.prepare(device, queue, uniforms, pixels);
+        job.submit(self, device, queue, true);
+        job.read(device)
+    }
+
+    fn prepare(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        uniforms: &[u8],
+        pixels: &[[f32; 4]],
+    ) -> Job {
         if let Some(b) = &self.uniform_buffer {
             queue.write_buffer(b, 0, uniforms);
         }
@@ -397,18 +435,46 @@ impl Runner {
             ],
         });
 
+        let groups = (pixels.len() as u32).div_ceil(64);
+        let x = groups.min(device.limits().max_compute_workgroups_per_dimension);
+        Job {
+            ocio_group,
+            io_group,
+            output,
+            readback,
+            size,
+            groups: (x, groups.div_ceil(x)),
+        }
+    }
+}
+
+struct Job {
+    ocio_group: wgpu::BindGroup,
+    io_group: wgpu::BindGroup,
+    output: wgpu::Buffer,
+    readback: wgpu::Buffer,
+    size: u64,
+    groups: (u32, u32),
+}
+
+impl Job {
+    fn submit(&self, runner: &Runner, device: &wgpu::Device, queue: &wgpu::Queue, readback: bool) {
         let mut encoder = device.create_command_encoder(&Default::default());
         {
             let mut pass = encoder.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &ocio_group, &[]);
-            pass.set_bind_group(IO_GROUP, &io_group, &[]);
-            pass.dispatch_workgroups((pixels.len() as u32).div_ceil(64), 1, 1);
+            pass.set_pipeline(&runner.pipeline);
+            pass.set_bind_group(0, &self.ocio_group, &[]);
+            pass.set_bind_group(IO_GROUP, &self.io_group, &[]);
+            pass.dispatch_workgroups(self.groups.0, self.groups.1, 1);
         }
-        encoder.copy_buffer_to_buffer(&output, 0, &readback, 0, size);
+        if readback {
+            encoder.copy_buffer_to_buffer(&self.output, 0, &self.readback, 0, self.size);
+        }
         queue.submit([encoder.finish()]);
+    }
 
-        let slice = readback.slice(..);
+    fn read(&self, device: &wgpu::Device) -> Vec<[f32; 4]> {
+        let slice = self.readback.slice(..);
         slice.map_async(wgpu::MapMode::Read, |r| r.expect("map"));
         device
             .poll(wgpu::PollType::wait_indefinitely())
@@ -424,7 +490,7 @@ impl Runner {
             })
             .collect();
         drop(data);
-        readback.unmap();
+        self.readback.unmap();
         out
     }
 }
