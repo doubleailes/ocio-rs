@@ -9,6 +9,10 @@
 //! and NaN / infinite results must match. Retests update dynamic properties
 //! and render again with the same shader.
 //!
+//! Debug builds compare a sample of the image (all the NaN / Inf test
+//! values and every 16th ramp value); optimized builds (the CI runs
+//! `cargo test --release`) or `OCIO_TEST_WGSL_FULL` compare all of it.
+//!
 //! Upstream renders with OpenGL, Metal, DirectX or Vulkan; here the WGSL
 //! shader is validated by naga and run by the naga IR interpreter of
 //! [`super::interp`].
@@ -23,6 +27,10 @@ use ocio::{
 const WIN_WIDTH: usize = 256;
 const WIN_HEIGHT: usize = 256;
 const COMPONENTS: usize = 4;
+
+/// The pixel sampling stride of the debug builds (see
+/// [`super::full_corpus`]).
+const DEBUG_STRIDE: usize = 16;
 
 /// Default error threshold.
 const DEFAULT_ERROR_THRESHOLD: f32 = 1e-7;
@@ -265,9 +273,16 @@ impl GpuTest {
         let text = desc.shader_text().to_string();
 
         let num_pixels = num_values / COMPONENTS;
+        let full = super::full_corpus();
         let pixels: Vec<[f32; 4]> = input[..num_pixels * COMPONENTS]
             .chunks_exact(4)
             .map(|c| [c[0], c[1], c[2], c[3]])
+            .enumerate()
+            // Debug builds test a sample of the image (the NaN / Inf test
+            // values, every 16th pixel and the last one); optimized builds
+            // the whole image, as upstream.
+            .filter(|(i, _)| full || *i < 12 || i % DEBUG_STRIDE == 0 || *i == num_pixels - 1)
+            .map(|(_, p)| p)
             .collect();
 
         let num_retests = self.retests.len();
