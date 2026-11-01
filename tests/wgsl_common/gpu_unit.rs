@@ -35,6 +35,9 @@ const LARGE_THRESHOLD: f32 = f32::MAX;
 /// and of the shader description (for the GPU).
 pub type Retest = Box<dyn FnMut(&Processor, &GpuShaderDesc)>;
 
+/// A customization of the shader description before the extraction.
+pub type ShaderDescSetup = Box<dyn FnOnce(&mut GpuShaderDesc)>;
+
 /// Port of `OCIOGPUTest`.
 pub struct GpuTest {
     pub name: String,
@@ -54,7 +57,7 @@ pub struct GpuTest {
     pub retests: Vec<Retest>,
     enabled: bool,
     /// Called on the shader description before the extraction.
-    pub shader_desc_setup: Option<Box<dyn FnOnce(&mut GpuShaderDesc)>>,
+    pub shader_desc_setup: Option<ShaderDescSetup>,
 }
 
 impl GpuTest {
