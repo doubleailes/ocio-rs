@@ -5,12 +5,18 @@
 //! Uniform buffers are decoded with the offsets and strides naga computed
 //! from the WGSL declarations, so the tests also check the layout reported
 //! by `WgslBindings`.
+//!
+//! Float semantics follow what GPUs do: IEEE single precision arithmetic,
+//! `min` / `max` / `clamp` return the non-NaN operand, float to int
+//! conversions saturate (NaN gives 0).
 
 use naga::{
     AddressSpace, BinaryOperator, Expression, Function, Handle, Literal, MathFunction, Module,
     RelationalFunction, ScalarKind, Statement, TypeInner, UnaryOperator,
 };
 use std::collections::HashMap;
+use std::rc::Rc;
+use std::sync::Arc;
 
 /// A scalar value.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -48,22 +54,34 @@ impl S {
     }
 }
 
-/// A pointer: a root variable and a path of indices.
-#[derive(Debug, Clone, PartialEq)]
+/// The root of a pointer.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Root {
     Local(usize, Handle<naga::LocalVariable>),
     Global(Handle<naga::GlobalVariable>),
+}
+
+/// A pointer: a root and up to 4 indices.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Ptr {
+    root: Root,
+    len: u8,
+    path: [u32; 4],
 }
 
 /// A value.
 #[derive(Debug, Clone, PartialEq)]
 pub enum V {
     S(S),
-    /// Vectors, matrices (columns), arrays and structs.
-    C(Vec<V>),
-    Ptr(Root, Vec<usize>),
+    /// A vector (inline).
+    Vec(u8, [S; 4]),
+    /// Matrices (columns), arrays and structs.
+    C(Rc<Vec<V>>),
+    Ptr(Ptr),
     Image(Handle<naga::GlobalVariable>),
 }
+
+const ZERO4: [S; 4] = [S::F(0.0); 4];
 
 impl V {
     fn s(&self) -> S {
@@ -72,18 +90,34 @@ impl V {
             v => panic!("not a scalar: {v:?}"),
         }
     }
-    fn comps(&self) -> &[V] {
+    fn vec(s: &[S]) -> V {
+        let mut c = ZERO4;
+        c[..s.len()].copy_from_slice(s);
+        V::Vec(s.len() as u8, c)
+    }
+    /// Scalar or vector components.
+    fn scalars(&self) -> &[S] {
         match self {
-            V::C(c) => c,
-            v => panic!("not a composite: {v:?}"),
+            V::S(s) => std::slice::from_ref(s),
+            V::Vec(n, c) => &c[..*n as usize],
+            v => panic!("not a scalar or vector: {v:?}"),
         }
     }
-    /// Scalar or vector components as scalars.
-    fn scalars(&self) -> Vec<S> {
+    fn index(&self, i: usize) -> V {
         match self {
-            V::S(s) => vec![*s],
-            V::C(c) => c.iter().map(|v| v.s()).collect(),
-            v => panic!("not a scalar or vector: {v:?}"),
+            V::Vec(n, c) => V::S(c[i.min(*n as usize - 1)]),
+            V::C(c) => c[i.min(c.len() - 1)].clone(),
+            v => panic!("index of {v:?}"),
+        }
+    }
+    fn index_mut(&mut self, i: usize) -> &mut V {
+        match self {
+            V::C(c) => {
+                let c = Rc::make_mut(c);
+                let n = c.len() - 1;
+                &mut c[i.min(n)]
+            }
+            v => panic!("index_mut of {v:?}"),
         }
     }
 }
@@ -100,8 +134,8 @@ pub struct Texture {
 pub struct Machine<'m> {
     module: &'m Module,
     globals: HashMap<Handle<naga::GlobalVariable>, V>,
-    textures: HashMap<Handle<naga::GlobalVariable>, Texture>,
-    frames: Vec<HashMap<Handle<naga::LocalVariable>, V>>,
+    textures: HashMap<Handle<naga::GlobalVariable>, Arc<Texture>>,
+    frames: Vec<Vec<V>>,
     /// Number of executed statements (guards against infinite loops).
     steps: u64,
 }
@@ -121,13 +155,20 @@ fn read_i32(b: &[u8], off: usize) -> i32 {
     i32::from_le_bytes(b[off..off + 4].try_into().unwrap())
 }
 
+struct Ctx<'f, 'a> {
+    f: &'f Function,
+    cache: Vec<Option<V>>,
+    args: &'a [V],
+    frame: usize,
+}
+
 impl<'m> Machine<'m> {
-    /// A machine for `module`, the uniform buffer bound at (`group`,
-    /// `binding`) holding `uniforms` and the textures by binding.
+    /// A machine for `module`, the uniform buffer holding `uniforms` and
+    /// the textures by (group, binding).
     pub fn new(
         module: &'m Module,
         uniforms: &[u8],
-        textures: HashMap<(u32, u32), Texture>,
+        textures: &HashMap<(u32, u32), Arc<Texture>>,
     ) -> Self {
         let mut m = Machine {
             module,
@@ -136,7 +177,6 @@ impl<'m> Machine<'m> {
             frames: Vec::new(),
             steps: 0,
         };
-        let mut textures = textures;
         for (h, g) in module.global_variables.iter() {
             match g.space {
                 AddressSpace::Uniform => {
@@ -146,8 +186,9 @@ impl<'m> Machine<'m> {
                 AddressSpace::Handle => {
                     let b = g.binding.as_ref().expect("texture binding");
                     let t = textures
-                        .remove(&(b.group, b.binding))
-                        .expect("missing texture");
+                        .get(&(b.group, b.binding))
+                        .expect("missing texture")
+                        .clone();
                     m.textures.insert(h, t);
                 }
                 _ => {
@@ -163,40 +204,38 @@ impl<'m> Machine<'m> {
     }
 
     fn decode(&self, ty: Handle<naga::Type>, b: &[u8], off: usize) -> V {
+        let scalar = |k: ScalarKind, off: usize| match k {
+            ScalarKind::Float => S::F(read_f32(b, off)),
+            ScalarKind::Sint => S::I(read_i32(b, off)),
+            ScalarKind::Uint => S::U(read_i32(b, off) as u32),
+            ScalarKind::Bool => S::B(read_i32(b, off) != 0),
+            k => panic!("scalar kind {k:?}"),
+        };
         match &self.module.types[ty].inner {
-            TypeInner::Scalar(s) => match s.kind {
-                ScalarKind::Float => V::S(S::F(read_f32(b, off))),
-                ScalarKind::Sint => V::S(S::I(read_i32(b, off))),
-                ScalarKind::Uint => V::S(S::U(read_i32(b, off) as u32)),
-                ScalarKind::Bool => V::S(S::B(read_i32(b, off) != 0)),
-                k => panic!("scalar kind {k:?}"),
-            },
-            TypeInner::Vector { size, scalar } => V::C(
-                (0..*size as usize)
-                    .map(|i| match scalar.kind {
-                        ScalarKind::Float => V::S(S::F(read_f32(b, off + 4 * i))),
-                        ScalarKind::Sint => V::S(S::I(read_i32(b, off + 4 * i))),
-                        _ => V::S(S::U(read_i32(b, off + 4 * i) as u32)),
-                    })
-                    .collect(),
-            ),
+            TypeInner::Scalar(s) => V::S(scalar(s.kind, off)),
+            TypeInner::Vector { size, scalar: s } => {
+                let c: Vec<S> = (0..*size as usize)
+                    .map(|i| scalar(s.kind, off + 4 * i))
+                    .collect();
+                V::vec(&c)
+            }
             TypeInner::Array { base, size, stride } => {
                 let n = match size {
                     naga::ArraySize::Constant(n) => n.get() as usize,
                     _ => panic!("runtime sized array"),
                 };
-                V::C(
+                V::C(Rc::new(
                     (0..n)
                         .map(|i| self.decode(*base, b, off + i * *stride as usize))
                         .collect(),
-                )
+                ))
             }
-            TypeInner::Struct { members, .. } => V::C(
+            TypeInner::Struct { members, .. } => V::C(Rc::new(
                 members
                     .iter()
                     .map(|m| self.decode(m.ty, b, off + m.offset as usize))
                     .collect(),
-            ),
+            )),
             t => panic!("cannot decode {t:?}"),
         }
     }
@@ -205,25 +244,35 @@ impl<'m> Machine<'m> {
         match &self.module.types[ty].inner {
             TypeInner::Scalar(s) => V::S(zero_scalar(s.kind)),
             TypeInner::Vector { size, scalar } => {
-                V::C(vec![V::S(zero_scalar(scalar.kind)); *size as usize])
+                V::Vec(*size as u8, [zero_scalar(scalar.kind); 4])
             }
-            TypeInner::Matrix { columns, rows, .. } => {
-                V::C(vec![
-                    V::C(vec![V::S(S::F(0.0)); *rows as usize]);
-                    *columns as usize
-                ])
-            }
+            TypeInner::Matrix { columns, rows, .. } => V::C(Rc::new(vec![
+                V::Vec(*rows as u8, ZERO4);
+                *columns as usize
+            ])),
             TypeInner::Array { base, size, .. } => {
                 let n = match size {
                     naga::ArraySize::Constant(n) => n.get() as usize,
                     _ => panic!("runtime sized array"),
                 };
-                V::C(vec![self.zero(*base); n])
+                V::C(Rc::new(vec![self.zero(*base); n]))
             }
             TypeInner::Struct { members, .. } => {
-                V::C(members.iter().map(|m| self.zero(m.ty)).collect())
+                V::C(Rc::new(members.iter().map(|m| self.zero(m.ty)).collect()))
             }
             t => panic!("no zero value for {t:?}"),
+        }
+    }
+
+    fn compose(&self, ty: Handle<naga::Type>, parts: Vec<V>) -> V {
+        if matches!(self.module.types[ty].inner, TypeInner::Vector { .. }) {
+            let mut c = Vec::with_capacity(4);
+            for p in &parts {
+                c.extend_from_slice(p.scalars());
+            }
+            V::vec(&c)
+        } else {
+            V::C(Rc::new(parts))
         }
     }
 
@@ -233,11 +282,13 @@ impl<'m> Machine<'m> {
             Expression::Literal(l) => V::S(literal(l)),
             Expression::Constant(c) => self.eval_global(self.module.constants[*c].init),
             Expression::ZeroValue(t) => self.zero(*t),
-            Expression::Compose { components, .. } => {
-                V::C(components.iter().map(|c| self.eval_global(*c)).collect())
+            Expression::Compose { ty, components } => {
+                let parts = components.iter().map(|c| self.eval_global(*c)).collect();
+                self.compose(*ty, parts)
             }
             Expression::Splat { size, value } => {
-                V::C(vec![self.eval_global(*value); *size as usize])
+                let s = self.eval_global(*value).s();
+                V::Vec(*size as u8, [s; 4])
             }
             e => panic!("unsupported global expression {e:?}"),
         }
@@ -251,23 +302,28 @@ impl<'m> Machine<'m> {
             .iter()
             .find(|(_, f)| f.name.as_deref() == Some(name))
             .expect("unknown function");
-        self.call_handle(h, args)
+        self.call_handle(h, &args)
     }
 
-    fn call_handle(&mut self, h: Handle<Function>, args: Vec<V>) -> Option<V> {
+    fn call_handle(&mut self, h: Handle<Function>, args: &[V]) -> Option<V> {
         let module = self.module;
         let f = &module.functions[h];
-        let mut cache: HashMap<Handle<Expression>, V> = HashMap::new();
-        self.frames.push(HashMap::new());
+        self.frames.push(Vec::with_capacity(f.local_variables.len()));
         let frame = self.frames.len() - 1;
-        for (lh, l) in f.local_variables.iter() {
+        let mut ctx = Ctx {
+            f,
+            cache: vec![None; f.expressions.len()],
+            args,
+            frame,
+        };
+        for (_, l) in f.local_variables.iter() {
             let v = match l.init {
-                Some(e) => self.eval(f, &mut cache, &args, frame, e),
+                Some(e) => self.eval(&mut ctx, e),
                 None => self.zero(l.ty),
             };
-            self.frames[frame].insert(lh, v);
+            self.frames[frame].push(v);
         }
-        let flow = self.block(f, &mut cache, &args, frame, &f.body);
+        let flow = self.block(&mut ctx, &f.body);
         self.frames.pop();
         match flow {
             Flow::Return(v) => v,
@@ -275,25 +331,18 @@ impl<'m> Machine<'m> {
         }
     }
 
-    fn block(
-        &mut self,
-        f: &'m Function,
-        cache: &mut HashMap<Handle<Expression>, V>,
-        args: &[V],
-        frame: usize,
-        block: &'m naga::Block,
-    ) -> Flow {
+    fn block(&mut self, ctx: &mut Ctx<'m, '_>, block: &'m naga::Block) -> Flow {
         for st in block.iter() {
             self.steps += 1;
             assert!(self.steps < 50_000_000, "too many steps");
             match st {
                 Statement::Emit(range) => {
                     for h in range.clone() {
-                        let v = self.compute(f, cache, args, frame, h);
-                        cache.insert(h, v);
+                        let v = self.compute(ctx, h);
+                        ctx.cache[h.index()] = Some(v);
                     }
                 }
-                Statement::Block(b) => match self.block(f, cache, args, frame, b) {
+                Statement::Block(b) => match self.block(ctx, b) {
                     Flow::Normal => {}
                     flow => return flow,
                 },
@@ -302,9 +351,9 @@ impl<'m> Machine<'m> {
                     accept,
                     reject,
                 } => {
-                    let c = self.eval(f, cache, args, frame, *condition).s().b();
+                    let c = self.eval(ctx, *condition).s().b();
                     let b = if c { accept } else { reject };
-                    match self.block(f, cache, args, frame, b) {
+                    match self.block(ctx, b) {
                         Flow::Normal => {}
                         flow => return flow,
                     }
@@ -314,16 +363,16 @@ impl<'m> Machine<'m> {
                     continuing,
                     break_if,
                 } => loop {
-                    match self.block(f, cache, args, frame, body) {
+                    match self.block(ctx, body) {
                         Flow::Break => break,
                         Flow::Return(v) => return Flow::Return(v),
                         Flow::Normal | Flow::Continue => {}
                     }
-                    if let Flow::Return(v) = self.block(f, cache, args, frame, continuing) {
+                    if let Flow::Return(v) = self.block(ctx, continuing) {
                         return Flow::Return(v);
                     }
                     if let Some(b) = break_if {
-                        if self.eval(f, cache, args, frame, *b).s().b() {
+                        if self.eval(ctx, *b).s().b() {
                             break;
                         }
                     }
@@ -331,12 +380,12 @@ impl<'m> Machine<'m> {
                 Statement::Break => return Flow::Break,
                 Statement::Continue => return Flow::Continue,
                 Statement::Return { value } => {
-                    let v = value.map(|v| self.eval(f, cache, args, frame, v));
+                    let v = value.map(|v| self.eval(ctx, v));
                     return Flow::Return(v);
                 }
                 Statement::Store { pointer, value } => {
-                    let p = self.eval(f, cache, args, frame, *pointer);
-                    let v = self.eval(f, cache, args, frame, *value);
+                    let p = self.eval(ctx, *pointer);
+                    let v = self.eval(ctx, *value);
                     self.store(&p, v);
                 }
                 Statement::Call {
@@ -344,13 +393,10 @@ impl<'m> Machine<'m> {
                     arguments,
                     result,
                 } => {
-                    let a: Vec<V> = arguments
-                        .iter()
-                        .map(|a| self.eval(f, cache, args, frame, *a))
-                        .collect();
-                    let r = self.call_handle(*function, a);
+                    let a: Vec<V> = arguments.iter().map(|a| self.eval(ctx, *a)).collect();
+                    let r = self.call_handle(*function, &a);
                     if let (Some(rh), Some(rv)) = (result, r) {
-                        cache.insert(*rh, rv);
+                        ctx.cache[rh.index()] = Some(rv);
                     }
                 }
                 s => panic!("unsupported statement {s:?}"),
@@ -359,146 +405,133 @@ impl<'m> Machine<'m> {
         Flow::Normal
     }
 
-    fn eval(
-        &mut self,
-        f: &'m Function,
-        cache: &mut HashMap<Handle<Expression>, V>,
-        args: &[V],
-        frame: usize,
-        h: Handle<Expression>,
-    ) -> V {
-        if let Some(v) = cache.get(&h) {
+    fn eval(&mut self, ctx: &mut Ctx<'m, '_>, h: Handle<Expression>) -> V {
+        if let Some(v) = &ctx.cache[h.index()] {
             return v.clone();
         }
-        // Not emitted: a constant-like expression.
-        let v = self.compute(f, cache, args, frame, h);
-        if !matches!(f.expressions[h], Expression::Load { .. }) {
-            cache.insert(h, v.clone());
-        }
+        // Not emitted: a constant-like expression (never a load).
+        let v = self.compute(ctx, h);
+        ctx.cache[h.index()] = Some(v.clone());
         v
     }
 
     fn load(&self, p: &V) -> V {
-        let V::Ptr(root, path) = p else {
+        let V::Ptr(p) = p else {
             panic!("not a pointer: {p:?}")
         };
-        let mut v = match root {
-            Root::Local(fr, h) => &self.frames[*fr][h],
-            Root::Global(h) => &self.globals[h],
+        let mut v = match p.root {
+            Root::Local(fr, h) => &self.frames[fr][h.index()],
+            Root::Global(h) => &self.globals[&h],
         };
-        for i in path {
-            v = &v.comps()[*i];
+        let n = p.len as usize;
+        for (k, i) in p.path[..n].iter().enumerate() {
+            if k + 1 == n {
+                return v.index(*i as usize);
+            }
+            v = match v {
+                V::C(c) => &c[(*i as usize).min(c.len() - 1)],
+                v => panic!("bad load path in {v:?}"),
+            };
         }
         v.clone()
     }
 
     fn store(&mut self, p: &V, value: V) {
-        let V::Ptr(root, path) = p else {
+        let V::Ptr(p) = p else {
             panic!("not a pointer: {p:?}")
         };
-        let mut v = match root {
-            Root::Local(fr, h) => self.frames[*fr].get_mut(h).unwrap(),
-            Root::Global(h) => self.globals.get_mut(h).unwrap(),
+        let mut v = match p.root {
+            Root::Local(fr, h) => &mut self.frames[fr][h.index()],
+            Root::Global(h) => self.globals.get_mut(&h).unwrap(),
         };
-        for i in path {
-            v = match v {
-                V::C(c) => &mut c[*i],
-                _ => panic!("bad store path"),
-            };
+        let n = p.len as usize;
+        for (k, i) in p.path[..n].iter().enumerate() {
+            let i = *i as usize;
+            if k + 1 == n {
+                if let V::Vec(len, c) = v {
+                    if i < *len as usize {
+                        c[i] = value.s();
+                    }
+                    return;
+                }
+            }
+            v = v.index_mut(i);
         }
         *v = value;
     }
 
-    fn compute(
-        &mut self,
-        f: &'m Function,
-        cache: &mut HashMap<Handle<Expression>, V>,
-        args: &[V],
-        frame: usize,
-        h: Handle<Expression>,
-    ) -> V {
+    fn compute(&mut self, ctx: &mut Ctx<'m, '_>, h: Handle<Expression>) -> V {
         let module = self.module;
-        let mut ev = |m: &mut Self, e: Handle<Expression>| m.eval(f, cache, args, frame, e);
+        let f = ctx.f;
         match &f.expressions[h] {
             Expression::Literal(l) => V::S(literal(l)),
             Expression::Constant(c) => self.eval_global(module.constants[*c].init),
             Expression::ZeroValue(t) => self.zero(*t),
-            Expression::Compose { components, .. } => {
-                let mut out = Vec::new();
-                let ty = f.expressions[h].clone();
-                let is_vector = matches!(
-                    &ty,
-                    Expression::Compose { ty, .. } if matches!(module.types[*ty].inner, TypeInner::Vector { .. })
-                );
-                for c in components {
-                    let v = ev(self, *c);
-                    // Vectors can be composed from smaller vectors.
-                    match (is_vector, v) {
-                        (true, V::C(cs)) => out.extend(cs),
-                        (_, v) => out.push(v),
-                    }
-                }
-                V::C(out)
+            Expression::Compose { ty, components } => {
+                let parts = components.iter().map(|c| self.eval(ctx, *c)).collect();
+                self.compose(*ty, parts)
             }
             Expression::Access { base, index } => {
-                let b = ev(self, *base);
-                let i = ev(self, *index).s().i();
+                let b = self.eval(ctx, *base);
+                let i = self.eval(ctx, *index).s().i();
                 access(b, i)
             }
             Expression::AccessIndex { base, index } => {
-                let b = ev(self, *base);
+                let b = self.eval(ctx, *base);
                 access(b, i64::from(*index))
             }
             Expression::Splat { size, value } => {
-                let v = ev(self, *value);
-                V::C(vec![v; *size as usize])
+                let s = self.eval(ctx, *value).s();
+                V::Vec(*size as u8, [s; 4])
             }
             Expression::Swizzle {
                 size,
                 vector,
                 pattern,
             } => {
-                let v = ev(self, *vector);
-                let c = v.comps();
-                V::C(
-                    pattern[..*size as usize]
-                        .iter()
-                        .map(|p| c[*p as usize].clone())
-                        .collect(),
-                )
+                let v = self.eval(ctx, *vector);
+                let c = v.scalars();
+                let mut out = ZERO4;
+                for (o, p) in out.iter_mut().zip(&pattern[..*size as usize]) {
+                    *o = c[*p as usize];
+                }
+                V::Vec(*size as u8, out)
             }
-            Expression::FunctionArgument(i) => args[*i as usize].clone(),
+            Expression::FunctionArgument(i) => ctx.args[*i as usize].clone(),
             Expression::GlobalVariable(g) => match module.global_variables[*g].space {
                 AddressSpace::Handle => V::Image(*g),
-                _ => V::Ptr(Root::Global(*g), Vec::new()),
+                _ => V::Ptr(Ptr {
+                    root: Root::Global(*g),
+                    len: 0,
+                    path: [0; 4],
+                }),
             },
-            Expression::LocalVariable(l) => V::Ptr(Root::Local(frame, *l), Vec::new()),
+            Expression::LocalVariable(l) => V::Ptr(Ptr {
+                root: Root::Local(ctx.frame, *l),
+                len: 0,
+                path: [0; 4],
+            }),
             Expression::Load { pointer } => {
-                let p = ev(self, *pointer);
+                let p = self.eval(ctx, *pointer);
                 self.load(&p)
             }
             Expression::ImageLoad {
                 image, coordinate, ..
             } => {
-                let V::Image(g) = ev(self, *image) else {
+                let V::Image(g) = self.eval(ctx, *image) else {
                     panic!("not an image")
                 };
-                let c = ev(self, *coordinate).scalars();
+                let cv = self.eval(ctx, *coordinate);
+                let c = cv.scalars();
                 let t = &self.textures[&g];
                 let x = c[0].i().clamp(0, i64::from(t.width) - 1) as usize;
-                let y = c
-                    .get(1)
-                    .map_or(0, |v| v.i())
-                    .clamp(0, i64::from(t.height) - 1) as usize;
-                let z = c
-                    .get(2)
-                    .map_or(0, |v| v.i())
-                    .clamp(0, i64::from(t.depth) - 1) as usize;
+                let y = c.get(1).map_or(0, |v| v.i()).clamp(0, i64::from(t.height) - 1) as usize;
+                let z = c.get(2).map_or(0, |v| v.i()).clamp(0, i64::from(t.depth) - 1) as usize;
                 let texel = t.texels[x + t.width as usize * (y + t.height as usize * z)];
-                V::C(texel.iter().map(|v| V::S(S::F(*v))).collect())
+                V::Vec(4, texel.map(S::F))
             }
             Expression::Unary { op, expr } => {
-                let v = ev(self, *expr);
+                let v = self.eval(ctx, *expr);
                 map1(&v, |s| match (op, s) {
                     (UnaryOperator::Negate, S::F(x)) => S::F(-x),
                     (UnaryOperator::Negate, S::I(x)) => S::I(x.wrapping_neg()),
@@ -509,18 +542,18 @@ impl<'m> Machine<'m> {
                 })
             }
             Expression::Binary { op, left, right } => {
-                let a = ev(self, *left);
-                let b = ev(self, *right);
-                binary(module, f, *left, *right, *op, a, b)
+                let a = self.eval(ctx, *left);
+                let b = self.eval(ctx, *right);
+                binary(*op, a, b)
             }
             Expression::Select {
                 condition,
                 accept,
                 reject,
             } => {
-                let c = ev(self, *condition);
-                let a = ev(self, *accept);
-                let r = ev(self, *reject);
+                let c = self.eval(ctx, *condition);
+                let a = self.eval(ctx, *accept);
+                let r = self.eval(ctx, *reject);
                 match c {
                     V::S(s) => {
                         if s.b() {
@@ -529,23 +562,19 @@ impl<'m> Machine<'m> {
                             r
                         }
                     }
-                    V::C(cs) => V::C(
-                        cs.iter()
-                            .enumerate()
-                            .map(|(i, c)| {
-                                if c.s().b() {
-                                    a.comps()[i].clone()
-                                } else {
-                                    r.comps()[i].clone()
-                                }
-                            })
-                            .collect(),
-                    ),
+                    V::Vec(n, cs) => {
+                        let (av, rv) = (a.scalars(), r.scalars());
+                        let mut out = ZERO4;
+                        for i in 0..n as usize {
+                            out[i] = if cs[i].b() { av[i] } else { rv[i] };
+                        }
+                        V::Vec(n, out)
+                    }
                     v => panic!("select on {v:?}"),
                 }
             }
             Expression::Relational { fun, argument } => {
-                let v = ev(self, *argument);
+                let v = self.eval(ctx, *argument);
                 match fun {
                     RelationalFunction::All => V::S(S::B(v.scalars().iter().all(|s| s.b()))),
                     RelationalFunction::Any => V::S(S::B(v.scalars().iter().any(|s| s.b()))),
@@ -560,9 +589,9 @@ impl<'m> Machine<'m> {
                 arg2,
                 ..
             } => {
-                let a = ev(self, *arg);
-                let b = arg1.map(|x| ev(self, x));
-                let c = arg2.map(|x| ev(self, x));
+                let a = self.eval(ctx, *arg);
+                let b = arg1.map(|x| self.eval(ctx, x));
+                let c = arg2.map(|x| self.eval(ctx, x));
                 math(*fun, a, b, c)
             }
             Expression::As {
@@ -570,7 +599,7 @@ impl<'m> Machine<'m> {
                 kind,
                 convert,
             } => {
-                let v = ev(self, *expr);
+                let v = self.eval(ctx, *expr);
                 assert!(convert.is_some(), "bitcast");
                 map1(&v, |s| match kind {
                     ScalarKind::Float => S::F(s.f()),
@@ -622,114 +651,86 @@ fn literal(l: &Literal) -> S {
 
 fn access(b: V, i: i64) -> V {
     match b {
-        V::Ptr(root, mut path) => {
-            path.push(i.max(0) as usize);
-            V::Ptr(root, path)
+        V::Ptr(mut p) => {
+            p.path[p.len as usize] = i.max(0) as u32;
+            p.len += 1;
+            V::Ptr(p)
         }
-        V::C(c) => {
-            let i = i.clamp(0, c.len() as i64 - 1) as usize;
-            c[i].clone()
-        }
-        v => panic!("access of {v:?}"),
+        v => v.index(i.max(0) as usize),
     }
 }
 
 fn map1(v: &V, f: impl Fn(S) -> S) -> V {
-    map1_dyn(v, &f)
-}
-
-fn map1_dyn(v: &V, f: &dyn Fn(S) -> S) -> V {
     match v {
         V::S(s) => V::S(f(*s)),
-        V::C(c) => V::C(c.iter().map(|x| map1_dyn(x, f)).collect()),
+        V::Vec(n, c) => V::Vec(*n, c.map(&f)),
         v => panic!("map of {v:?}"),
+    }
+}
+
+fn comp(v: &V, i: usize) -> S {
+    match v {
+        V::S(s) => *s,
+        V::Vec(_, c) => c[i],
+        v => panic!("component of {v:?}"),
+    }
+}
+
+fn width(v: &V) -> Option<u8> {
+    match v {
+        V::Vec(n, _) => Some(*n),
+        _ => None,
     }
 }
 
 /// Component-wise combination with scalar broadcasting.
 fn map2(a: &V, b: &V, f: impl Fn(S, S) -> S) -> V {
-    map2_dyn(a, b, &f)
-}
-
-fn map2_dyn(a: &V, b: &V, f: &dyn Fn(S, S) -> S) -> V {
-    match (a, b) {
-        (V::S(x), V::S(y)) => V::S(f(*x, *y)),
-        (V::C(x), V::S(_)) => V::C(x.iter().map(|x| map2_dyn(x, b, f)).collect()),
-        (V::S(_), V::C(y)) => V::C(y.iter().map(|y| map2_dyn(a, y, f)).collect()),
-        (V::C(x), V::C(y)) => V::C(x.iter().zip(y).map(|(x, y)| map2_dyn(x, y, f)).collect()),
-        _ => panic!("map2 of {a:?} and {b:?}"),
+    match width(a).or(width(b)) {
+        None => V::S(f(a.s(), b.s())),
+        Some(n) => {
+            let mut out = ZERO4;
+            for (i, o) in out.iter_mut().enumerate().take(n as usize) {
+                *o = f(comp(a, i), comp(b, i));
+            }
+            V::Vec(n, out)
+        }
     }
 }
 
 fn map3(a: &V, b: &V, c: &V, f: impl Fn(S, S, S) -> S) -> V {
-    map3_dyn(a, b, c, &f)
-}
-
-fn map3_dyn(a: &V, b: &V, c: &V, f: &dyn Fn(S, S, S) -> S) -> V {
-    match (a, b, c) {
-        (V::S(x), V::S(y), V::S(z)) => V::S(f(*x, *y, *z)),
-        _ => {
-            let n = [a, b, c]
-                .iter()
-                .find_map(|v| match v {
-                    V::C(c) => Some(c.len()),
-                    _ => None,
-                })
-                .unwrap();
-            let get = |v: &V, i: usize| match v {
-                V::C(c) => c[i].clone(),
-                s => s.clone(),
-            };
-            V::C(
-                (0..n)
-                    .map(|i| map3_dyn(&get(a, i), &get(b, i), &get(c, i), f))
-                    .collect(),
-            )
+    match width(a).or(width(b)).or(width(c)) {
+        None => V::S(f(a.s(), b.s(), c.s())),
+        Some(n) => {
+            let mut out = ZERO4;
+            for (i, o) in out.iter_mut().enumerate().take(n as usize) {
+                *o = f(comp(a, i), comp(b, i), comp(c, i));
+            }
+            V::Vec(n, out)
         }
     }
 }
 
-fn is_matrix(module: &Module, f: &Function, h: Handle<Expression>) -> bool {
-    // Matrices only appear through constructors in the generated code.
-    match &f.expressions[h] {
-        Expression::Compose { ty, .. } => {
-            matches!(module.types[*ty].inner, TypeInner::Matrix { .. })
-        }
-        _ => false,
-    }
-}
-
-fn binary(
-    module: &Module,
-    f: &Function,
-    lh: Handle<Expression>,
-    rh: Handle<Expression>,
-    op: BinaryOperator,
-    a: V,
-    b: V,
-) -> V {
+fn binary(op: BinaryOperator, a: V, b: V) -> V {
     use BinaryOperator as B;
     if op == B::Multiply {
-        let lm = is_matrix(module, f, lh);
-        let rm = is_matrix(module, f, rh);
-        if lm && !rm {
-            if let V::C(vc) = &b {
-                if matches!(vc.first(), Some(V::S(_))) {
-                    // matrix * vector: sum of columns scaled.
-                    let cols = a.comps();
-                    let rows = cols[0].comps().len();
-                    let mut out = vec![0.0f32; rows];
-                    for (j, col) in cols.iter().enumerate() {
-                        let s = vc[j].s().f();
-                        for (r, o) in out.iter_mut().enumerate() {
-                            *o += col.comps()[r].s().f() * s;
-                        }
-                    }
-                    return V::C(out.into_iter().map(|x| V::S(S::F(x))).collect());
+        if let V::C(cols) = &a {
+            // matrix * vector: sum of the columns scaled.
+            let vc = b.scalars();
+            let rows = cols[0].scalars().len();
+            let mut out = [0.0f32; 4];
+            for (j, col) in cols.iter().enumerate() {
+                let s = vc[j].f();
+                for (r, o) in out.iter_mut().enumerate().take(rows) {
+                    *o += col.scalars()[r].f() * s;
                 }
             }
+            let mut v = ZERO4;
+            for (d, o) in v.iter_mut().zip(out) {
+                *d = S::F(o);
+            }
+            return V::Vec(rows as u8, v);
         }
-        assert!(!rm, "unsupported matrix product");
+        assert!(!matches!(b, V::C(_)), "unsupported matrix product");
     }
     match op {
         B::Add | B::Subtract | B::Multiply | B::Divide | B::Modulo => {
@@ -808,6 +809,16 @@ fn sf(f: impl Fn(f32) -> f32) -> impl Fn(S) -> S {
     move |s| S::F(f(s.f()))
 }
 
+/// GPU `min`: the non-NaN operand.
+fn fmin(x: f32, y: f32) -> f32 {
+    x.min(y)
+}
+
+/// GPU `max`: the non-NaN operand.
+fn fmax(x: f32, y: f32) -> f32 {
+    x.max(y)
+}
+
 fn math(fun: MathFunction, a: V, b: Option<V>, c: Option<V>) -> V {
     use MathFunction as M;
     let b = || b.clone().unwrap();
@@ -829,23 +840,22 @@ fn math(fun: MathFunction, a: V, b: Option<V>, c: Option<V>) -> V {
             S::I(x) => S::I(x.signum()),
             s => s,
         }),
-        // GPU min / max return the non-NaN operand.
         M::Min => map2(&a, &b(), |x, y| match (x, y) {
-            (S::F(x), S::F(y)) => S::F(x.min(y)),
+            (S::F(x), S::F(y)) => S::F(fmin(x, y)),
             (S::I(x), S::I(y)) => S::I(x.min(y)),
             (x, _) => x,
         }),
         M::Max => map2(&a, &b(), |x, y| match (x, y) {
-            (S::F(x), S::F(y)) => S::F(x.max(y)),
+            (S::F(x), S::F(y)) => S::F(fmax(x, y)),
             (S::I(x), S::I(y)) => S::I(x.max(y)),
             (x, _) => x,
         }),
         M::Clamp => map3(&a, &b(), &c(), |x, lo, hi| match (x, lo, hi) {
-            (S::F(x), S::F(lo), S::F(hi)) => S::F(x.max(lo).min(hi)),
+            (S::F(x), S::F(lo), S::F(hi)) => S::F(fmin(fmax(x, lo), hi)),
             (S::I(x), S::I(lo), S::I(hi)) => S::I(x.max(lo).min(hi)),
             (x, _, _) => x,
         }),
-        M::Saturate => map1(&a, sf(|x| x.clamp(0.0, 1.0))),
+        M::Saturate => map1(&a, sf(|x| fmin(fmax(x, 0.0), 1.0))),
         M::Cos => map1(&a, sf(f32::cos)),
         M::Sin => map1(&a, sf(f32::sin)),
         M::Tan => map1(&a, sf(f32::tan)),
@@ -877,24 +887,28 @@ fn math(fun: MathFunction, a: V, b: Option<V>, c: Option<V>) -> V {
         }),
         M::Step => map2(&a, &b(), |e, x| S::F(if x.f() < e.f() { 0.0 } else { 1.0 })),
         M::SmoothStep => map3(&a, &b(), &c(), |e0, e1, x| {
-            let t = ((x.f() - e0.f()) / (e1.f() - e0.f())).clamp(0.0, 1.0);
+            let t = fmin(fmax((x.f() - e0.f()) / (e1.f() - e0.f()), 0.0), 1.0);
             S::F(t * t * (3.0 - 2.0 * t))
         }),
         M::Dot => {
-            let x = a.scalars();
-            let y = b().scalars();
-            V::S(S::F(x.iter().zip(&y).map(|(x, y)| x.f() * y.f()).sum()))
+            let bv = b();
+            let s: f32 = a
+                .scalars()
+                .iter()
+                .zip(bv.scalars())
+                .map(|(x, y)| x.f() * y.f())
+                .sum();
+            V::S(S::F(s))
         }
-        M::Length => {
-            let x = a.scalars();
-            V::S(S::F(x.iter().map(|x| x.f() * x.f()).sum::<f32>().sqrt()))
-        }
+        M::Length => V::S(S::F(
+            a.scalars().iter().map(|x| x.f() * x.f()).sum::<f32>().sqrt(),
+        )),
         M::Distance => {
-            let x = a.scalars();
-            let y = b().scalars();
+            let bv = b();
             V::S(S::F(
-                x.iter()
-                    .zip(&y)
+                a.scalars()
+                    .iter()
+                    .zip(bv.scalars())
                     .map(|(x, y)| (x.f() - y.f()).powi(2))
                     .sum::<f32>()
                     .sqrt(),
@@ -903,21 +917,18 @@ fn math(fun: MathFunction, a: V, b: Option<V>, c: Option<V>) -> V {
         M::Normalize => {
             let x = a.scalars();
             let l = x.iter().map(|x| x.f() * x.f()).sum::<f32>().sqrt();
-            V::C(x.iter().map(|x| V::S(S::F(x.f() / l))).collect())
+            let c: Vec<S> = x.iter().map(|x| S::F(x.f() / l)).collect();
+            V::vec(&c)
         }
         M::Cross => {
+            let bv = b();
             let x: Vec<f32> = a.scalars().iter().map(|s| s.f()).collect();
-            let y: Vec<f32> = b().scalars().iter().map(|s| s.f()).collect();
-            V::C(
-                [
-                    x[1] * y[2] - x[2] * y[1],
-                    x[2] * y[0] - x[0] * y[2],
-                    x[0] * y[1] - x[1] * y[0],
-                ]
-                .iter()
-                .map(|v| V::S(S::F(*v)))
-                .collect(),
-            )
+            let y: Vec<f32> = bv.scalars().iter().map(|s| s.f()).collect();
+            V::vec(&[
+                S::F(x[1] * y[2] - x[2] * y[1]),
+                S::F(x[2] * y[0] - x[0] * y[2]),
+                S::F(x[0] * y[1] - x[1] * y[0]),
+            ])
         }
         f => panic!("unsupported math function {f:?}"),
     }
@@ -926,8 +937,32 @@ fn math(fun: MathFunction, a: V, b: Option<V>, c: Option<V>) -> V {
 /// Run the WGSL function `name` on an RGBA pixel.
 pub fn run_pixel(m: &mut Machine<'_>, name: &str, rgba: [f32; 4]) -> [f32; 4] {
     m.steps = 0;
-    let arg = V::C(rgba.iter().map(|v| V::S(S::F(*v))).collect());
+    let arg = V::Vec(4, rgba.map(S::F));
     let out = m.call(name, vec![arg]).expect("no result");
     let s = out.scalars();
     [s[0].f(), s[1].f(), s[2].f(), s[3].f()]
+}
+
+/// Run the WGSL function `name` on RGBA pixels, on all the CPU cores.
+pub fn run_image(
+    module: &Module,
+    uniforms: &[u8],
+    textures: &HashMap<(u32, u32), Arc<Texture>>,
+    name: &str,
+    pixels: &[[f32; 4]],
+) -> Vec<[f32; 4]> {
+    let threads = std::thread::available_parallelism().map_or(1, |n| n.get());
+    let chunk = pixels.len().div_ceil(threads).max(1);
+    let mut out = vec![[0.0f32; 4]; pixels.len()];
+    std::thread::scope(|s| {
+        for (src, dst) in pixels.chunks(chunk).zip(out.chunks_mut(chunk)) {
+            s.spawn(move || {
+                let mut m = Machine::new(module, uniforms, textures);
+                for (p, o) in src.iter().zip(dst.iter_mut()) {
+                    *o = run_pixel(&mut m, name, *p);
+                }
+            });
+        }
+    });
+    out
 }

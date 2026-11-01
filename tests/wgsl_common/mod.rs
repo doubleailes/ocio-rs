@@ -338,11 +338,13 @@ pub fn all_cases() -> Vec<Case> {
     cases
 }
 
+pub mod gpu_unit;
 pub mod interp;
 
 use ocio::gpu::{GpuShaderCreator, GpuShaderDesc};
 use ocio::GpuLanguage;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// The WGSL shader of a processor, validated by naga.
 pub struct WgslShader {
@@ -372,11 +374,9 @@ pub fn wgsl_shader(processor: &Processor) -> Result<WgslShader, String> {
     Ok(WgslShader { desc, module })
 }
 
-/// A machine running the shader with the current uniform values.
-pub fn machine(shader: &WgslShader) -> interp::Machine<'_> {
-    let desc = &shader.desc;
+/// The LUT textures of the shader, by (group, binding).
+pub fn textures(desc: &GpuShaderDesc) -> HashMap<(u32, u32), Arc<interp::Texture>> {
     let bindings = desc.wgsl_bindings().expect("WGSL bindings");
-    let uniforms = bindings.uniform_buffer(desc).expect("uniform buffer");
     let mut values: HashMap<String, Vec<f32>> = HashMap::new();
     for i in 0..desc.num_textures() {
         let t = desc.texture(i).unwrap();
@@ -404,15 +404,23 @@ pub fn machine(shader: &WgslShader) -> interp::Machine<'_> {
         };
         textures.insert(
             (t.group, t.binding),
-            interp::Texture {
+            Arc::new(interp::Texture {
                 width: t.width,
                 height: t.height,
                 depth: t.depth,
                 texels,
-            },
+            }),
         );
     }
-    interp::Machine::new(&shader.module, &uniforms, textures)
+    textures
+}
+
+/// A machine running the shader with the current uniform values.
+pub fn machine(shader: &WgslShader) -> interp::Machine<'_> {
+    let desc = &shader.desc;
+    let bindings = desc.wgsl_bindings().expect("WGSL bindings");
+    let uniforms = bindings.uniform_buffer(desc).expect("uniform buffer");
+    interp::Machine::new(&shader.module, &uniforms, &textures(desc))
 }
 
 /// Test pixels: negative values, black, near zero, diffuse range,
@@ -434,3 +442,17 @@ pub const PIXELS: &[[f32; 4]] = &[
     [16.0, 8.0, 30.0, 1.0],
     [100.0, 50.0, 10.0, 1.0],
 ];
+
+/// The path of the fixture `tests/data/files/<name>`, or `None` when it is
+/// one of the large fixtures left out of the published crate (the tests
+/// using it then skip it, as `test_fixture_present` does in the unit
+/// tests).
+pub fn fixture(name: &str) -> Option<String> {
+    let path = data_dir().join(name);
+    if path.exists() {
+        Some(path.to_string_lossy().to_string())
+    } else {
+        eprintln!("skipped: tests/data/files/{name} is not in the published crate");
+        None
+    }
+}

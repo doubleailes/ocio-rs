@@ -259,7 +259,7 @@ fn wgsl_dynamic_properties_update_the_uniform_buffer_only() {
             v.set(g);
         }
         let uniforms = bindings.uniform_buffer(&desc).unwrap();
-        let mut machine = interp::Machine::new(&module, &uniforms, Default::default());
+        let mut machine = interp::Machine::new(&module, &uniforms, &Default::default());
         for pixel in PIXELS {
             let gpu = interp::run_pixel(&mut machine, "OCIOMain", *pixel);
             let mut expected = *pixel;
