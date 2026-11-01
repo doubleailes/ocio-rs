@@ -32,7 +32,7 @@ Add the crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ocio = "0.2"
+ocio = "0.3"
 ```
 
 ```rust
