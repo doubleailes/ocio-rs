@@ -247,16 +247,15 @@ impl GpuTest {
             .unwrap_or_else(|e| panic!("{name}: WGSL generation failed: {e}"));
 
         let src = desc.shader_text().to_string();
-        let module = naga::front::wgsl::parse_str(&src).unwrap_or_else(|e| {
-            panic!("{name}: invalid WGSL: {}\n{src}", e.emit_to_string(&src))
-        });
+        let module = naga::front::wgsl::parse_str(&src)
+            .unwrap_or_else(|e| panic!("{name}: invalid WGSL: {}\n{src}", e.emit_to_string(&src)));
         let mut validator = naga::valid::Validator::new(
             naga::valid::ValidationFlags::all(),
             naga::valid::Capabilities::empty(),
         );
-        validator.validate(&module).unwrap_or_else(|e| {
-            panic!("{name}: invalid WGSL: {}\n{src}", e.emit_to_string(&src))
-        });
+        validator
+            .validate(&module)
+            .unwrap_or_else(|e| panic!("{name}: invalid WGSL: {}\n{src}", e.emit_to_string(&src)));
 
         let textures = super::textures(&desc);
         let bindings = desc.wgsl_bindings().expect("WGSL bindings").clone();

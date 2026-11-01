@@ -246,10 +246,9 @@ impl<'m> Machine<'m> {
             TypeInner::Vector { size, scalar } => {
                 V::Vec(*size as u8, [zero_scalar(scalar.kind); 4])
             }
-            TypeInner::Matrix { columns, rows, .. } => V::C(Rc::new(vec![
-                V::Vec(*rows as u8, ZERO4);
-                *columns as usize
-            ])),
+            TypeInner::Matrix { columns, rows, .. } => {
+                V::C(Rc::new(vec![V::Vec(*rows as u8, ZERO4); *columns as usize]))
+            }
             TypeInner::Array { base, size, .. } => {
                 let n = match size {
                     naga::ArraySize::Constant(n) => n.get() as usize,
@@ -308,7 +307,8 @@ impl<'m> Machine<'m> {
     fn call_handle(&mut self, h: Handle<Function>, args: &[V]) -> Option<V> {
         let module = self.module;
         let f = &module.functions[h];
-        self.frames.push(Vec::with_capacity(f.local_variables.len()));
+        self.frames
+            .push(Vec::with_capacity(f.local_variables.len()));
         let frame = self.frames.len() - 1;
         let mut ctx = Ctx {
             f,
@@ -525,8 +525,14 @@ impl<'m> Machine<'m> {
                 let c = cv.scalars();
                 let t = &self.textures[&g];
                 let x = c[0].i().clamp(0, i64::from(t.width) - 1) as usize;
-                let y = c.get(1).map_or(0, |v| v.i()).clamp(0, i64::from(t.height) - 1) as usize;
-                let z = c.get(2).map_or(0, |v| v.i()).clamp(0, i64::from(t.depth) - 1) as usize;
+                let y = c
+                    .get(1)
+                    .map_or(0, |v| v.i())
+                    .clamp(0, i64::from(t.height) - 1) as usize;
+                let z = c
+                    .get(2)
+                    .map_or(0, |v| v.i())
+                    .clamp(0, i64::from(t.depth) - 1) as usize;
                 let texel = t.texels[x + t.width as usize * (y + t.height as usize * z)];
                 V::Vec(4, texel.map(S::F))
             }
@@ -901,7 +907,11 @@ fn math(fun: MathFunction, a: V, b: Option<V>, c: Option<V>) -> V {
             V::S(S::F(s))
         }
         M::Length => V::S(S::F(
-            a.scalars().iter().map(|x| x.f() * x.f()).sum::<f32>().sqrt(),
+            a.scalars()
+                .iter()
+                .map(|x| x.f() * x.f())
+                .sum::<f32>()
+                .sqrt(),
         )),
         M::Distance => {
             let bv = b();
