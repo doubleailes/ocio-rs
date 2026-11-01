@@ -766,7 +766,9 @@ const ACES2_JMH_VALUES: [f32; 108] = [
 // Reorders/scales a JMh values vector into the HMJ layout used by FIXED_FUNCTION_ACES_RGB_TO_HMJ_20:
 // [ h/360, M/200, J/100 ].
 fn jmh_to_hmj(jmh: &[f32]) -> Vec<f32> {
-    jmh.chunks_exact(4)
+    jmh.as_chunks::<4>()
+        .0
+        .iter()
         .flat_map(|p| {
             let (j, m, h) = (p[0], p[1], p[2]);
             [h / 360.0, m / 200.0, j / 100.0, p[3]]

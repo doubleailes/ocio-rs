@@ -218,7 +218,7 @@ impl WgslTextureBinding {
                         values.len()
                     )));
                 }
-                for rgb in values[..texels * 3].chunks_exact(3) {
+                for rgb in values[..texels * 3].as_chunks::<3>().0 {
                     for v in rgb.iter().chain(std::iter::once(&1.0f32)) {
                         out.extend_from_slice(&v.to_le_bytes());
                     }

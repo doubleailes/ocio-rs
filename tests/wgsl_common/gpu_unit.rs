@@ -275,8 +275,10 @@ impl GpuTest {
         let num_pixels = num_values / COMPONENTS;
         let full = super::full_corpus();
         let pixels: Vec<[f32; 4]> = input[..num_pixels * COMPONENTS]
-            .chunks_exact(4)
-            .map(|c| [c[0], c[1], c[2], c[3]])
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .copied()
             .enumerate()
             // Debug builds test a sample of the image (the NaN / Inf test
             // values, every 16th pixel and the last one); optimized builds

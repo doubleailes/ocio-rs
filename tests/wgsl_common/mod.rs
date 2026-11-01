@@ -54,9 +54,12 @@ pub struct Case {
     pub processor: Processor,
 }
 
+/// Add a case; a processor that cannot be built fails the test rather
+/// than silently shrinking the corpus.
 fn push(cases: &mut Vec<Case>, name: String, p: ocio::Result<Processor>) {
-    if let Ok(processor) = p {
-        cases.push(Case { name, processor });
+    match p {
+        Ok(processor) => cases.push(Case { name, processor }),
+        Err(e) => panic!("{name}: cannot build the processor: {e}"),
     }
 }
 
@@ -119,20 +122,36 @@ pub fn file_cases() -> Vec<Case> {
             (TransformDirection::Forward, Interpolation::Nearest),
             (TransformDirection::Inverse, Interpolation::Default),
         ];
+        let file_transform = |dir, interp| {
+            Transform::File(FileTransform {
+                direction: dir,
+                src: src.clone(),
+                interpolation: interp,
+                ..Default::default()
+            })
+        };
+        // The fixtures directory also holds files that do not load in a raw
+        // config on purpose (invalid files, references needing a search
+        // path, images): only the files loading forward are tested, and then
+        // every variant must build.
+        if config
+            .get_processor_for_transform(
+                &file_transform(TransformDirection::Forward, Interpolation::Default),
+                TransformDirection::Forward,
+            )
+            .is_err()
+        {
+            continue;
+        }
         for (dir, interp) in variants {
-            {
-                let t = Transform::File(FileTransform {
-                    direction: dir,
-                    src: src.clone(),
-                    interpolation: interp,
-                    ..Default::default()
-                });
-                push(
-                    &mut cases,
-                    format!("file {file} {dir:?} {interp:?}"),
-                    config.get_processor_for_transform(&t, TransformDirection::Forward),
-                );
-            }
+            push(
+                &mut cases,
+                format!("file {file} {dir:?} {interp:?}"),
+                config.get_processor_for_transform(
+                    &file_transform(dir, interp),
+                    TransformDirection::Forward,
+                ),
+            );
         }
     }
     cases
@@ -252,8 +271,8 @@ pub fn fixed_function_cases() -> Vec<Case> {
         (S::XyzToXyy, vec![]),
         (S::XyzToUvy, vec![]),
         (S::XyzToLuv, vec![]),
-        (S::AcesGamutMap02, vec![]),
-        (S::AcesGamutMap07, vec![]),
+        // ACES_GAMUTMAP_02 and ACES_GAMUTMAP_07 are not implemented by
+        // OpenColorIO (their transforms fail to validate).
         (
             S::AcesGamutComp13,
             vec![1.147, 1.264, 1.312, 0.815, 0.803, 0.880, 1.2],
@@ -390,17 +409,16 @@ pub fn textures(desc: &GpuShaderDesc) -> HashMap<(u32, u32), Arc<interp::Texture
     for t in &bindings.textures {
         let bytes = t.texel_data(&values[&t.texture_name]).unwrap();
         let floats: Vec<f32> = bytes
-            .chunks_exact(4)
-            .map(|b| f32::from_le_bytes(b.try_into().unwrap()))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|b| f32::from_le_bytes(*b))
             .collect();
         let texels = match t.format {
             ocio::gpu::wgsl::WgslTextureFormat::R32Float => {
                 floats.iter().map(|v| [*v, 0.0, 0.0, 1.0]).collect()
             }
-            ocio::gpu::wgsl::WgslTextureFormat::Rgba32Float => floats
-                .chunks_exact(4)
-                .map(|c| [c[0], c[1], c[2], c[3]])
-                .collect(),
+            ocio::gpu::wgsl::WgslTextureFormat::Rgba32Float => floats.as_chunks::<4>().0.to_vec(),
         };
         textures.insert(
             (t.group, t.binding),

@@ -1993,6 +1993,29 @@ mod tests {
         assert_eq!(b.textures[0].format, WgslTextureFormat::R32Float);
     }
 
+    /// `vec3(greaterThan(a, b))` (the 0 / 1 masks of the log and fixed
+    /// function renderers) is a WGSL conversion of a `vec3<bool>` to
+    /// `vec3<f32>`, valid for naga.
+    #[test]
+    fn bool_vector_masks_validate() {
+        let w = lower_src(
+            "vec4 F(vec4 inPixel)\n{\n  vec4 outColor = inPixel;\n  vec3 isAboveBreak = vec3(greaterThan(outColor.rgb, vec3(0.18)));\n  outColor.rgb = isAboveBreak;\n  return outColor;\n}\n",
+        );
+        assert!(
+            w.contains(
+                "var isAboveBreak: vec3<f32> = vec3<f32>((outColor.xyz > vec3<f32>(0.18f)));"
+            ),
+            "{w}"
+        );
+        let module = naga::front::wgsl::parse_str(&w).unwrap();
+        naga::valid::Validator::new(
+            naga::valid::ValidationFlags::all(),
+            naga::valid::Capabilities::empty(),
+        )
+        .validate(&module)
+        .unwrap();
+    }
+
     #[test]
     fn precedence() {
         let w = lower_src(
