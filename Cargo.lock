@@ -452,7 +452,7 @@ dependencies = [
 
 [[package]]
 name = "ocio"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "half",
  "md5",
@@ -465,7 +465,7 @@ dependencies = [
 
 [[package]]
 name = "ocio-tools"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "exr",
  "half",
