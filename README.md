@@ -74,6 +74,9 @@ cargo test --doc
 
 See [`CLAUDE.md`](CLAUDE.md) for the testing conventions.
 
+To execute the generated WGSL on a GPU and benchmark it against the CPU
+processor, see the standalone [`wgpu-example`](wgpu-example/README.md).
+
 ## License
 
 `MIT AND BSD-3-Clause`; see [`LICENSE`](LICENSE).
