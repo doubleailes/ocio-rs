@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! GPU renderer of the hue curve grading op (port of
 //! `GradingHueCurveOpGPU.cpp`). See `grading_rgb_curve_gpu` for the layout

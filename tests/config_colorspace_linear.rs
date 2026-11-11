@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Port of the `ColorSpace_tests.cpp` tests `Config/is_colorspace_linear`,
 //! `ConfigUtils/processor_to_known_colorspace` and

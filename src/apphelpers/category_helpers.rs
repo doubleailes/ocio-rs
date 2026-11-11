@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Category and encoding filtering of color spaces and named transforms
 //! (port of `apphelpers/CategoryHelpers.cpp`).

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Parser of the ASC CDL XML files: ColorDecisionList (`.cdl`),
 //! ColorCorrectionCollection (`.ccc`) and ColorCorrection (`.cc`) (port of

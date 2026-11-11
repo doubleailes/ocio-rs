@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Port of `MergeConfigsHelpers_tests.cpp` (part 1: OCIOM parsing, overrides,
 //! general, roles, file rules, displays / views, view transforms and looks

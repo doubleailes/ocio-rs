@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! The mergers of each config section (port of
 //! `apphelpers/mergeconfigs/SectionMerger.cpp`).

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Marker no-ops used to track the files and looks involved in a processor
 //! (port of `NoOps.cpp`). They are removed by the optimizer.

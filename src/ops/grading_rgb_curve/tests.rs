@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Tests ported from `GradingRGBCurveOpData_tests.cpp`, `GradingRGBCurveOp_tests.cpp`,
 //! `GradingRGBCurveOpCPU_tests.cpp`, `GradingRGBCurveTransform_tests.cpp` and

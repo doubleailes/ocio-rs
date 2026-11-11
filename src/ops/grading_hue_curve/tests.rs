@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Tests ported from `GradingHueCurveOpData_tests.cpp`, `GradingHueCurveOp_tests.cpp`,
 //! `GradingHueCurveOpCPU_tests.cpp`, `GradingHueCurveTransform_tests.cpp` and

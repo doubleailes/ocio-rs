@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Tests ported from `GradingTone_tests.cpp`, `GradingToneOpData_tests.cpp`,
 //! `GradingToneOp_tests.cpp`, `GradingToneOpCPU_tests.cpp`,

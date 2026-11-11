@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! File rules: find the color space of a file from its path (port of
 //! `FileRules.cpp` and `ParseColorSpaceFromString` of `PathUtils.cpp`).

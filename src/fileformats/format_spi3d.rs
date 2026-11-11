@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Sony Pictures Imageworks `spi3d` 3D LUT format (port of
 //! `FileFormatSpi3D.cpp`).

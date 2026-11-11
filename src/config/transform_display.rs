@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Human readable description of transforms, mirroring the C++
 //! `operator<<` of every transform (used by the `Display` implementations of

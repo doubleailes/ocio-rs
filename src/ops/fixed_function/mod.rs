@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Fixed function op: hard-coded color math such as the ACES red modifier,
 //! glow, gamut compression, the ACES 2 output transform, HSV / HSY, CIE

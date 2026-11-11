@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Color spaces and sets of color spaces (port of `ColorSpace.cpp` and
 //! `ColorSpaceSet.cpp`).

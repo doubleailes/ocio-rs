@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Helpers creating the transforms the builtins are made of (port of
 //! `OpHelpers.cpp` and of the `Create*Op` calls used by the builtins).

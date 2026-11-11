@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Dynamic properties: values of a processor that can be changed after the
 //! processor is created (exposure, contrast, gamma, grading values).

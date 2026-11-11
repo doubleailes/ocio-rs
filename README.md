@@ -115,20 +115,26 @@ processor, see the standalone [`wgpu-example`](wgpu-example/README.md).
 
 ## License
 
-`BSD-3-Clause`, copyright Contributors to the OpenColorIO Project; see
-[`LICENSE`](LICENSE).
+`BSD-3-Clause`; see [`LICENSE`](LICENSE).
 
 ocio-rs is a derivative work of
 [OpenColorIO](https://github.com/AcademySoftwareFoundation/OpenColorIO): its
 code is translated from the C++ sources, and its built-in configs and test
 fixtures are copied from the OpenColorIO repositories. It is therefore
-distributed under the same license and keeps the upstream copyright notice.
-Every source file carries the upstream SPDX header:
+distributed under the same license and keeps the upstream copyright notice,
+next to the copyright of the Rust port:
 
 ```rust
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 ```
+
+The built-in configs and test fixtures copied verbatim from OpenColorIO remain
+solely under the OpenColorIO Project copyright. The standalone
+[`wgpu-example`](wgpu-example/README.md), which is not derived from
+OpenColorIO, is `Copyright (c) 2026 Philippe Llerena` under the same
+`BSD-3-Clause` terms.
 
 ocio-rs is not affiliated with or endorsed by the OpenColorIO Project or the
 Academy Software Foundation.

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! 3D LUT op (port of `Lut3DOpData.cpp`, `Lut3DOp.cpp`, `Lut3DOpCPU.cpp` and
 //! `Lut3DTransform.cpp`).

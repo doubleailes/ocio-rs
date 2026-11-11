@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Small vector / matrix helpers and color primaries used by the ACES 2
 //! output transform (port of `ACES2/MatrixLib.h`, `ACES2/ColorLib.h` and the

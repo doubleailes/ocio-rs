@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Port of `LegacyViewingPipeline_tests.cpp` and `MixingHelpers_tests.cpp`.
 

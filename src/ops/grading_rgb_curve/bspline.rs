@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! B-spline fitting and evaluation (port of the computation parts of
 //! `GradingBSplineCurve.cpp`).

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Rising Sun Research cineSpace `csp` LUT format (port of
 //! `FileFormatCSP.cpp`).

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Tonal grading op (port of `GradingTone.cpp`, `GradingToneOpData.cpp`,
 //! `GradingToneOp.cpp`, `GradingToneOpCPU.cpp` and `GradingToneTransform.cpp`).

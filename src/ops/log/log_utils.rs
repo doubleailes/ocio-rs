@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Log helpers (port of `LogUtils.cpp`): CTF log styles, conversion of the
 //! legacy (Cineon-like) CTF parameters to the OCIO log parameters, and the

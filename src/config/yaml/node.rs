@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! A YAML document tree mimicking the parts of the `yaml-cpp` node API used
 //! by OCIO: tags, key order, duplicate keys, marks (line / column) and the
