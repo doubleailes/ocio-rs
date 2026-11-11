@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! ocioconvert -- apply a color space transform to an image (port of the OCIO
 //! `ocioconvert` app).
 //!

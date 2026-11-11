@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! WGSL shader generation (`GpuLanguage::Wgsl`): every generated module is
 //! parsed and validated by naga, then executed on the CPU by a naga IR
 //! interpreter and compared with the CPU processor.

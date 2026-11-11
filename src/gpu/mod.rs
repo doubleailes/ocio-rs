@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! GPU shader generation (port of `GpuShaderDesc.cpp`, `GpuShader.cpp`,
 //! `GPUProcessor.cpp`, `GpuShaderUtils.cpp`, `GpuShaderClassWrapper.cpp` and
 //! the `*OpGPU.cpp` renderers).

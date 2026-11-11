@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Port of `Context_tests.cpp` (the file-resolution part used by `Config`).
 
 use ocio::path_utils::normpath;

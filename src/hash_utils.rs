@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Cache identifier hashes (port of `HashUtils.cpp`): XXH3 128-bit hashes
 //! formatted as OCIO does.
 

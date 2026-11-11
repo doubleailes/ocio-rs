@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Writers of the ASC CDL XML files (port of `fileformats/cdl/CDLWriter.cpp`
 //! and of the `write` methods of the CC, CCC and CDL formats).
 

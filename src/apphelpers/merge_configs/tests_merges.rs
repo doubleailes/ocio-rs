@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Port of `MergeConfigsHelpers_tests.cpp` (part 5: merges driven by OCIOM
 //! files, OCIOZ archives, in memory configs and single color spaces).
 

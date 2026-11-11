@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Loading of configs from YAML (the `load` functions of `OCIOYaml.cpp`).
 
 use super::node::Node;

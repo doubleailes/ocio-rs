@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Helpers to convert color spaces between configs, using the interchange
 //! roles or heuristics to identify the reference spaces (port of the parts of
 //! `ConfigUtils.cpp` used by `Config`).

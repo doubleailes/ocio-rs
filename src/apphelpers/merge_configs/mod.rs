@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Config merging (port of `apphelpers/mergeconfigs` and of the
 //! `ConfigMergingParameters`, `ConfigMerger` and `ConfigMergingHelpers`
 //! parts of `OpenColorAppHelpers.h`).

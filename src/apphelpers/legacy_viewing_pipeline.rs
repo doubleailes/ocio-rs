@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! A complete viewing pipeline around a display / view transform (port of
 //! `apphelpers/LegacyViewingPipeline.cpp`).
 

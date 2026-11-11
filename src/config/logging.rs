@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Logging (port of `Logging.cpp`).
 //!
 //! Messages are written to stderr, prefixed by `[OpenColorIO <Level>]: `.

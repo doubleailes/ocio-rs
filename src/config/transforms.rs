@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Op building for the config-dependent transforms (port of
 //! `ColorSpaceTransform.cpp`, `DisplayViewTransform.cpp` and
 //! `LookTransform.cpp`).

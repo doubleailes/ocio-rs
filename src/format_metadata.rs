@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Rich metadata attached to transforms (port of `FormatMetadata`).
 //!
 //! Mirrors the XML-like structure used by CLF/CTF: an element has a name, a

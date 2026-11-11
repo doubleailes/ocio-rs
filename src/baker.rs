@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! LUT baking (port of `Baker.cpp` and `BakingUtils.cpp`).
 //!
 //! The [`Baker`] validates its settings and delegates the actual baking to

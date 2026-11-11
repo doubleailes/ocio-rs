@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Tests ported from `GradingHueCurveOpData_tests.cpp`, `GradingHueCurveOp_tests.cpp`,
 //! `GradingHueCurveOpCPU_tests.cpp`, `GradingHueCurveTransform_tests.cpp` and
 //! the hue curve parts of `DynamicProperty_tests.cpp`.

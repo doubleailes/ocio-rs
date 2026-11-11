@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Port of `MergeConfigsHelpers_tests.cpp` (part 4: named transforms section).
 
 use super::tests::*;

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Collection of the context variables used by a transform (port of
 //! `CollectContextVariables` from `ContextVariableUtils.cpp` and of the
 //! transform specific versions), used to build processor cache keys.

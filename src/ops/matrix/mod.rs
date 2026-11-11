@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Matrix op: 4x4 matrix plus offset (port of `MatrixOpData`, `MatrixOp`,
 //! `MatrixOpCPU` and the op building part of `MatrixTransform.cpp`).
 //!

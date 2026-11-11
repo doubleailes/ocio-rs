@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! ACES 2 output transform building blocks (port of `ACES2/Transform.cpp`).
 //!
 //! All the computations are done in single precision, as in OCIO.

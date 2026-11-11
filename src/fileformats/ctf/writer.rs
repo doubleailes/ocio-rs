@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! CLF / CTF writer (port of `TransformWriter` and the op writers of
 //! `CTFTransform.cpp`, plus the op collection done by
 //! `LocalFileFormat::write` in `FileFormatCTF.cpp`).

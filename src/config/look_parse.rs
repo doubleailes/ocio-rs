@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Parsing of look lists such as `"+cc, -onset | +cc"` (port of
 //! `LookParse.cpp`).
 

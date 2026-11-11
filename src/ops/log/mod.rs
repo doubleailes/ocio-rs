@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Log op (port of `LogOpData`, `LogOp`, `LogOpCPU`, `LogUtils` and the op
 //! building part of `LogTransform.cpp`, `LogAffineTransform.cpp` and
 //! `LogCameraTransform.cpp`).

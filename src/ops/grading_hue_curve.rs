@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Hue curve grading op (port of `GradingHueCurve.cpp`, `GradingHueCurveOpData.cpp`,
 //! `GradingHueCurveOp.cpp`, `GradingHueCurveOpCPU.cpp` and
 //! `GradingHueCurveTransform.cpp`).

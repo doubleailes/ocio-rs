@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! CLF / CTF reader (port of `FileFormatCTF.cpp` `XMLParserHelper` and of
 //! `fileformats/ctf/CTFReaderHelper.cpp`).
 //!

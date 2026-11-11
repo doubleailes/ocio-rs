@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Command line parsing (port of the OCIO `apputils/argparse`, itself derived
 //! from the OpenImageIO `ArgParse`).
 //!

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Range op: affine remap with clamping (port of `RangeOpData`, `RangeOp`,
 //! `RangeOpCPU` and the op building part of `RangeTransform.cpp`).
 //!

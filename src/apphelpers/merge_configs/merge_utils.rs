@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Reference space conversion and color space fingerprints used by the
 //! config merger (port of the merge related parts of `ConfigUtils.cpp`:
 //! `simplifyTransform`, `getRefSpaceConverter`, `updateReferenceColorspace`,

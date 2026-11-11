@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Unit tests of the log op (ports of `LogOpData_tests.cpp`, `LogOp_tests.cpp`,
 //! `LogOpCPU_tests.cpp` and the log transform tests).
 

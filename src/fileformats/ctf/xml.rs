@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! XML helpers shared by the CLF/CTF and CDL (CC / CCC / CDL) formats.
 //!
 //! Port of `fileformats/xmlutils/XMLReaderUtils.*`, `XMLWriterUtils.*` and of

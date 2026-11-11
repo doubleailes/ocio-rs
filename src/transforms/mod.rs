@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Transforms: the user-facing descriptions of color operations (port of
 //! `OpenColorTransforms.h`).
 //!

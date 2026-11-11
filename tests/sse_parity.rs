@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! The CPU renderers follow the SSE2 builds of OCIO (the PyOpenColorIO
 //! wheels, Nuke, ...): the fast `log2` / `exp2` / `pow` renderers used under
 //! `OptimizationFlags::FAST_LOG_EXP_POW` (part of the default flags), and the

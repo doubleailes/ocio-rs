@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Builtin transforms (ACES, camera log curves, display curves) and builtin
 //! configs (port of `transforms/builtins/*`, `transforms/BuiltinTransform.cpp`
 //! and `builtinconfigs/*`).

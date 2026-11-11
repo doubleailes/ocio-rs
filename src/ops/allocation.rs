@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Allocation ops (port of `AllocationOp.cpp` and the op building part of
 //! `AllocationTransform.cpp`).
 //!

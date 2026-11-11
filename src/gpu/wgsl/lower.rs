@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Lowering of the GLSL 4.0 subset written by the GPU renderers to WGSL.
 //!
 //! The source program is parsed (see [`super::glsl`]), typed and printed as

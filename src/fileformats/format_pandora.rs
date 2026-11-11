@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Pandora `mga` / `m3d` 3D LUT format (port of `FileFormatPandora.cpp`).
 //!
 //! ```text

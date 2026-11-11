@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! GPU renderer of the range op (port of `RangeOpGPU.cpp`).
 
 use crate::error::Result;

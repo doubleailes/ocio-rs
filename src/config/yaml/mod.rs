@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! YAML reading and writing of configs (port of `OCIOYaml.cpp`).
 //!
 //! Parsing uses `yaml-rust2` events to build a [`node::Node`] tree keeping

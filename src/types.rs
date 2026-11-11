@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Core enumerations, string conversions and constants (port of `OpenColorTypes.h`
 //! and the string helpers of `ParseUtils.cpp`).
 

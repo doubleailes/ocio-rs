@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Color mixing (color picker) helpers (port of
 //! `apphelpers/MixingHelpers.cpp`): [`MixingColorSpaceManager`] and
 //! [`MixingSlider`].

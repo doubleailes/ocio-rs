@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Conversion of transforms into ops.
 //!
 //! Every transform type implements [`BuildOps`] and [`Validate`]. The

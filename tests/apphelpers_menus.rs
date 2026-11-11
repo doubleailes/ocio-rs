@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Port of `ColorSpaceHelpers_tests.cpp` (menu helper part) and
 //! `DisplayViewHelpers_tests.cpp`.
 //!

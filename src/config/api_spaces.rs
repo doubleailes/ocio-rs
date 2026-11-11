@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Config API for color spaces, roles, looks, view transforms, named
 //! transforms and file rules.
 

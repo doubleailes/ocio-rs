@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! The configuration: color spaces, roles, displays / views, looks, view
 //! transforms, named transforms, file and viewing rules (port of
 //! `Config.cpp` and of the config objects of `OpenColorIO.h`).

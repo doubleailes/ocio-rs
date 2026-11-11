@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! ociomakeclf -- convert a LUT into CLF format, optionally making it an ACES
 //! LMT (port of the OCIO `ociomakeclf` app).
 

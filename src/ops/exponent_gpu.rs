@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! GPU renderer of the exponent op (port of `ExponentOp::extractGpuShaderInfo`).
 
 use crate::error::Result;
