@@ -648,29 +648,39 @@ impl BitDepthLuts {
         }
         if let Some((renderer, out_max)) = &self.output {
             let n = ops.len().saturating_sub(1);
-            for chunk in pixels.chunks_mut(CHUNK) {
+            for range in chunk_ranges(pixels.len()) {
+                let chunk = &mut pixels[range];
                 ops::apply_ops(&ops[..n], chunk);
+                let sse2 = renderer.uses_sse2(chunk);
                 renderer.apply(chunk);
+                // (The result is converted back exactly by the image
+                // writer.)
                 for p in chunk.iter_mut() {
                     p[3] *= *out_max;
                     for v in p.iter_mut() {
-                        // `Converter::CastValue` (the result is converted
-                        // back exactly by the image writer).
-                        let q = *v + 0.5;
-                        let q = if q.is_nan() || q < 0.0 {
-                            0.0
-                        } else if q > *out_max {
-                            *out_max
+                        let q = if sse2 {
+                            // `SSE2RGBAPack::Store`: `sse2_clamp` and
+                            // `_mm_cvtps_epi32` (round half to even).
+                            let q = ops::sse::min(ops::sse::max(*v, 0.0), *out_max);
+                            round_half_even_small(q)
                         } else {
-                            crate::math_utils::floor_non_negative(q)
+                            // `Converter::CastValue`.
+                            let q = *v + 0.5;
+                            if q.is_nan() || q < 0.0 {
+                                0.0
+                            } else if q > *out_max {
+                                *out_max
+                            } else {
+                                crate::math_utils::floor_non_negative(q)
+                            }
                         };
                         *v = q / *out_max;
                     }
                 }
             }
         } else {
-            for chunk in pixels.chunks_mut(CHUNK) {
-                ops::apply_ops(ops, chunk);
+            for range in chunk_ranges(pixels.len()) {
+                ops::apply_ops(ops, &mut pixels[range]);
             }
         }
     }
@@ -689,8 +699,38 @@ fn sanitize_float(f: f32) -> f32 {
     }
 }
 
+/// Round half to even of `x` in `[0, 2^23)` (`_mm_cvtps_epi32` with the
+/// default rounding mode): adding 2^23 leaves no fractional bits, so the
+/// addition rounds.
+fn round_half_even_small(x: f32) -> f32 {
+    const TWO_POW_23: f32 = 8_388_608.0;
+    (x + TWO_POW_23) - TWO_POW_23
+}
+
 /// Number of pixels processed per chunk.
 const CHUNK: usize = 1024;
+
+/// The ranges of the chunks of `len` pixels. A single pixel is never left
+/// alone when there are several: OCIO processes an image line in one call,
+/// and some renderers use another code path for a single pixel (see
+/// `Lut1D`'s `ForwardRenderer::uses_sse2`).
+fn chunk_ranges(len: usize) -> impl Iterator<Item = std::ops::Range<usize>> {
+    let mut start = 0;
+    std::iter::from_fn(move || {
+        if start >= len {
+            return None;
+        }
+        let rest = len - start;
+        let n = if rest == CHUNK + 1 {
+            rest
+        } else {
+            rest.min(CHUNK)
+        };
+        let range = start..start + n;
+        start += n;
+        Some(range)
+    })
+}
 
 impl CpuProcessor {
     /// Build directly from ops (no optimization).
@@ -747,8 +787,8 @@ impl CpuProcessor {
 
     /// Apply to RGBA pixels in place.
     pub fn apply_pixels(&self, pixels: &mut [Pixel]) {
-        for chunk in pixels.chunks_mut(CHUNK) {
-            ops::apply_ops(&self.ops, chunk);
+        for range in chunk_ranges(pixels.len()) {
+            ops::apply_ops(&self.ops, &mut pixels[range]);
         }
     }
 
@@ -768,15 +808,17 @@ impl CpuProcessor {
 
     /// Apply to a packed RGB `f32` buffer (length multiple of 3).
     pub fn apply_rgb_slice(&self, data: &mut [f32]) {
-        let mut buf = vec![[0.0f32; 4]; CHUNK];
-        for chunk in data.chunks_mut(3 * CHUNK) {
-            let n = chunk.len() / 3;
-            for i in 0..n {
-                buf[i] = [chunk[3 * i], chunk[3 * i + 1], chunk[3 * i + 2], 1.0];
+        let rgb = data.as_chunks_mut::<3>().0;
+        let mut buf = vec![[0.0f32; 4]; CHUNK + 1];
+        for range in chunk_ranges(rgb.len()) {
+            let chunk = &mut rgb[range];
+            let buf = &mut buf[..chunk.len()];
+            for (b, p) in buf.iter_mut().zip(chunk.iter()) {
+                *b = [p[0], p[1], p[2], 1.0];
             }
-            ops::apply_ops(&self.ops, &mut buf[..n]);
-            for i in 0..n {
-                chunk[3 * i..3 * i + 3].copy_from_slice(&buf[i][..3]);
+            ops::apply_ops(&self.ops, buf);
+            for (p, b) in chunk.iter_mut().zip(buf.iter()) {
+                p.copy_from_slice(&b[..3]);
             }
         }
     }
@@ -846,5 +888,43 @@ impl CpuProcessor {
             dst.write_row(y, &row);
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn chunks_never_leave_a_single_pixel_alone() {
+        let lens = |len: usize| chunk_ranges(len).map(|r| r.len()).collect::<Vec<_>>();
+        assert!(lens(0).is_empty());
+        assert_eq!(lens(1), [1]);
+        assert_eq!(lens(CHUNK), [CHUNK]);
+        assert_eq!(lens(CHUNK + 1), [CHUNK + 1]);
+        assert_eq!(lens(CHUNK + 2), [CHUNK, 2]);
+        assert_eq!(lens(2 * CHUNK + 1), [CHUNK, CHUNK + 1]);
+        for len in 0..3 * CHUNK + 3 {
+            let ranges: Vec<_> = chunk_ranges(len).collect();
+            assert_eq!(ranges.iter().map(|r| r.len()).sum::<usize>(), len);
+            assert!(ranges.windows(2).all(|w| w[0].end == w[1].start));
+            assert!(len < 2 || ranges.iter().all(|r| r.len() > 1), "{len}");
+        }
+    }
+
+    #[test]
+    fn round_half_even_of_code_values() {
+        for (x, r) in [
+            (0.0, 0.0),
+            (0.5, 0.0),
+            (1.5, 2.0),
+            (2.5, 2.0),
+            (2.4999998, 2.0),
+            (2.5000002, 3.0),
+            (65534.5, 65534.0),
+            (65535.0, 65535.0),
+        ] {
+            assert_eq!(round_half_even_small(x), r, "{x}");
+        }
     }
 }

@@ -101,6 +101,12 @@ pub fn add(a: f32, b: f32) -> f32 {
     x86_nan(a, b, a + b)
 }
 
+/// `_mm_sub_ps(a, b)` with the x86 NaN rules (see [`x86_nan`]).
+#[inline]
+pub fn sub(a: f32, b: f32) -> f32 {
+    x86_nan(a, b, a - b)
+}
+
 /// `_mm_mul_ps(a, b)` with the x86 NaN rules (see [`x86_nan`]).
 #[inline]
 pub fn mul(a: f32, b: f32) -> f32 {

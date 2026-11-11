@@ -170,7 +170,50 @@ impl ForwardRenderer {
         )
     }
 
+    /// True if `apply` evaluates `pixels` with the SSE2 renderer: OCIO's
+    /// SSE2 builds use `linear1D` (`Lut1DOpCPU_SSE2.cpp`) for the standard
+    /// (not half domain, no hue adjust) LUTs when more than one pixel is
+    /// processed (`Lut1DRenderer::apply`: `m_applyLutFunc && numPixels >
+    /// 1`), and the scalar code for a single pixel.
+    pub(crate) fn uses_sse2(&self, pixels: &[Pixel]) -> bool {
+        !self.half_domain && !self.hue_adjust && pixels.len() > 1
+    }
+
+    /// One channel of `linear1D`: truncated (rather than floored) indices
+    /// and `p + (n - p) * d` (rather than the scalar `lerpf(high, low,
+    /// high - idx)`), which can differ in the last bit, and gives a NaN
+    /// for `0 * Inf` when consecutive values overflow `n - p`.
+    #[inline]
+    fn interp_sse2(&self, c: usize, v: f32) -> f32 {
+        use crate::ops::sse;
+        let lut = &self.luts[c];
+        // `_mm_max_ps` first: NaNs become 0.
+        let x = sse::min(sse::max(v * self.step, 0.0), self.dim_minus_one);
+        // `x` is in [0, dim - 1], so the truncation is the floor.
+        let prev = (x as i32) as f32;
+        let d = x - prev;
+        let next = sse::min(prev + 1.0, self.dim_minus_one);
+        let (p, n) = (lut[prev as usize], lut[next as usize]);
+        let r = (n - p) * d + p;
+        if r.is_nan() {
+            // (The LUT values are sanitized, so only `0 * Inf` gives a NaN;
+            // recomputed for its x86 sign.)
+            sse::add(sse::mul(sse::sub(n, p), d), p)
+        } else {
+            r
+        }
+    }
+
     pub(crate) fn apply(&self, pixels: &mut [Pixel]) {
+        if self.uses_sse2(pixels) {
+            for p in pixels.iter_mut() {
+                p[0] = self.interp_sse2(0, p[0]);
+                p[1] = self.interp_sse2(1, p[1]);
+                p[2] = self.interp_sse2(2, p[2]);
+                // Alpha scaling is 1 for 32f.
+            }
+            return;
+        }
         for p in pixels.iter_mut() {
             let rgb = [p[0], p[1], p[2]];
             let mut rgb2 = if self.half_domain {

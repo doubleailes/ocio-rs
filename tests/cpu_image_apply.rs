@@ -3,9 +3,11 @@
 // Copyright (c) 2026 Philippe Llerena.
 
 //! `CpuProcessor::apply` / `apply_src_dst` / `apply_rgba_slice` give the
-//! per-pixel results of `apply_rgba` for every image layout: the packed
-//! RGBA `f32` images processed in place and the layouts converted row by
-//! row.
+//! same results for every image layout (the packed RGBA `f32` images
+//! processed in place and the layouts converted row by row) as
+//! `apply_pixels`. Images one pixel wide give the results of `apply_rgba`:
+//! as in OCIO, some renderers (the 1D LUT) use another code path when a
+//! single pixel is processed.
 
 use ocio::{
     BitDepth, ChannelOrdering, Config, CpuProcessor, FileTransform, ImageData, OptimizationFlags,
@@ -77,8 +79,15 @@ fn pixels() -> Vec<[f32; 4]> {
         .collect()
 }
 
-/// The results of `apply_rgba`, one pixel at a time.
+/// The results of `apply_pixels` on all the pixels.
 fn reference(cpu: &CpuProcessor, pixels: &[[f32; 4]]) -> Vec<[f32; 4]> {
+    let mut out = pixels.to_vec();
+    cpu.apply_pixels(&mut out);
+    out
+}
+
+/// The results of `apply_rgba`, one pixel at a time.
+fn single_pixel_reference(cpu: &CpuProcessor, pixels: &[[f32; 4]]) -> Vec<[f32; 4]> {
     pixels
         .iter()
         .map(|p| {
@@ -143,7 +152,7 @@ fn pack(pixels: &[[f32; 4]], x_stride: usize, ordering: ChannelOrdering) -> Vec<
 }
 
 #[test]
-fn packed_f32_layouts_match_apply_rgba() {
+fn packed_f32_layouts_match_apply_pixels() {
     let input = pixels();
     for (name, cpu) in processors() {
         let expected = reference(&cpu, &input);
@@ -235,7 +244,7 @@ fn packed_f32_layouts_match_apply_rgba() {
 }
 
 #[test]
-fn planar_f32_matches_apply_rgba() {
+fn planar_f32_matches_apply_pixels() {
     let input = pixels();
     for (name, cpu) in processors() {
         let expected = reference(&cpu, &input);
@@ -263,7 +272,7 @@ fn planar_f32_matches_apply_rgba() {
 }
 
 #[test]
-fn apply_src_dst_matches_apply_rgba() {
+fn apply_src_dst_matches_apply_pixels() {
     let input = pixels();
     for (name, cpu) in processors() {
         let expected = reference(&cpu, &input);
@@ -340,7 +349,7 @@ fn quantize(v: f32, max: f32) -> f32 {
 }
 
 #[test]
-fn integer_images_match_apply_rgba() {
+fn integer_images_match_apply_pixels() {
     let codes: Vec<[u16; 4]> = (0..WIDTH * HEIGHT)
         .map(|i| {
             let v = |k: usize| (((i * 4 + k) * 7919) % 65536) as u16;
@@ -384,6 +393,52 @@ fn integer_images_match_apply_rgba() {
             "u8 to f32",
             &unpack(&dst, 4, ChannelOrdering::Rgba),
             &expected8,
+        );
+    }
+}
+
+#[test]
+fn single_pixel_wide_images_match_apply_rgba() {
+    let input = pixels();
+    for (name, cpu) in processors() {
+        let expected = single_pixel_reference(&cpu, &input);
+        let n = input.len();
+
+        // In place, one pixel per row.
+        let mut data = flatten(&input);
+        let mut img = PackedImageDesc::new(ImageData::F32(&mut data), 1, n, 4).unwrap();
+        cpu.apply(&mut img);
+        assert_same(
+            name,
+            "1 x n RGBA",
+            &unpack(&data, 4, ChannelOrdering::Rgba),
+            &expected,
+        );
+
+        // Converted rows.
+        let mut data = pack(&input, 4, ChannelOrdering::Bgra);
+        let mut img =
+            PackedImageDesc::with_ordering(ImageData::F32(&mut data), 1, n, ChannelOrdering::Bgra)
+                .unwrap();
+        cpu.apply(&mut img);
+        assert_same(
+            name,
+            "1 x n BGRA",
+            &unpack(&data, 4, ChannelOrdering::Bgra),
+            &expected,
+        );
+
+        // Source / destination.
+        let mut src = flatten(&input);
+        let mut dst = vec![0.0f32; src.len()];
+        let src_img = PackedImageDesc::new(ImageData::F32(&mut src), 1, n, 4).unwrap();
+        let mut dst_img = PackedImageDesc::new(ImageData::F32(&mut dst), 1, n, 4).unwrap();
+        cpu.apply_src_dst(&src_img, &mut dst_img).unwrap();
+        assert_same(
+            name,
+            "1 x n src/dst",
+            &unpack(&dst, 4, ChannelOrdering::Rgba),
+            &expected,
         );
     }
 }

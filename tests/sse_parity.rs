@@ -200,3 +200,65 @@ fn exposure_contrast_always_uses_the_sse_power() {
     check(&t, DEFAULT, input, expected);
     check(&t, LOSSLESS, input, expected);
 }
+
+/// A forward 1D LUT (not half domain, no hue adjust) uses OCIO's SSE2
+/// `linear1D` renderer when more than one pixel is processed (an image
+/// line), and the scalar renderer for a single pixel (`apply_rgba`). The
+/// expected values are the results of PyOpenColorIO 2.5.2 forced on its
+/// SSE2 path (x86-64 CPU without AVX); its AVX2 / AVX-512 paths use fused
+/// multiply-adds and can differ in the last bit.
+#[test]
+fn lut1d_sse2_renderer_for_several_pixels() {
+    let mut lut = Lut1DTransform::default();
+    let values = [
+        (0.0, 0.0, 0.0),
+        (0.1, 0.3, 0.7),
+        (0.7, 0.3, 0.2),
+        (3e38, 1.0, 0.9),
+        (-3e38, 1.1, 1.3),
+    ];
+    lut.set_length(values.len());
+    for (i, (r, g, b)) in values.into_iter().enumerate() {
+        lut.set_value(i, r, g, b);
+    }
+    let cpu = cpu(Transform::Lut1D(lut), DEFAULT);
+    // (input, image result, single pixel result)
+    let cases: [([u32; 4], [u32; 4], [u32; 4]); 4] = [
+        (
+            [0x3daf68d5, 0x3e727e74, 0x3f4d2053, 0x3f800000],
+            [0x3d0c53de, 0x3e917f13, 0x3f7b66eb, 0x3f800000],
+            [0x3d0c53dc, 0x3e917f13, 0x3f7b66ea, 0x3f800000],
+        ),
+        (
+            [0x3dc0c685, 0x3eddc2d0, 0x3ef54636, 0x3f800000],
+            [0x3d1a386b, 0x3e99999a, 0x3e77b3f4, 0x3f800000],
+            [0x3d1a386a, 0x3e99999a, 0x3e77b3f5, 0x3f800000],
+        ),
+        (
+            [0x3edc7b47, 0x3f16386e, 0x3f3ce2f0, 0x3f800000],
+            [0x3f0893ef, 0x3f0b0467, 0x3f5daea0, 0x3f800000],
+            [0x3f0893ef, 0x3f0b0468, 0x3f5daea0, 0x3f800000],
+        ),
+        // Red on an index whose next value overflows `n - p`: the SSE2
+        // renderer computes `-Inf * 0`.
+        (
+            [0x3f400000, 0x3e000000, 0x3f600000, 0x3f000000],
+            [0xffc00000, 0x3e19999a, 0x3f8ccccc, 0x3f000000],
+            [0x7f61b1e6, 0x3e19999a, 0x3f8ccccc, 0x3f000000],
+        ),
+    ];
+    let bits = |p: &[f32; 4]| p.map(f32::to_bits);
+    let mut image: Vec<[f32; 4]> = cases.iter().map(|c| c.0.map(f32::from_bits)).collect();
+    let mut data: Vec<f32> = image.iter().flatten().copied().collect();
+    let n = image.len();
+    cpu.apply(&mut PackedImageDesc::new(ImageData::F32(&mut data), n, 1, 4).unwrap());
+    cpu.apply_pixels(&mut image);
+    for (i, (input, expected_image, expected_single)) in cases.iter().enumerate() {
+        let from_image = [0, 1, 2, 3].map(|c| data[i * 4 + c]);
+        assert_eq!(bits(&from_image), *expected_image, "image, pixel {i}");
+        assert_eq!(bits(&image[i]), *expected_image, "apply_pixels, pixel {i}");
+        let mut single = input.map(f32::from_bits);
+        cpu.apply_rgba(&mut single);
+        assert_eq!(bits(&single), *expected_single, "apply_rgba, pixel {i}");
+    }
+}

@@ -349,5 +349,12 @@ fn integer_input_uses_lut_lookup() {
     let si = PackedImageDesc::new(ImageData::U8(&mut src), 1, 1, 4).unwrap();
     let mut di = PackedImageDesc::new(ImageData::F32(&mut dst), 1, 1, 4).unwrap();
     cpu.apply_src_dst(&si, &mut di).unwrap();
-    assert_eq!(dst, [0.0, 4.00326056e+36, f32::MAX, 1.0]);
+    // Values from PyOpenColorIO 2.5.2 on its SSE2 path: the lookup table is
+    // built by evaluating the LUT on all the 8-bit code values at once, with
+    // the SSE2 1D LUT renderer (its AVX-512 path gives 0x7c40bfff for green,
+    // and the same -FLT_MAX for blue).
+    assert_eq!(
+        dst.map(f32::to_bits),
+        [0x0000_0000, 0x7c40_c000, 0xff7f_ffff, 0x3f80_0000]
+    );
 }
