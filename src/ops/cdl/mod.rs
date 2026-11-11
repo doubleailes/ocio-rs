@@ -597,15 +597,13 @@ fn fast_power(p: &mut Pixel, power: &[f32; 4], clamp: bool) {
     use crate::ops::sse;
     if clamp {
         fast_clamp(p);
-        for c in 0..4 {
-            p[c] = sse::power(p[c], power[c]);
-        }
+        *p = sse::power_4(*p, *power);
     } else {
         // Negative values are passed through (a NaN gives 0).
+        let pix_power = sse::power_4(*p, *power);
         for c in 0..4 {
-            let pix_power = sse::power(p[c], power[c]);
             if !(p[c] < 0.0) {
-                p[c] = pix_power;
+                p[c] = pix_power[c];
             }
         }
     }

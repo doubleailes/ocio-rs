@@ -36,6 +36,44 @@ pub struct KnotsCoefs {
     pub num_knots: i32,
 }
 
+/// One (non-identity) curve of a [`KnotsCoefs`]: its knots and the
+/// quadratic coefficients of its segments.
+#[derive(Debug, Clone, Copy)]
+pub struct Curve<'a> {
+    /// The knots (at least two).
+    knots: &'a [f32],
+    /// Coefficients of `t^2`, `t` and `1` of each segment.
+    a: &'a [f32],
+    b: &'a [f32],
+    c: &'a [f32],
+}
+
+impl Curve<'_> {
+    /// Forward evaluation (see [`KnotsCoefs::eval_curve`]).
+    #[inline]
+    pub fn eval(&self, x: f32) -> f32 {
+        let (kn, a, b, c) = (self.knots, self.a, self.b, self.c);
+        let kn_start = kn[0];
+        let kn_end = kn[kn.len() - 1];
+        if x <= kn_start {
+            (x - kn_start) * b[0] + c[0]
+        } else if x >= kn_end {
+            let last = a.len() - 1;
+            let t = kn_end - kn[kn.len() - 2];
+            let slope = 2.0 * a[last] * t + b[last];
+            let offs = (a[last] * t + b[last]) * t + c[last];
+            (x - kn_end) * slope + offs
+        } else {
+            // The segment: the first knot after `x` among the inner ones
+            // (the last segment if none, e.g. for a NaN).
+            let inner = &kn[1..kn.len() - 1];
+            let i = inner.iter().position(|&k| x < k).unwrap_or(inner.len());
+            let t = x - kn[i];
+            (a[i] * t + b[i]) * t + c[i]
+        }
+    }
+}
+
 impl KnotsCoefs {
     /// Maximum size of the knots array (for all curves).
     pub const MAX_NUM_KNOTS: i32 = 120;
@@ -104,44 +142,29 @@ impl KnotsCoefs {
     /// NB: When evaluating hue curves, x should be wrapped to [0,1) by the
     /// caller so there is no extrapolation.
     pub fn eval_curve(&self, c: usize, x: f32, identity_x: f32) -> f32 {
+        match self.curve(c) {
+            Some(curve) => curve.eval(x),
+            None => identity_x,
+        }
+    }
+
+    /// The knots and coefficients of curve `c`, or `None` for an identity
+    /// curve. Evaluating a [`Curve`] gives the results of
+    /// [`eval_curve`](Self::eval_curve) without looking up the curve again.
+    pub fn curve(&self, c: usize) -> Option<Curve<'_>> {
         let (coefs_sets, coefs_offs, knots_cnt, knots_offs) = self.layout(c);
         if coefs_sets == 0 || knots_cnt < 2 {
-            return identity_x;
+            return None;
         }
-        let kn = &self.knots;
-        let co = &self.coefs;
-
-        let kn_start = kn[knots_offs];
-        let kn_end = kn[knots_offs + knots_cnt - 1];
-
-        if x <= kn_start {
-            let b = co[coefs_offs + coefs_sets];
-            let cc = co[coefs_offs + coefs_sets * 2];
-            (x - kn_start) * b + cc
-        } else if x >= kn_end {
-            let a = co[coefs_offs + coefs_sets - 1];
-            let b = co[coefs_offs + coefs_sets * 2 - 1];
-            let cc = co[coefs_offs + coefs_sets * 3 - 1];
-            let k = kn[knots_offs + knots_cnt - 2];
-            let t = kn_end - k;
-            let slope = 2.0 * a * t + b;
-            let offs = (a * t + b) * t + cc;
-            (x - kn_end) * slope + offs
-        } else {
-            let mut i = 0;
-            while i < knots_cnt - 2 {
-                if x < kn[knots_offs + i + 1] {
-                    break;
-                }
-                i += 1;
-            }
-            let a = co[coefs_offs + i];
-            let b = co[coefs_offs + coefs_sets + i];
-            let cc = co[coefs_offs + coefs_sets * 2 + i];
-            let k = kn[knots_offs + i];
-            let t = x - k;
-            (a * t + b) * t + cc
-        }
+        let co = &self.coefs[coefs_offs..coefs_offs + 3 * coefs_sets];
+        let (a, bc) = co.split_at(coefs_sets);
+        let (b, c) = bc.split_at(coefs_sets);
+        Some(Curve {
+            knots: &self.knots[knots_offs..knots_offs + knots_cnt],
+            a,
+            b,
+            c,
+        })
     }
 
     /// Reverse evaluation of B_SPLINE or DIAGONAL_B_SPLINE curves.

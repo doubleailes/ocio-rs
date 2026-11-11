@@ -78,6 +78,19 @@ target, ARM included.
   in the luma sum), the lin-to-log / log-to-lin shapers of GradingRGBCurve
   and GradingTone (which, as in OCIO's in-place processing, also transform
   alpha), and the matrix renderer (`(r*m0 + g*m1) + (b*m2 + a*m3)`).
+* **1D LUTs** (forward, 32f input, not half domain, no hue adjust) use the
+  SSE2 `linear1D` renderer (`Lut1DOpCPU_SSE2.cpp`) when more than one pixel
+  is processed, as `Lut1DRenderer::apply` does (`numPixels > 1`): truncated
+  indices and `p + (n - p) * d`, which can differ from the scalar
+  interpolation in the last bit and gives a NaN for `0 * Inf`, and for an
+  integer output (last op of a processor) a clamp and a round half to even
+  (`_mm_cvtps_epi32`) instead of `Converter::CastValue`. A single pixel
+  (`apply_rgba`, images one pixel wide, since OCIO processes images line by
+  line) uses the scalar renderer, and `CpuProcessor` never splits several
+  pixels into chunks of one. OCIO's AVX2 / AVX-512 builds of this renderer
+  use fused multiply-adds, so their results depend on the CPU; the SSE2
+  results were checked against PyOpenColorIO 2.5.2 run on a CPU without
+  AVX.
 * **NaN signs.** Where the sign of a NaN can become a signed value later
   (e.g. the fast mirrored gamma turns `-NaN` into `-0`), the matrix renderer
   recomputes NaN results with the x86 NaN rules and the operand order of the

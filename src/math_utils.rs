@@ -88,6 +88,58 @@ pub fn sanitize_float(f: f32) -> f32 {
 }
 
 // ---------------------------------------------------------------------------
+// Rounding of non-negative values.
+//
+// `f32::floor` / `ceil` / `round` compile to calls into the software `libm`
+// of `compiler-builtins` on targets without a rounding instruction (x86-64
+// before SSE4.1, which is the default Rust target), costing about a hundred
+// instructions each. The CPU renderers round clamped, non-negative values
+// (LUT indices, quantized code values) in their inner loops, so they use
+// these truncation-based versions, which give the same results as the `std`
+// ones for every non-negative input (NaN and +Inf included; -0 gives +0).
+
+/// Below this value an `f32` may have a fractional part; from it on every
+/// value is an integer.
+const F32_INTEGER_THRESHOLD: f32 = 8_388_608.0; // 2^23
+
+/// `x.floor()` for `x >= 0` (or NaN).
+#[inline]
+pub(crate) fn floor_non_negative(x: f32) -> f32 {
+    debug_assert!(!(x < 0.0));
+    if x < F32_INTEGER_THRESHOLD {
+        // Truncation is the floor for non-negative values.
+        (x as i32) as f32
+    } else {
+        // Integers, +Inf and NaN.
+        x
+    }
+}
+
+/// `x.ceil()` for `x >= 0` (or NaN).
+#[inline]
+pub(crate) fn ceil_non_negative(x: f32) -> f32 {
+    let f = floor_non_negative(x);
+    // `f + 1` is exact: below 2^23 `f` is an integer under 2^23.
+    if f < x {
+        f + 1.0
+    } else {
+        f
+    }
+}
+
+/// `x.round()` (half away from zero) for `x >= 0` (or NaN).
+#[inline]
+pub(crate) fn round_non_negative(x: f32) -> f32 {
+    let f = floor_non_negative(x);
+    // `x - f` is exact (`f <= x < 2 * f` when `f >= 1`, else `f = 0`).
+    if x - f >= 0.5 {
+        f + 1.0
+    } else {
+        f
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Matrices (row major).
 
 /// Identity 4x4.
@@ -242,6 +294,57 @@ pub fn f32_to_half_bits(v: f32) -> u16 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Non-negative `f32` values covering every exponent, the fractional
+    /// boundaries and the special values.
+    fn non_negative_samples() -> impl Iterator<Item = f32> {
+        // A prime stride walks through every exponent with varied mantissas.
+        let strided = (0..=0x7F80_0000u32).step_by(997).map(f32::from_bits);
+        let around_integers = (0..=4096u32).flat_map(|i| {
+            let f = i as f32;
+            let half = f + 0.5;
+            [
+                f,
+                half,
+                f.next_down(),
+                f.next_up(),
+                half.next_down(),
+                half.next_up(),
+            ]
+        });
+        let specials = [
+            0.0,
+            f32::MIN_POSITIVE,
+            f32::from_bits(1),
+            0.49999997,
+            0.5,
+            8_388_607.5,
+            8_388_608.0,
+            16_777_217.0,
+            f32::MAX,
+            f32::INFINITY,
+            f32::NAN,
+        ];
+        strided
+            .chain(around_integers)
+            .filter(|x| *x >= 0.0)
+            .chain(specials)
+    }
+
+    fn same(a: f32, b: f32) -> bool {
+        a.to_bits() == b.to_bits() || (a.is_nan() && b.is_nan())
+    }
+
+    #[test]
+    fn rounding_of_non_negative_values_matches_std() {
+        for x in non_negative_samples() {
+            assert!(same(floor_non_negative(x), x.floor()), "floor({x:e})");
+            assert!(same(ceil_non_negative(x), x.ceil()), "ceil({x:e})");
+            assert!(same(round_non_negative(x), x.round()), "round({x:e})");
+        }
+        // -0 gives +0 (callers only use the value as an index or a code).
+        assert_eq!(floor_non_negative(-0.0), 0.0);
+    }
 
     #[test]
     fn inverse44() {

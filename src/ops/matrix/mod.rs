@@ -488,42 +488,52 @@ impl MatrixRenderer {
             // value, e.g. the fast mirrored gamma gives -0 for -NaN).
             MatrixRenderer::Matrix { columns } => {
                 for p in pixels.iter_mut() {
-                    apply_matrix(p, columns, None);
+                    apply_matrix::<false>(p, columns, &[0.0; 4]);
                 }
             }
             MatrixRenderer::MatrixWithOffset { columns, offset } => {
                 for p in pixels.iter_mut() {
-                    apply_matrix(p, columns, Some(offset));
+                    apply_matrix::<true>(p, columns, offset);
                 }
             }
         }
     }
 }
 
-/// One pixel of the SSE matrix renderers (see [`MatrixRenderer::apply`]).
-/// The NaN check is done once per pixel, so that finite pixels only pay for
-/// one predictable branch. (Without offsets nothing is added, which keeps
-/// the sign of a zero.)
-#[inline]
-fn apply_matrix(p: &mut Pixel, columns: &[[f32; 4]; 4], offset: Option<&[f32; 4]>) {
+/// `column * s`, lane by lane.
+#[inline(always)]
+fn mul_lanes(column: &[f32; 4], s: f32) -> [f32; 4] {
+    [column[0] * s, column[1] * s, column[2] * s, column[3] * s]
+}
+
+/// `a + b`, lane by lane.
+#[inline(always)]
+fn add_lanes(a: [f32; 4], b: [f32; 4]) -> [f32; 4] {
+    [a[0] + b[0], a[1] + b[1], a[2] + b[2], a[3] + b[3]]
+}
+
+/// One pixel of the SSE matrix renderers (see [`MatrixRenderer::apply`]),
+/// written lane by lane like the SSE code (`(r*m0 + g*m1) + (b*m2 + a*m3)`
+/// for the four output channels at once), which lets the compiler use
+/// vector instructions. The NaN check is done once per pixel, so that
+/// finite pixels only pay for one predictable branch. (Without offsets
+/// nothing is added, which keeps the sign of a zero.)
+#[inline(always)]
+fn apply_matrix<const OFFSET: bool>(p: &mut Pixel, columns: &[[f32; 4]; 4], offset: &[f32; 4]) {
     let (r, g, b, a) = (p[0], p[1], p[2], p[3]);
-    let mut out = [0.0f32; 4];
-    for c in 0..4 {
-        let v = (columns[0][c] * r + columns[1][c] * g) + (columns[2][c] * b + columns[3][c] * a);
-        out[c] = match offset {
-            Some(o) => v + o[c],
-            None => v,
-        };
+    let rg = add_lanes(mul_lanes(&columns[0], r), mul_lanes(&columns[1], g));
+    let ba = add_lanes(mul_lanes(&columns[2], b), mul_lanes(&columns[3], a));
+    let mut out = add_lanes(rg, ba);
+    if OFFSET {
+        out = add_lanes(out, *offset);
     }
-    if out.iter().any(|v| v.is_nan()) {
+    // (Bitwise `|` rather than `||`: no branch per lane.)
+    if out[0].is_nan() | out[1].is_nan() | out[2].is_nan() | out[3].is_nan() {
         for c in 0..4 {
             if out[c].is_nan() {
                 let m = [columns[0][c], columns[1][c], columns[2][c], columns[3][c]];
                 let v = matrix_row_x86(&m, r, g, b, a);
-                out[c] = match offset {
-                    Some(o) => sse::add(v, o[c]),
-                    None => v,
-                };
+                out[c] = if OFFSET { sse::add(v, offset[c]) } else { v };
             }
         }
     }
