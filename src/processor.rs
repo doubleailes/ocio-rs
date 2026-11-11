@@ -627,7 +627,8 @@ impl BitDepthLuts {
                     codes[c] = if half {
                         half::f16::from_f32(p[c]).to_bits() as usize
                     } else {
-                        (p[c] * max).round() as usize
+                        // (Integer inputs are non-negative code values.)
+                        crate::math_utils::round_non_negative(p[c] * max) as usize
                     };
                     rgb2[c] = luts[c].get(codes[c]).copied().unwrap_or(0.0);
                 }
@@ -661,7 +662,7 @@ impl BitDepthLuts {
                         } else if q > *out_max {
                             *out_max
                         } else {
-                            q.floor()
+                            crate::math_utils::floor_non_negative(q)
                         };
                         *v = q / *out_max;
                     }
@@ -782,30 +783,31 @@ impl CpuProcessor {
 
     /// Apply to a packed RGBA `f32` buffer (length multiple of 4).
     pub fn apply_rgba_slice(&self, data: &mut [f32]) {
-        let mut buf = vec![[0.0f32; 4]; CHUNK];
-        for chunk in data.chunks_mut(4 * CHUNK) {
-            let n = chunk.len() / 4;
-            for i in 0..n {
-                buf[i].copy_from_slice(&chunk[4 * i..4 * i + 4]);
-            }
-            ops::apply_ops(&self.ops, &mut buf[..n]);
-            for i in 0..n {
-                chunk[4 * i..4 * i + 4].copy_from_slice(&buf[i]);
-            }
+        self.apply_pixels(data.as_chunks_mut::<4>().0);
+    }
+
+    /// Apply to a row of pixels, with the bit-depth specific renderers if
+    /// any.
+    fn apply_row(&self, luts: Option<&BitDepthLuts>, row: &mut [Pixel]) {
+        match luts {
+            Some(l) => l.apply(self, row),
+            None => self.apply_pixels(row),
         }
     }
 
     /// Apply in place to an image.
     pub fn apply(&self, img: &mut dyn ImageDesc) {
         let luts = self.bit_depth_luts_for(img.bit_depth(), img.bit_depth());
-        let w = img.width();
-        let mut row = vec![[0.0f32; 4]; w];
+        // Rows only allocated for the images needing a conversion.
+        let mut row = Vec::new();
         for y in 0..img.height() {
-            img.read_row(y, &mut row);
-            match luts {
-                Some(l) => l.apply(self, &mut row),
-                None => self.apply_pixels(&mut row),
+            if let Some(pixels) = img.rgba_f32_row_mut(y) {
+                self.apply_row(luts, pixels);
+                continue;
             }
+            row.resize(img.width(), [0.0f32; 4]);
+            img.read_row(y, &mut row);
+            self.apply_row(luts, &mut row);
             img.write_row(y, &row);
         }
     }
@@ -827,14 +829,20 @@ impl CpuProcessor {
             crate::bail!("Dimension mismatch between source and destination images.");
         }
         let luts = self.bit_depth_luts_for(src.bit_depth(), dst.bit_depth());
-        let w = src.width();
-        let mut row = vec![[0.0f32; 4]; w];
+        let mut row = Vec::new();
         for y in 0..src.height() {
-            src.read_row(y, &mut row);
-            match luts {
-                Some(l) => l.apply(self, &mut row),
-                None => self.apply_pixels(&mut row),
+            if let Some(pixels) = dst.rgba_f32_row_mut(y) {
+                // Convert directly into the destination and apply in place.
+                match src.rgba_f32_row(y) {
+                    Some(src_pixels) => pixels.copy_from_slice(src_pixels),
+                    None => src.read_row(y, pixels),
+                }
+                self.apply_row(luts, pixels);
+                continue;
             }
+            row.resize(src.width(), [0.0f32; 4]);
+            src.read_row(y, &mut row);
+            self.apply_row(luts, &mut row);
             dst.write_row(y, &row);
         }
         Ok(())

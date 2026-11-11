@@ -8,6 +8,7 @@
 #![allow(clippy::needless_range_loop)]
 
 use super::{lerpf, sanitize_float, std_max, std_min, ComponentProperties, Lut1DOpData};
+use crate::math_utils::{ceil_non_negative, floor_non_negative};
 use crate::ops::Pixel;
 use crate::types::{Lut1DHueAdjust, TransformDirection};
 use half::f16;
@@ -147,9 +148,9 @@ impl ForwardRenderer {
         let mut idx = self.step * v;
         // NaNs become 0.
         idx = std_min(std_max(0.0, idx), self.dim_minus_one);
-        let low = idx.floor() as usize;
+        let low = floor_non_negative(idx) as usize;
         // When idx is exactly an index, high == low and delta is 0.
-        let high = idx.ceil() as usize;
+        let high = ceil_non_negative(idx) as usize;
         // Computing delta relative to high rather than low to save computing
         // (1-delta); interpolating with 1-fraction avoids 0 * Inf.
         let delta = high as f32 - idx;

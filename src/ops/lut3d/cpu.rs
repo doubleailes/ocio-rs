@@ -7,6 +7,7 @@
 #![allow(clippy::needless_range_loop)]
 
 use super::{Lut3DArray, Lut3DOpData};
+use crate::math_utils::{ceil_non_negative, floor_non_negative};
 use crate::ops::lut1d::{clamp_ocio, sanitize_float};
 use crate::ops::Pixel;
 use crate::types::{Interpolation, TransformDirection};
@@ -62,15 +63,15 @@ impl ForwardRenderer {
                 clamp_ocio(p[2] * self.step, 0.0, dim_minus_one),
             ];
             let low = [
-                idx[0].floor() as usize,
-                idx[1].floor() as usize,
-                idx[2].floor() as usize,
+                floor_non_negative(idx[0]) as usize,
+                floor_non_negative(idx[1]) as usize,
+                floor_non_negative(idx[2]) as usize,
             ];
             // When idx is exactly an index, high == low but the delta is 0.
             let high = [
-                idx[0].ceil() as usize,
-                idx[1].ceil() as usize,
-                idx[2].ceil() as usize,
+                ceil_non_negative(idx[0]) as usize,
+                ceil_non_negative(idx[1]) as usize,
+                ceil_non_negative(idx[2]) as usize,
             ];
             let fx = idx[0] - low[0] as f32;
             let fy = idx[1] - low[1] as f32;
