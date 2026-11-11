@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! ACES builtin transforms (port of `transforms/builtins/ACES.cpp`).
 

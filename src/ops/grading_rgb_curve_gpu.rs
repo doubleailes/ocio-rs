@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! GPU renderer of the RGB curve grading op (port of
 //! `GradingRGBCurveOpGPU.cpp` and of the shader parts of

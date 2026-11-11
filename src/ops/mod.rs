@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Ops: the internal, CPU-evaluable building blocks a processor is made of
 //! (port of `Op.h` / `OpData` / the `*OpCPU` renderers).

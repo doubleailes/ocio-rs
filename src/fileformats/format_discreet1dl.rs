@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Discreet (Autodesk Flame / Smoke) 1D LUT `lut` format (port of
 //! `FileFormatDiscreet1DL.cpp`).

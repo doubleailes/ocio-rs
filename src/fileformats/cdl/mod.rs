@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! CC / CCC / CDL (ASC CDL XML) file formats (port of OCIO
 //! `fileformats/FileFormatCC.cpp`, `FileFormatCCC.cpp`, `FileFormatCDL.cpp`

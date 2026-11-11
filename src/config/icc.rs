@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Minimal ICC profile reader extracting the profile description (port of
 //! `GetProfileDescriptionFromICCProfile` and of the SampleICC description

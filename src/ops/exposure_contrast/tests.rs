@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Unit tests of the exposure contrast op (ports of
 //! `ExposureContrastOpData_tests.cpp`, `ExposureContrastOp_tests.cpp`,

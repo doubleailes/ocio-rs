@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Helpers shared by the file format readers (port of `FileFormatUtils.cpp`
 //! and of the parsing helpers the readers use from `ParseUtils.cpp`,

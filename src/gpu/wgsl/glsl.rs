@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Lexer, syntax tree and parser of the GLSL 4.0 subset written by the GPU
 //! renderers (the source of the WGSL lowering).

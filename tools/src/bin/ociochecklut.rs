@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! ociochecklut -- check any LUT file and optionally convert a pixel (port
 //! of the OCIO `ociochecklut` app).

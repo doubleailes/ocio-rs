@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Port of the SSE math of OCIO (`SSE.h`): the polynomial `log2`, `exp2`
 //! and `pow` approximations (about 15 bits of mantissa) used by the `*SSE`

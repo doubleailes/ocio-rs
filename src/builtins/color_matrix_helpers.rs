@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Color matrix helpers: RGB primaries to CIE XYZ matrices and von Kries
 //! chromatic adaptation (port of `ColorMatrixHelpers.cpp`).

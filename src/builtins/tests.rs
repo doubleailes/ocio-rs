@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Ports of `tests/cpu/transforms/BuiltinTransform_tests.cpp` and
 //! `tests/cpu/transforms/builtins/BuiltinTransformRegistry_tests.cpp`.

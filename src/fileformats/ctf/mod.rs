@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! CLF / CTF file formats (port of OCIO `fileformats/FileFormatCTF.cpp` and
 //! the `fileformats/ctf` directory).

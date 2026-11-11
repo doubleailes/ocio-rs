@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Port of the OpenColorIO GPU unit tests `tests/gpu/GradingPrimaryOp_test.cpp`,
 //! running the WGSL shaders (see `wgsl_common::gpu_unit`).

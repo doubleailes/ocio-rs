@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Config fragments shared by the `Config_tests.cpp` ports (see the anonymous
 //! namespace in the C++ file).

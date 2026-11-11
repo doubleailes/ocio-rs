@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! RGB curve grading op (port of `GradingRGBCurve.cpp`, `GradingRGBCurveOpData.cpp`,
 //! `GradingRGBCurveOp.cpp`, `GradingRGBCurveOpCPU.cpp` and

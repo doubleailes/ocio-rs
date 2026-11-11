@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! Constants, lookup tables and parameter structures of the ACES 2 output
 //! transform (port of `ACES2/Common.h`).

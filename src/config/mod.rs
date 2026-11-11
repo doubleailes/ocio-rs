@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! The configuration: color spaces, roles, displays / views, looks, view
 //! transforms, named transforms, file and viewing rules (port of

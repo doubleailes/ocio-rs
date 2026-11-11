@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! ICC profiles (`icc`, `icm`, `pf`) (port of `FileFormatICC.cpp` and of
 //! the minimal SampleICC profile reader `iccProfileReader.h`).

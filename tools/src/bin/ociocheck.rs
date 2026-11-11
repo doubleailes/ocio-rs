@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! ociocheck -- validate an OpenColorIO configuration (port of the OCIO
 //! `ociocheck` app).

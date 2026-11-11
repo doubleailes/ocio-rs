@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright Contributors to the OpenColorIO Project.
+// Copyright (c) 2026 Philippe Llerena.
 
 //! CLF / CTF writer (port of `TransformWriter` and the op writers of
 //! `CTFTransform.cpp`, plus the op collection done by
