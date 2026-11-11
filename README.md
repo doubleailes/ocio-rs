@@ -8,7 +8,7 @@ reproduce the results of OCIO built with SSE2 on every target.
 
 ## Status
 
-The current release is `ocio` **0.3.0**. The port follows OCIO `main`
+The current release is `ocio` **0.3.1**. The port follows OCIO `main`
 between `v2.5.0` and `v2.6.0` (up to upstream commit `93878f9`, 2026-09-16),
 and the library reports version `2.5.2`: every library change of the 2.5.x
 patch releases is ported. See [`UPSTREAM.md`](UPSTREAM.md) for the exact
