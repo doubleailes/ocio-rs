@@ -10,8 +10,8 @@
 //! single pixel is processed.
 
 use ocio::{
-    BitDepth, ChannelOrdering, Config, CpuProcessor, FileTransform, ImageData, OptimizationFlags,
-    PackedImageDesc, PlanarImageDesc, Transform, TransformDirection,
+    BitDepth, ChannelOrdering, Config, CpuProcessor, FileTransform, ImageData, ImageDesc,
+    OptimizationFlags, PackedImageDesc, PlanarImageDesc, Transform, TransformDirection,
 };
 
 const WIDTH: usize = 37;
@@ -441,4 +441,146 @@ fn single_pixel_wide_images_match_apply_rgba() {
             &expected,
         );
     }
+}
+
+/// Images without pixels (zero width, with a row stride and an empty
+/// buffer, or zero height) are accepted and left unchanged.
+#[test]
+fn empty_images_are_processed_without_panicking() {
+    let (_, cpu) = processors().remove(0);
+    for (width, height) in [(0, 3), (2, 0)] {
+        let mut data: Vec<f32> = Vec::new();
+        let mut img = PackedImageDesc::with_strides(
+            ImageData::F32(&mut data),
+            width,
+            height,
+            ChannelOrdering::Rgba,
+            BitDepth::F32,
+            4,
+            8,
+        )
+        .unwrap();
+        cpu.apply(&mut img);
+
+        let mut src: Vec<f32> = Vec::new();
+        let mut dst: Vec<f32> = Vec::new();
+        let src_img = PackedImageDesc::with_strides(
+            ImageData::F32(&mut src),
+            width,
+            height,
+            ChannelOrdering::Rgba,
+            BitDepth::F32,
+            4,
+            8,
+        )
+        .unwrap();
+        let mut dst_img = PackedImageDesc::with_strides(
+            ImageData::F32(&mut dst),
+            width,
+            height,
+            ChannelOrdering::Rgba,
+            BitDepth::F32,
+            4,
+            8,
+        )
+        .unwrap();
+        cpu.apply_src_dst(&src_img, &mut dst_img).unwrap();
+    }
+}
+
+/// An `ImageDesc` whose RGBA rows include the row padding (one pixel more
+/// than the width), which breaks the length contract of `rgba_f32_row`.
+struct PaddedRows {
+    data: Vec<[f32; 4]>,
+    width: usize,
+    height: usize,
+}
+
+impl PaddedRows {
+    fn row_range(&self, y: usize) -> std::ops::Range<usize> {
+        y * (self.width + 1)..(y + 1) * (self.width + 1)
+    }
+}
+
+impl ImageDesc for PaddedRows {
+    fn width(&self) -> usize {
+        self.width
+    }
+    fn height(&self) -> usize {
+        self.height
+    }
+    fn bit_depth(&self) -> BitDepth {
+        BitDepth::F32
+    }
+    fn read_row(&self, y: usize, out: &mut [[f32; 4]]) {
+        let start = self.row_range(y).start;
+        out[..self.width].copy_from_slice(&self.data[start..start + self.width]);
+    }
+    fn write_row(&mut self, y: usize, pixels: &[[f32; 4]]) {
+        let start = self.row_range(y).start;
+        self.data[start..start + self.width].copy_from_slice(&pixels[..self.width]);
+    }
+    fn rgba_f32_row(&self, y: usize) -> Option<&[[f32; 4]]> {
+        Some(&self.data[self.row_range(y)])
+    }
+    fn rgba_f32_row_mut(&mut self, y: usize) -> Option<&mut [[f32; 4]]> {
+        let range = self.row_range(y);
+        Some(&mut self.data[range])
+    }
+}
+
+/// Rows of another length than the width are converted with `read_row` /
+/// `write_row` instead of being processed in place.
+#[test]
+fn rows_of_another_length_are_converted() {
+    let input = pixels();
+    let (name, cpu) = processors().remove(0);
+    let expected = reference(&cpu, &input);
+    let padding = [-7.0f32; 4];
+    let padded = |pixels: &[[f32; 4]]| -> Vec<[f32; 4]> {
+        pixels
+            .chunks(WIDTH)
+            .flat_map(|row| row.iter().copied().chain([padding]))
+            .collect()
+    };
+    let unpadded = |img: &PaddedRows| -> Vec<[f32; 4]> {
+        img.data
+            .chunks(WIDTH + 1)
+            .flat_map(|row| row[..WIDTH].iter().copied())
+            .collect()
+    };
+
+    let mut img = PaddedRows {
+        data: padded(&input),
+        width: WIDTH,
+        height: HEIGHT,
+    };
+    cpu.apply(&mut img);
+    assert_same(name, "custom image", &unpadded(&img), &expected);
+    assert!(img.data.chunks(WIDTH + 1).all(|row| row[WIDTH] == padding));
+
+    // Custom source and destination.
+    let src = PaddedRows {
+        data: padded(&input),
+        width: WIDTH,
+        height: HEIGHT,
+    };
+    let mut dst = PaddedRows {
+        data: padded(&vec![[0.0; 4]; input.len()]),
+        width: WIDTH,
+        height: HEIGHT,
+    };
+    cpu.apply_src_dst(&src, &mut dst).unwrap();
+    assert_same(name, "custom src/dst", &unpadded(&dst), &expected);
+
+    // Custom source, packed destination (processed in place).
+    let mut out = vec![0.0f32; input.len() * 4];
+    let mut dst = PackedImageDesc::new(ImageData::F32(&mut out), WIDTH, HEIGHT, 4).unwrap();
+    cpu.apply_src_dst(&src, &mut dst).unwrap();
+    assert_same(
+        name,
+        "custom src",
+        &unpack(&out, 4, ChannelOrdering::Rgba),
+        &expected,
+    );
 }

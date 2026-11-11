@@ -219,6 +219,10 @@ pub trait ImageDesc {
     /// (32-bit float, RGBA order, adjacent pixels). The CPU processor then
     /// reads it in place instead of converting it with
     /// [`read_row`](Self::read_row). The default returns `None`.
+    ///
+    /// The returned row must hold exactly [`width`](Self::width) pixels (a
+    /// row of another length is ignored: the processor then converts the
+    /// row with [`read_row`](Self::read_row)).
     fn rgba_f32_row(&self, y: usize) -> Option<&[Pixel]> {
         let _ = y;
         None
@@ -228,6 +232,10 @@ pub trait ImageDesc {
     /// processor then applies in place instead of using
     /// [`read_row`](Self::read_row) / [`write_row`](Self::write_row). The
     /// default returns `None`.
+    ///
+    /// The returned row must hold exactly [`width`](Self::width) pixels (a
+    /// row of another length is ignored: the processor then uses
+    /// [`read_row`](Self::read_row) / [`write_row`](Self::write_row)).
     fn rgba_f32_row_mut(&mut self, y: usize) -> Option<&mut [Pixel]> {
         let _ = y;
         None
@@ -340,6 +348,10 @@ impl<'a> PackedImageDesc<'a> {
     fn rgba_f32_range(&self, y: usize) -> Option<std::ops::Range<usize>> {
         if self.ordering != ChannelOrdering::Rgba || self.x_stride != 4 || y >= self.height {
             return None;
+        }
+        if self.width == 0 {
+            // (The buffer may be empty: no stride-based offset.)
+            return Some(0..0);
         }
         let base = y * self.y_stride;
         Some(base..base + 4 * self.width)

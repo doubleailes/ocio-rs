@@ -842,12 +842,13 @@ impl CpuProcessor {
         let luts = self.bit_depth_luts_for(img.bit_depth(), img.bit_depth());
         // Rows only allocated for the images needing a conversion.
         let mut row = Vec::new();
+        let width = img.width();
         for y in 0..img.height() {
-            if let Some(pixels) = img.rgba_f32_row_mut(y) {
+            if let Some(pixels) = img.rgba_f32_row_mut(y).filter(|p| p.len() == width) {
                 self.apply_row(luts, pixels);
                 continue;
             }
-            row.resize(img.width(), [0.0f32; 4]);
+            row.resize(width, [0.0f32; 4]);
             img.read_row(y, &mut row);
             self.apply_row(luts, &mut row);
             img.write_row(y, &row);
@@ -872,17 +873,19 @@ impl CpuProcessor {
         }
         let luts = self.bit_depth_luts_for(src.bit_depth(), dst.bit_depth());
         let mut row = Vec::new();
+        // (The dimensions are the same.)
+        let width = src.width();
         for y in 0..src.height() {
-            if let Some(pixels) = dst.rgba_f32_row_mut(y) {
+            if let Some(pixels) = dst.rgba_f32_row_mut(y).filter(|p| p.len() == width) {
                 // Convert directly into the destination and apply in place.
-                match src.rgba_f32_row(y) {
+                match src.rgba_f32_row(y).filter(|p| p.len() == width) {
                     Some(src_pixels) => pixels.copy_from_slice(src_pixels),
                     None => src.read_row(y, pixels),
                 }
                 self.apply_row(luts, pixels);
                 continue;
             }
-            row.resize(src.width(), [0.0f32; 4]);
+            row.resize(width, [0.0f32; 4]);
             src.read_row(y, &mut row);
             self.apply_row(luts, &mut row);
             dst.write_row(y, &row);
