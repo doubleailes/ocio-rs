@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Regression tests for the differences found by differential testing
 //! against the C++ OpenColorIO library. The expected values were produced by
 //! the C++ reference implementation (OCIO 2.5+ `main`, scalar CPU path),

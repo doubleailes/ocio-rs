@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Port of `Config_tests.cpp` (part 6: fixed function, exposure contrast,
 //! matrix, CDL and file transforms serialization).
 

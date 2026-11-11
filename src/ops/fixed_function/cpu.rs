@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! CPU renderers of the fixed function op (port of `FixedFunctionOpCPU.cpp`).
 //!
 //! All renderers work in single precision on interleaved RGBA pixels, as the

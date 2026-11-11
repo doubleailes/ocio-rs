@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Basic image input and output for the command line tools (port of the OCIO
 //! `libutils/imageioapphelpers` `ImageIO` class).
 //!

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Port of the OpenColorIO GPU unit test harness (`tests/gpu/GPUUnitTest.cpp`)
 //! running the WGSL shaders.
 //!

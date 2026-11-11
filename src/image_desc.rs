@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Image descriptions used by `CpuProcessor::apply` (port of `ImageDesc`).
 //!
 //! Images are described by borrowed, typed buffers. Integer bit depths are

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! FilmLight Truelight `cub` format (port of `FileFormatTruelight.cpp`).
 //!
 //! ```text

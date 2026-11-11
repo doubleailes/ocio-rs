@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Color spaces and sets of color spaces (port of `ColorSpace.cpp` and
 //! `ColorSpaceSet.cpp`).
 

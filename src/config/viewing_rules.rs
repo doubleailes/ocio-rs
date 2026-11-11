@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Viewing rules: filter the views of a display according to the color
 //! space (or its encoding) of the image (port of `ViewingRules.cpp`).
 

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Processors: an optimized list of ops ready to be applied to pixels (port
 //! of `Processor.cpp`, `CPUProcessor.cpp` and `OpOptimizers.cpp`).
 

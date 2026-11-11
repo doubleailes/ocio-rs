@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! ociomergeconfigs -- merge configs using an OCIOM file with merge
 //! parameters (port of the OCIO `ociomergeconfigs` app).
 

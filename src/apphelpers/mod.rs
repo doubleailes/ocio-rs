@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Application helpers (port of `OpenColorAppHelpers.h` and
 //! `src/OpenColorIO/apphelpers`): color space menus, (display, view)
 //! helpers, the legacy viewing pipeline, color mixing helpers and config

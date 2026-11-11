@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Math helpers (port of the parts of `MathUtils.cpp` shared across modules).
 
 /// Smallest positive normal `f32`, used as tolerance in comparisons.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! WGSL shader generation, for `wgpu` / WebGPU clients.
 //!
 //! With [`GpuLanguage::Wgsl`](crate::GpuLanguage::Wgsl), the shader text of a

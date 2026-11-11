@@ -115,4 +115,20 @@ processor, see the standalone [`wgpu-example`](wgpu-example/README.md).
 
 ## License
 
-`MIT AND BSD-3-Clause`; see [`LICENSE`](LICENSE).
+`BSD-3-Clause`, copyright Contributors to the OpenColorIO Project; see
+[`LICENSE`](LICENSE).
+
+ocio-rs is a derivative work of
+[OpenColorIO](https://github.com/AcademySoftwareFoundation/OpenColorIO): its
+code is translated from the C++ sources, and its built-in configs and test
+fixtures are copied from the OpenColorIO repositories. It is therefore
+distributed under the same license and keeps the upstream copyright notice.
+Every source file carries the upstream SPDX header:
+
+```rust
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+```
+
+ocio-rs is not affiliated with or endorsed by the OpenColorIO Project or the
+Academy Software Foundation.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Reader tests (port of the reader part of `FileFormatCTF_tests.cpp`).
 
 use super::opdata::*;

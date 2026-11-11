@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! ociowrite -- write a color transformation to a file (port of the OCIO
 //! `ociowrite` app).
 

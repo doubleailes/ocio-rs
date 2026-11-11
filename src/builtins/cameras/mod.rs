@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Camera builtin transforms (ports of `AppleCameras.cpp`, `ArriCameras.cpp`,
 //! `CanonCameras.cpp`, `PanasonicCameras.cpp`, `RedCameras.cpp` and
 //! `SonyCameras.cpp`).

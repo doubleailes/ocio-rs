@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Reading and writing of OCIOM files (port of
 //! `apphelpers/mergeconfigs/OCIOMYaml.cpp`).
 

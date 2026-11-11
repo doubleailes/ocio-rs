@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Displays and views (port of `Display.cpp`).
 
 use super::utils::{compare, intersect_case_ignore};

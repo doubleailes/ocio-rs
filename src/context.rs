@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Context: search paths, working directory and context (environment)
 //! variables used to resolve file references (port of `Context.cpp` and
 //! `ContextVariableUtils.cpp`).

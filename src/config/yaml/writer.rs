@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Writing of configs to YAML (the `save` functions of `OCIOYaml.cpp`).
 
 use super::emitter::{Emitter, Manip};

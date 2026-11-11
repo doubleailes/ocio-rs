@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Path helpers mirroring the `pystring::os::path` functions used by OCIO.
 
 use std::path::Path;

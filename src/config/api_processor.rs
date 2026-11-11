@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Config API to build processors (`Config::getProcessor` variants,
 //! `GetProcessorFromConfigs`, processor cache) and `isColorSpaceLinear`.
 

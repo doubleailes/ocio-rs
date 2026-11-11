@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! ocioarchive -- archive a config and its LUT files or extract a config
 //! archive (port of the OCIO `ocioarchive` app).
 

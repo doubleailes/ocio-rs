@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Tests ported from `GradingTone_tests.cpp`, `GradingToneOpData_tests.cpp`,
 //! `GradingToneOp_tests.cpp`, `GradingToneOpCPU_tests.cpp`,
 //! `GradingToneTransform_tests.cpp` and the grading tone parts of

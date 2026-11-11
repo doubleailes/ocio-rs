@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Iridas `itx` 3D LUT format (port of `FileFormatIridasItx.cpp`).
 //!
 //! ```text

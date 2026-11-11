@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Color space menus (port of `apphelpers/ColorSpaceHelpers.cpp`):
 //! [`ColorSpaceInfo`], [`ColorSpaceMenuParameters`], [`ColorSpaceMenuHelper`]
 //! and [`add_color_space`] (`ColorSpaceHelpers::AddColorSpace`).

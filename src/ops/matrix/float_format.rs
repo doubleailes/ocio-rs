@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Formatting of floating point numbers the way a C++ `std::ostream` does
 //! with a given `precision()` and the default float field (i.e. `printf`'s
 //! `%g`). OCIO uses it to build cache ids and to serialize parameters.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! GPU renderer of the 3D LUT op (port of `Lut3DOpGPU.cpp`).
 
 use crate::error::{Error, Result};

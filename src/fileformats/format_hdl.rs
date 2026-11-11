@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Houdini `lut` format (port of `FileFormatHDL.cpp`).
 //!
 //! See <http://www.sidefx.com/docs/hdk11.0/hdk_io_lut.html>. Supported

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! # ocio-tools
 //!
 //! Shared code of the command line tools of the `ocio` crate, ports of the

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Internal representation of the CLF/CTF process nodes (port of the parts
 //! of OCIO's `OpData` classes used by the CTF reader and writer: styles,
 //! string conversions, parameter validation, bit-depth scaling, and the

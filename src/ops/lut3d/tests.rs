@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Tests ported from `Lut3DOpData_tests.cpp`, `Lut3DOp_tests.cpp`,
 //! `Lut3DOpCPU_tests.cpp` and `Lut3DTransform_tests.cpp` (CPU path; the
 //! file-based tests use synthetic LUTs instead).

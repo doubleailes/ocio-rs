@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Grading value types used by the grading transforms (`GradingPrimary`,
 //! `GradingTone`, `GradingRgbCurve`, `GradingHueCurve`, B-spline curves).
 //!

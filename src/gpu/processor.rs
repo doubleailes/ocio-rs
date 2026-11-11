@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! The GPU processor (port of `GPUProcessor.cpp` and of the GPU parts of
 //! `Processor.cpp` / `NoOps.cpp`).
 

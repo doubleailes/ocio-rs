@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Port of the non-format parts of `tests/cpu/Baker_tests.cpp`.
 
 use super::*;

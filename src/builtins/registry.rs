@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! The builtin transform registry (port of `BuiltinTransformRegistry.cpp`).
 
 use super::op_helpers::{add_identity_matrix, TransformVec};

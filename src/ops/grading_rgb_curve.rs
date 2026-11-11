@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! RGB curve grading op (port of `GradingRGBCurve.cpp`, `GradingRGBCurveOpData.cpp`,
 //! `GradingRGBCurveOp.cpp`, `GradingRGBCurveOpCPU.cpp` and
 //! `GradingRGBCurveTransform.cpp`). The B-spline fitting and evaluation live

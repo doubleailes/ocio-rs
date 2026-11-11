@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Small containers shared by the config objects: category tokens (port of
 //! `TokensManager.h`) and custom keys (port of `CustomKeys.h`).
 

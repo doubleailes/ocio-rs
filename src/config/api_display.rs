@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Config API for displays, views, shared views, the virtual display,
 //! active displays / views and viewing rules.
 

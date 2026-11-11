@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Class wrappers adapting the generated shader program to the shading
 //! languages needing it (port of `GpuShaderClassWrapper.cpp`).
 

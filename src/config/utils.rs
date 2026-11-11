@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! String and number helpers used by the configuration layer (port of the
 //! parts of `utils/StringUtils.h` and `ParseUtils.cpp` used by the config).
 

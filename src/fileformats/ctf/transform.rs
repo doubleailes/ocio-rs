@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! CTF versions and the in-memory content of a CLF/CTF file (port of
 //! `CTFVersion` and `CTFReaderTransform` from `fileformats/ctf/CTFTransform.*`).
 

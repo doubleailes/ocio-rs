@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Integration tests of the basic ops (matrix, range, exponent, gamma, log,
 //! allocation, exposure contrast, CDL): processors built from transforms and
 //! optimizer behavior (`ocio::processor::optimize_ops`).

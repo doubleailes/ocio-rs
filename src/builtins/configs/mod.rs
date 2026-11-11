@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Builtin configs (port of `builtinconfigs/BuiltinConfigRegistry.cpp`,
 //! `CGConfig.cpp` and `StudioConfig.cpp`).
 //!

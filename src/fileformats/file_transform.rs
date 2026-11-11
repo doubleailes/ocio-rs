@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! `FileTransform`: locating, reading (with caching) and building ops from
 //! files (port of `FileTransform.cpp`).
 //!

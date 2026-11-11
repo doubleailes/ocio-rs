@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! OCIOZ archives: configs packaged with their LUT files in a zip file (port
 //! of `OCIOZArchive.cpp`).
 //!

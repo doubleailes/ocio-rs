@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! ASC CDL op (port of `CDLOpData`, `CDLOp`, `CDLOpCPU` and the op building
 //! part of `CDLTransform.cpp`).
 //!

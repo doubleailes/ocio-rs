@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Writer tests (port of the writer part of `FileFormatCTF_tests.cpp`).
 //!
 //! The OCIO tests build the group transform to write from a processor of a

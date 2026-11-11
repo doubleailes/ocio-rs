@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Unit tests of the gamma op (ports of `GammaOpData_tests.cpp`,
 //! `GammaOp_tests.cpp`, `GammaOpCPU_tests.cpp`, `GammaOpUtils_tests.cpp` and
 //! `ExponentWithLinearTransform_tests.cpp`).

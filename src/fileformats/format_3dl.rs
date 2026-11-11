@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Discreet / Autodesk Flame and Lustre `3dl` 3D LUT format (port of
 //! `FileFormat3DL.cpp`).
 //!

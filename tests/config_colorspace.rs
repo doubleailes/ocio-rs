@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Port of `ColorSpace_tests.cpp` and `ColorSpaceSet_tests.cpp`.
 
 mod config_common;

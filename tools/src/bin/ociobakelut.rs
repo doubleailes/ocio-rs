@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! ociobakelut -- create a new LUT from an OCIO config or LUT file(s) (port
 //! of the OCIO `ociobakelut` app).
 //!

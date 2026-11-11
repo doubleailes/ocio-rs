@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! DaVinci Resolve `cube` LUT format (port of `FileFormatResolveCube.cpp`).
 //!
 //! A Resolve cube file may contain a 3D LUT, a 1D LUT or both (the 1D LUT

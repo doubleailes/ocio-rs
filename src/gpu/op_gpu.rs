@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Dispatch of the GPU shader generation to the op renderers (the
 //! `extractGpuShaderInfo` / `supportedByLegacyShader` methods of the OCIO
 //! ops).

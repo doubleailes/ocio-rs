@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Gamma op (port of `GammaOpData`, `GammaOp`, `GammaOpCPU`, `GammaOpUtils`
 //! and the op building part of `ExponentWithLinearTransform.cpp`).
 //!

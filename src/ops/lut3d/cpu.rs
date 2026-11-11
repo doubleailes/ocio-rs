@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! CPU renderers of the 3D LUT (port of the scalar paths of `Lut3DOpCPU.cpp`).
 
 #![allow(clippy::needless_range_loop)]

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Run the WGSL shader of an OCIO display / view processor with wgpu and
 //! compare it with the CPU processor.
 //!

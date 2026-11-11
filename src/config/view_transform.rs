@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! View transforms (port of `ViewTransform.cpp`).
 
 use super::colorspace::find_interchange_key;

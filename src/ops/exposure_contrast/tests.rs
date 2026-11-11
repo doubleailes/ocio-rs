@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Unit tests of the exposure contrast op (ports of
 //! `ExposureContrastOpData_tests.cpp`, `ExposureContrastOp_tests.cpp`,
 //! `ExposureContrastOpCPU_tests.cpp` and `ExposureContrastTransform_tests.cpp`).

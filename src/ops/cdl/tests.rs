@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Unit tests of the CDL op (ports of `CDLOpData_tests.cpp`, `CDLOp_tests.cpp`
 //! and the CPU parts of `CDLTransform_tests.cpp`).
 

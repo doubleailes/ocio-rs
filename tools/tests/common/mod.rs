@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Helpers shared by the integration tests of the command line tools.
 
 #![allow(dead_code)]

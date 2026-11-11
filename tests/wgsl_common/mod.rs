@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Processors covering every GPU op renderer, shared by the WGSL tests.
 
 #![allow(dead_code)]

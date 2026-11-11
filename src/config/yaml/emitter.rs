@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! A port of the subset of the `yaml-cpp` emitter (`Emitter`,
 //! `EmitterState`, `emitterutils`) used by OCIO, reproducing its exact
 //! output formatting (indentation, flow / block styles, quoting rules, blank

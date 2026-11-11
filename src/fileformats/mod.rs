@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! LUT / transform file formats (port of `FileTransform.h` registry and the
 //! `fileformats/` directory).
 //!

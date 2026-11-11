@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! ociolutimage -- convert a 3D LUT to or from an image (port of the OCIO
 //! `ociolutimage` app).
 

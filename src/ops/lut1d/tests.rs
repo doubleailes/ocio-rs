@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Tests ported from `Lut1DOpData_tests.cpp`, `Lut1DOp_tests.cpp`,
 //! `Lut1DOpCPU_tests.cpp` and `Lut1DTransform_tests.cpp` (CPU path with 32f
 //! pixels: the integer / half pixel formats of the OCIO renderers are

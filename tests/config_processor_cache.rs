@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Port of `Config_tests.cpp` test `Config/context_variables_typical_use_cases`.
 //!
 //! Deviation: processors are returned by value in Rust, so the C++ pointer

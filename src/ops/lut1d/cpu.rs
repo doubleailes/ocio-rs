@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! CPU renderers of the 1D LUT (port of the 32f-in / 32f-out scalar paths of
 //! `Lut1DOpCPU.cpp`).
 

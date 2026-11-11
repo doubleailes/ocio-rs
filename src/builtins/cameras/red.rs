@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! RED camera builtins (port of `RedCameras.cpp`).
 
 use crate::builtins::color_matrix_helpers::{

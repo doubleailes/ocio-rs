@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Iridas `look` format (port of `FileFormatIridasLook.cpp`).
 //!
 //! An XML format containing `<shaders>`, a series of layers describing the

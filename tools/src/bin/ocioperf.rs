@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! ocioperf -- apply and measure a color transformation processing (port of
 //! the OCIO `ocioperf` app).
 //!

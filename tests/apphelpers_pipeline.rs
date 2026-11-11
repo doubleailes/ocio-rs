@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
 //! Port of `LegacyViewingPipeline_tests.cpp` and `MixingHelpers_tests.cpp`.
 
 use ocio::apphelpers::{LegacyViewingPipeline, MixingColorSpaceManager};
