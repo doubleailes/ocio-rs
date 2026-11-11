@@ -9,7 +9,7 @@
 
 pub mod bspline;
 
-use self::bspline::KnotsCoefs;
+use self::bspline::{Curve, KnotsCoefs};
 use super::grading_primary::GradingValue;
 use super::grading_tone::log_lin;
 use crate::config::Config;
@@ -181,14 +181,35 @@ const GREEN: usize = RgbCurveType::Green as usize;
 const BLUE: usize = RgbCurveType::Blue as usize;
 const MASTER: usize = RgbCurveType::Master as usize;
 
-#[inline]
-fn eval(kc: &KnotsCoefs, out: &mut Pixel) {
-    out[0] = kc.eval_curve(RED, out[0], out[0]);
-    out[1] = kc.eval_curve(GREEN, out[1], out[1]);
-    out[2] = kc.eval_curve(BLUE, out[2], out[2]);
-    out[0] = kc.eval_curve(MASTER, out[0], out[0]);
-    out[1] = kc.eval_curve(MASTER, out[1], out[1]);
-    out[2] = kc.eval_curve(MASTER, out[2], out[2]);
+/// The forward curves, looked up once for all the pixels.
+struct ForwardCurves<'a> {
+    /// Red, green and blue curves.
+    rgb: [Option<Curve<'a>>; 3],
+    master: Option<Curve<'a>>,
+}
+
+impl<'a> ForwardCurves<'a> {
+    fn new(kc: &'a KnotsCoefs) -> Self {
+        Self {
+            rgb: [kc.curve(RED), kc.curve(GREEN), kc.curve(BLUE)],
+            master: kc.curve(MASTER),
+        }
+    }
+
+    /// Same as [`KnotsCoefs::eval_curve`] on each curve.
+    #[inline]
+    fn eval(&self, out: &mut Pixel) {
+        for c in 0..3 {
+            if let Some(curve) = &self.rgb[c] {
+                out[c] = curve.eval(out[c]);
+            }
+        }
+        if let Some(master) = &self.master {
+            for v in &mut out[..3] {
+                *v = master.eval(*v);
+            }
+        }
+    }
 }
 
 #[inline]
@@ -214,6 +235,7 @@ impl Op for GradingRgbCurveOp {
         }
         let lin_to_log = self.style == GradingStyle::Lin && !self.bypass_lin_to_log;
         let fwd = self.direction == TransformDirection::Forward;
+        let curves = ForwardCurves::new(kc);
         for out in pixels.iter_mut() {
             if lin_to_log {
                 // As in OCIO's SSE2 renderers, the shapers process the four
@@ -224,7 +246,7 @@ impl Op for GradingRgbCurveOp {
                 }
             }
             if fwd {
-                eval(kc, out);
+                curves.eval(out);
             } else {
                 eval_rev(kc, out);
             }

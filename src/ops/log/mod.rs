@@ -690,26 +690,36 @@ impl LogRenderer {
     pub fn apply_fast(&self, pixels: &mut [Pixel]) {
         use crate::ops::sse;
         const MIN_VALUE: f32 = f32::MIN_POSITIVE;
+        // `log2` / `exp2` of the three color channels at once (the fourth
+        // lane is not used).
+        #[inline(always)]
+        fn log2_3(f: impl Fn(usize) -> f32) -> [f32; 4] {
+            sse::log2_4([f(0), f(1), f(2), 1.0])
+        }
+        #[inline(always)]
+        fn exp2_3(f: impl Fn(usize) -> f32) -> [f32; 4] {
+            sse::exp2_4([f(0), f(1), f(2), 0.0])
+        }
         match self {
             LogRenderer::Log { scale } => {
                 for p in pixels.iter_mut() {
-                    for v in p.iter_mut().take(3) {
-                        *v = sse::log2(sse::max(*v, MIN_VALUE)) * scale;
+                    let v = log2_3(|i| sse::max(p[i], MIN_VALUE));
+                    for i in 0..3 {
+                        p[i] = v[i] * scale;
                     }
                 }
             }
             LogRenderer::AntiLog { log2_base } => {
                 for p in pixels.iter_mut() {
-                    for v in p.iter_mut().take(3) {
-                        *v = sse::exp2(*v * log2_base);
-                    }
+                    let v = exp2_3(|i| p[i] * log2_base);
+                    p[..3].copy_from_slice(&v[..3]);
                 }
             }
             LogRenderer::Lin2Log { m, b, klog, kb } => {
                 for p in pixels.iter_mut() {
+                    let v = log2_3(|i| sse::max(p[i] * m[i] + b[i], MIN_VALUE));
                     for i in 0..3 {
-                        let v = sse::log2(sse::max(p[i] * m[i] + b[i], MIN_VALUE));
-                        p[i] = v * klog[i] + kb[i];
+                        p[i] = v[i] * klog[i] + kb[i];
                     }
                 }
             }
@@ -720,9 +730,9 @@ impl LogRenderer {
                 minv,
             } => {
                 for p in pixels.iter_mut() {
+                    let v = exp2_3(|i| (p[i] + minuskb[i]) * kinv[i]);
                     for i in 0..3 {
-                        let v = sse::exp2((p[i] + minuskb[i]) * kinv[i]);
-                        p[i] = (v + minusb[i]) * minv[i];
+                        p[i] = (v[i] + minusb[i]) * minv[i];
                     }
                 }
             }
@@ -736,11 +746,11 @@ impl LogRenderer {
                 linear_offset,
             } => {
                 for p in pixels.iter_mut() {
+                    let v = log2_3(|i| sse::max(p[i] * m[i] + b[i], MIN_VALUE));
                     for i in 0..3 {
                         let x = p[i];
                         let lin = x * linear_slope[i] + linear_offset[i];
-                        let v = sse::log2(sse::max(x * m[i] + b[i], MIN_VALUE));
-                        let log = v * klog[i] + kb[i];
+                        let log = v[i] * klog[i] + kb[i];
                         p[i] = if x > linb[i] { log } else { lin };
                     }
                 }
@@ -755,11 +765,11 @@ impl LogRenderer {
                 minuslino,
             } => {
                 for p in pixels.iter_mut() {
+                    let v = exp2_3(|i| (p[i] + minuskb[i]) * kinv[i]);
                     for i in 0..3 {
                         let x = p[i];
                         let lin = (x + minuslino[i]) * linsinv[i];
-                        let v = sse::exp2((x + minuskb[i]) * kinv[i]);
-                        let log = (v + minusb[i]) * minv[i];
+                        let log = (v[i] + minusb[i]) * minv[i];
                         p[i] = if x > log_side_break[i] { log } else { lin };
                     }
                 }

@@ -817,73 +817,99 @@ impl GammaRenderer {
     /// evaluated on the alpha channel too (`1^1` gives `1.0000116`).
     pub fn apply_fast(&self, pixels: &mut [Pixel]) {
         use crate::ops::sse;
+        // The powers of the four channels are evaluated at once
+        // (`sse::power_4`), the rest lane by lane.
         match self {
             GammaRenderer::Basic { gamma } => {
                 for p in pixels.iter_mut() {
-                    for c in 0..4 {
-                        p[c] = sse::power(p[c], gamma[c]);
-                    }
+                    *p = sse::power_4(*p, *gamma);
                 }
             }
             GammaRenderer::BasicMirror { gamma } => {
                 for p in pixels.iter_mut() {
+                    let data = sse::power_4(p.map(sse::abs), *gamma);
                     for c in 0..4 {
-                        let sign = sse::sign_bits(p[c]);
-                        p[c] = sse::or_sign(sign, sse::power(sse::abs(p[c]), gamma[c]));
+                        p[c] = sse::or_sign(sse::sign_bits(p[c]), data[c]);
                     }
                 }
             }
             GammaRenderer::BasicPassThru { gamma } => {
                 for p in pixels.iter_mut() {
+                    let data = sse::power_4(*p, *gamma);
                     for c in 0..4 {
-                        let data = sse::power(p[c], gamma[c]);
                         if p[c] > 0.0 {
-                            p[c] = data;
+                            p[c] = data[c];
                         }
                     }
                 }
             }
             GammaRenderer::MoncurveFwd { params } => {
+                let gamma = params.map(|r| r.gamma);
                 for p in pixels.iter_mut() {
+                    let x = *p;
+                    let data = sse::power_4(
+                        [0, 1, 2, 3].map(|c| x[c] * params[c].scale + params[c].offset),
+                        gamma,
+                    );
                     for c in 0..4 {
                         let r = &params[c];
-                        let x = p[c];
-                        let data = sse::power(x * r.scale + r.offset, r.gamma);
-                        p[c] = if x > r.break_pnt { data } else { x * r.slope };
+                        p[c] = if x[c] > r.break_pnt {
+                            data[c]
+                        } else {
+                            x[c] * r.slope
+                        };
                     }
                 }
             }
             GammaRenderer::MoncurveRev { params } => {
+                let gamma = params.map(|r| r.gamma);
                 for p in pixels.iter_mut() {
+                    let x = *p;
+                    let data = sse::power_4(x, gamma);
                     for c in 0..4 {
                         let r = &params[c];
-                        let x = p[c];
-                        let data = sse::power(x, r.gamma) * r.scale - r.offset;
-                        p[c] = if x > r.break_pnt { data } else { x * r.slope };
+                        let data = data[c] * r.scale - r.offset;
+                        p[c] = if x[c] > r.break_pnt {
+                            data
+                        } else {
+                            x[c] * r.slope
+                        };
                     }
                 }
             }
             GammaRenderer::MoncurveMirrorFwd { params } => {
+                let gamma = params.map(|r| r.gamma);
                 for p in pixels.iter_mut() {
+                    let x = p.map(sse::abs);
+                    let data = sse::power_4(
+                        [0, 1, 2, 3].map(|c| x[c] * params[c].scale + params[c].offset),
+                        gamma,
+                    );
                     for c in 0..4 {
                         let r = &params[c];
-                        let sign = sse::sign_bits(p[c]);
-                        let x = sse::abs(p[c]);
-                        let data = sse::power(x * r.scale + r.offset, r.gamma);
-                        let data = if x > r.break_pnt { data } else { x * r.slope };
-                        p[c] = sse::or_sign(sign, data);
+                        let data = if x[c] > r.break_pnt {
+                            data[c]
+                        } else {
+                            x[c] * r.slope
+                        };
+                        p[c] = sse::or_sign(sse::sign_bits(p[c]), data);
                     }
                 }
             }
             GammaRenderer::MoncurveMirrorRev { params } => {
+                let gamma = params.map(|r| r.gamma);
                 for p in pixels.iter_mut() {
+                    let x = p.map(sse::abs);
+                    let data = sse::power_4(x, gamma);
                     for c in 0..4 {
                         let r = &params[c];
-                        let sign = sse::sign_bits(p[c]);
-                        let x = sse::abs(p[c]);
-                        let data = sse::power(x, r.gamma) * r.scale - r.offset;
-                        let data = if x > r.break_pnt { data } else { x * r.slope };
-                        p[c] = sse::or_sign(sign, data);
+                        let data = data[c] * r.scale - r.offset;
+                        let data = if x[c] > r.break_pnt {
+                            data
+                        } else {
+                            x[c] * r.slope
+                        };
+                        p[c] = sse::or_sign(sse::sign_bits(p[c]), data);
                     }
                 }
             }

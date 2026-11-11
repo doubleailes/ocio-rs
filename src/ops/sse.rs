@@ -201,6 +201,157 @@ pub fn power(x: f32, exp: f32) -> f32 {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Four lanes at once.
+//
+// The renderers evaluate the polynomial approximations on the four channels
+// of a pixel with these functions. On x86-64, whose baseline includes SSE2,
+// they use the SSE2 instructions of `SSE.h` (the same instructions as OCIO,
+// so the same results as the lane by lane versions above, which the tests
+// check); elsewhere they apply the lane by lane versions.
+
+/// [`log2`] of four lanes.
+#[inline]
+pub fn log2_4(x: [f32; 4]) -> [f32; 4] {
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+    {
+        x86::log2_4(x)
+    }
+    #[cfg(not(all(target_arch = "x86_64", target_feature = "sse2")))]
+    {
+        x.map(log2)
+    }
+}
+
+/// [`exp2`] of four lanes.
+#[inline]
+pub fn exp2_4(x: [f32; 4]) -> [f32; 4] {
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+    {
+        x86::exp2_4(x)
+    }
+    #[cfg(not(all(target_arch = "x86_64", target_feature = "sse2")))]
+    {
+        x.map(exp2)
+    }
+}
+
+/// [`power`] of four lanes.
+#[inline]
+pub fn power_4(x: [f32; 4], exp: [f32; 4]) -> [f32; 4] {
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+    {
+        x86::power_4(x, exp)
+    }
+    #[cfg(not(all(target_arch = "x86_64", target_feature = "sse2")))]
+    {
+        [0, 1, 2, 3].map(|i| power(x[i], exp[i]))
+    }
+}
+
+/// The SSE2 versions of `sseLog2`, `sseExp2` and `ssePower`.
+///
+/// SAFETY: the intrinsics only require the `sse` / `sse2` target features,
+/// which this module is compiled for (they are part of the x86-64 baseline);
+/// they do not access memory.
+#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+#[allow(unsafe_code)]
+mod x86 {
+    use super::*;
+    use std::arch::x86_64::*;
+
+    #[inline(always)]
+    fn load(x: [f32; 4]) -> __m128 {
+        // SAFETY: see the module documentation.
+        unsafe { _mm_setr_ps(x[0], x[1], x[2], x[3]) }
+    }
+
+    #[inline(always)]
+    fn store(v: __m128) -> [f32; 4] {
+        // SAFETY: see the module documentation.
+        unsafe {
+            [
+                _mm_cvtss_f32(v),
+                _mm_cvtss_f32(_mm_shuffle_ps::<0b01_01_01_01>(v, v)),
+                _mm_cvtss_f32(_mm_shuffle_ps::<0b10_10_10_10>(v, v)),
+                _mm_cvtss_f32(_mm_shuffle_ps::<0b11_11_11_11>(v, v)),
+            ]
+        }
+    }
+
+    #[inline(always)]
+    fn log2(x: __m128) -> __m128 {
+        // SAFETY: see the module documentation.
+        unsafe {
+            let exp_mask = _mm_castsi128_ps(_mm_set1_epi32(EXP_MASK as i32));
+            // The mantissa in [1, 2), with the sign of x.
+            let mantissa = _mm_or_ps(_mm_andnot_ps(exp_mask, x), _mm_set1_ps(1.0));
+            let mut log2 = _mm_add_ps(
+                _mm_mul_ps(_mm_set1_ps(PNLOG5), mantissa),
+                _mm_set1_ps(PNLOG4),
+            );
+            log2 = _mm_add_ps(_mm_mul_ps(log2, mantissa), _mm_set1_ps(PNLOG3));
+            log2 = _mm_add_ps(_mm_mul_ps(log2, mantissa), _mm_set1_ps(PNLOG2));
+            log2 = _mm_add_ps(_mm_mul_ps(log2, mantissa), _mm_set1_ps(PNLOG1));
+            log2 = _mm_add_ps(_mm_mul_ps(log2, mantissa), _mm_set1_ps(PNLOG0));
+            let exponent = _mm_sub_epi32(
+                _mm_srli_epi32::<{ EXP_SHIFT as i32 }>(_mm_castps_si128(_mm_and_ps(x, exp_mask))),
+                _mm_set1_epi32(EXP_BIAS),
+            );
+            _mm_add_ps(log2, _mm_cvtepi32_ps(exponent))
+        }
+    }
+
+    #[inline(always)]
+    fn exp2(x: __m128) -> __m128 {
+        // SAFETY: see the module documentation.
+        unsafe {
+            // floor(x): the truncation minus 1 when x is not >= 0.
+            let below_zero = _mm_castps_si128(_mm_cmpnle_ps(_mm_setzero_ps(), x));
+            let floor_x = _mm_add_epi32(_mm_cvttps_epi32(x), below_zero);
+            let zf = _mm_castsi128_ps(_mm_slli_epi32::<{ EXP_SHIFT as i32 }>(_mm_add_epi32(
+                floor_x,
+                _mm_set1_epi32(EXP_BIAS),
+            )));
+            let fraction = _mm_sub_ps(x, _mm_cvtepi32_ps(floor_x));
+            let mut mexp = _mm_add_ps(
+                _mm_mul_ps(_mm_set1_ps(PNEXP4), fraction),
+                _mm_set1_ps(PNEXP3),
+            );
+            mexp = _mm_add_ps(_mm_mul_ps(mexp, fraction), _mm_set1_ps(PNEXP2));
+            mexp = _mm_add_ps(_mm_mul_ps(mexp, fraction), _mm_set1_ps(PNEXP1));
+            mexp = _mm_add_ps(_mm_mul_ps(mexp, fraction), _mm_set1_ps(PNEXP0));
+            let exp2 = _mm_mul_ps(zf, mexp);
+            // 0 below -126, +Inf from 128.
+            let exp2 = _mm_andnot_ps(_mm_cmplt_ps(x, _mm_set1_ps(-126.0)), exp2);
+            let overflow = _mm_cmpge_ps(x, _mm_set1_ps(128.0));
+            _mm_or_ps(
+                _mm_andnot_ps(overflow, exp2),
+                _mm_and_ps(overflow, _mm_set1_ps(f32::INFINITY)),
+            )
+        }
+    }
+
+    #[inline]
+    pub(super) fn log2_4(x: [f32; 4]) -> [f32; 4] {
+        store(log2(load(x)))
+    }
+
+    #[inline]
+    pub(super) fn exp2_4(x: [f32; 4]) -> [f32; 4] {
+        store(exp2(load(x)))
+    }
+
+    #[inline]
+    pub(super) fn power_4(x: [f32; 4], exp: [f32; 4]) -> [f32; 4] {
+        let x = load(x);
+        // SAFETY: see the module documentation.
+        let values = unsafe { exp2(_mm_mul_ps(load(exp), log2(x))) };
+        // SAFETY: see the module documentation.
+        store(unsafe { _mm_and_ps(_mm_cmpgt_ps(x, _mm_setzero_ps()), values) })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -267,5 +418,56 @@ mod tests {
         assert!(max(1.0, f32::NAN).is_nan());
         assert_eq!(min(f32::NAN, 1.0), 1.0);
         assert!(min(1.0, f32::NAN).is_nan());
+    }
+
+    /// Values covering every exponent with varied mantissas, both signs, the
+    /// special values and the ranges the polynomials are used on.
+    fn samples() -> Vec<f32> {
+        let mut v: Vec<f32> = (0..=u32::MAX).step_by(65_521).map(f32::from_bits).collect();
+        v.extend((-3000..3000).map(|i| i as f32 * 0.05));
+        v.extend([
+            0.0,
+            -0.0,
+            1.0,
+            -126.0,
+            -126.5,
+            127.99999,
+            128.0,
+            f32::MIN_POSITIVE,
+            f32::from_bits(1),
+            f32::MAX,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            f32::NAN,
+            -f32::NAN,
+            f32::from_bits(0x7F80_0001),
+        ]);
+        v
+    }
+
+    fn same(a: f32, b: f32) -> bool {
+        a.to_bits() == b.to_bits()
+    }
+
+    #[test]
+    fn four_lane_versions_match_the_lane_versions() {
+        let s = samples();
+        let exps = [2.2, 1.0 / 2.4, 0.45, 1.0, -0.7, 0.0, 30.0, f32::NAN];
+        for (i, quad) in s.chunks_exact(4).enumerate() {
+            let x = [quad[0], quad[1], quad[2], quad[3]];
+            let (l, e) = (log2_4(x), exp2_4(x));
+            let exp = [0, 1, 2, 3].map(|c| exps[(i + c) % exps.len()]);
+            let p = power_4(x, exp);
+            for c in 0..4 {
+                assert!(same(l[c], log2(x[c])), "log2({:#x})", x[c].to_bits());
+                assert!(same(e[c], exp2(x[c])), "exp2({:#x})", x[c].to_bits());
+                assert!(
+                    same(p[c], power(x[c], exp[c])),
+                    "power({:#x}, {})",
+                    x[c].to_bits(),
+                    exp[c]
+                );
+            }
+        }
     }
 }
